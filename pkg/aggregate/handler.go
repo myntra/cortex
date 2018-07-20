@@ -22,6 +22,20 @@ type Service struct {
 	store Store
 }
 
+// Config is required for initializing the service
+type Config struct {
+	ID                         string `config:"id,required"`
+	Bind                       string `config:"bind,required"`
+	Dir                        string `config:"dir"`
+	Join                       string `config:"join"`
+	DefaultWaitWindow          uint64 `config:"wait_window"`
+	DefaultWaitWindowThreshold uint64 `config:"wait_window_threshold"`
+	DefaultMaxWaitWindow       uint64 `config:"max_wait_window"`
+	Version                    string `config:"version"`
+	Commit                     string `config:"commit"`
+	Date                       string `config:"date"`
+}
+
 // HTTP returns a http server
 func (s *Service) HTTP() *http.Server {
 	return s.srv
@@ -109,16 +123,16 @@ func (s *Service) getRules(w http.ResponseWriter, r *http.Request) {
 }
 
 // New returns the aggregate store service
-func New(id, bind, dir, join string) (*Service, error) {
-	if id == "" {
+func New(cfg *Config) (*Service, error) {
+	if cfg.ID == "" {
 		return nil, fmt.Errorf("no id provided")
 	}
 
 	store, err := newStore(&options{
-		id:   id,
-		bind: bind,
-		dir:  dir,
-		join: join,
+		id:   cfg.ID,
+		bind: cfg.Bind,
+		dir:  cfg.Dir,
+		join: cfg.Join,
 	})
 
 	if err != nil {

@@ -10,51 +10,72 @@ import (
 
 	"crawshaw.io/littleboss"
 	"github.com/golang/glog"
+	"github.com/heetch/confita"
+	"github.com/heetch/confita/backend/flags"
 	"github.com/myntra/aggo/pkg/aggregate"
 )
 
 var (
 	//raft
-	bind string
-	join string
-	dir  string
-	id   string
+	bind                       string
+	join                       string
+	dir                        string
+	id                         string
+	defaultWaitWindow          uint64
+	defaultWaitWindowThreshold uint64
+	defaultMaxWaitWindow       uint64
 
 	// build
 	version = "dev"
 	commit  = "none"
 	date    = "unknown"
+
+	config *aggregate.Config
 )
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "usage: \n\n ./aggo -stderrthreshold=INFO -log_dir=$(pwd) -id=node1 lb=start & \n "+
 		"./aggo-new-version -stderrthreshold=INFO  -log_dir=$(pwd) -id=node1 -lb=reload \n ./aggo -lb=stop \n \n")
 	flag.PrintDefaults()
+
 	os.Exit(2)
 }
 
 func init() {
 	flag.Usage = usage
-	flag.StringVar(&id, "id", "", "raft node id")
-	flag.StringVar(&bind, "bind", ":8878", "raft bind addr")
-	flag.StringVar(&dir, "dir", "data", "raft data directory")
-	flag.StringVar(&join, "join", "", "raft join by cluster addr")
+	// flag.StringVar(&id, "id", "", "raft node id")
+	// flag.StringVar(&bind, "bind", ":8878", "raft bind addr")
+	// flag.StringVar(&dir, "dir", "data", "raft data directory")
+	// flag.StringVar(&join, "join", "", "raft join by cluster addr")
+
+	config = &aggregate.Config{
+		ID:                         "",
+		Bind:                       ":8878",
+		Dir:                        "./data",
+		Join:                       "",
+		DefaultWaitWindow:          3 * 60 * 1000,   // 3 minutes
+		DefaultMaxWaitWindow:       6 * 60 * 1000,   // 6 minutes
+		DefaultWaitWindowThreshold: 2.5 * 60 * 1000, // 2.5 minutes
+	}
 
 }
 
 func main() {
 
+	loader := confita.NewLoader(flags.NewBackend())
 	lb := littleboss.New("aggo")
 	lb.Command("lb", flag.String("lb", "start", "littleboss start command"))
 
 	flagHTTP := lb.Listener("http", "tcp", ":8877", "littleboss listener address")
 	flag.Parse()
 
-	if len(os.Args) < 2 {
+	err := loader.Load(context.Background(), config)
+	if err != nil {
+		fmt.Printf("%v\n", err)
 		usage()
 	}
 
-	svc, err := aggregate.New(id, bind, dir, join)
+	svc, err := aggregate.New(config)
 	if err != nil {
 		glog.Fatal(err)
 	}
