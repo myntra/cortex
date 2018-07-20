@@ -9,9 +9,10 @@ import (
 )
 
 type storage struct {
-	mu          sync.Mutex
-	m           map[string]*event.RuleBucket // [ruleID]
-	flusherChan chan string
+	mu              sync.Mutex
+	m               map[string]*event.RuleBucket // [ruleID]
+	flusherChan     chan string
+	quitFlusherChan chan struct{}
 }
 
 func isMatch(eventType, pattern string) bool {
@@ -63,11 +64,13 @@ func (s *storage) stash(event *event.Event) {
 			// add event to all matching rule buckets
 			if isMatch(event.EventType, eventTypePattern) {
 				// has rule bucket been initialized ?
-				if s.m[ruleID].Touch == nil {
+				if len(s.m[ruleID].Bucket) == 0 {
 					// start a flusher for this rule
-					s.m[ruleID].Touch = make(chan struct{})
-					// flusher routine
-					go flush(ruleID, s.m[ruleID], s.flusherChan)
+					if s.m[ruleID].Touch == nil {
+						s.m[ruleID].Touch = make(chan struct{})
+						// flusher routine
+						go flush(ruleID, s.m[ruleID], s.flusherChan)
+					}
 				}
 				// dedup, reschedule flusher(sliding wait window), frequency count
 				dup := false
@@ -80,9 +83,8 @@ func (s *storage) stash(event *event.Event) {
 						}
 					}
 				}
-
+				// is a duplicate event, skip appending event to bucket
 				if dup {
-					// is a duplicate event, skip append
 					continue
 				}
 

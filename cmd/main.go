@@ -44,21 +44,15 @@ func usage() {
 
 func init() {
 	flag.Usage = usage
-	// flag.StringVar(&id, "id", "", "raft node id")
-	// flag.StringVar(&bind, "bind", ":8878", "raft bind addr")
-	// flag.StringVar(&dir, "dir", "data", "raft data directory")
-	// flag.StringVar(&join, "join", "", "raft join by cluster addr")
-
 	config = &store.Config{
-		ID:                         "",
-		Bind:                       ":8878",
+		NodeID:                     "",
+		BindAddr:                   ":8878",
 		Dir:                        "./data",
-		Join:                       "",
+		JoinAddr:                   "",
 		DefaultWaitWindow:          3 * 60 * 1000,   // 3 minutes
 		DefaultMaxWaitWindow:       6 * 60 * 1000,   // 6 minutes
 		DefaultWaitWindowThreshold: 2.5 * 60 * 1000, // 2.5 minutes
 	}
-
 }
 
 func main() {

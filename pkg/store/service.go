@@ -18,16 +18,17 @@ import (
 
 // Service encapsulates the http server and the raft store
 type Service struct {
-	srv   *http.Server
-	store Store
+	srv    *http.Server
+	store  Store
+	config *Config
 }
 
 // Config is required for initializing the service
 type Config struct {
-	ID                         string `config:"id,required"`
-	Bind                       string `config:"bind,required"`
+	NodeID                     string `config:"id,required"`
+	BindAddr                   string `config:"bind,required"`
 	Dir                        string `config:"dir"`
-	Join                       string `config:"join"`
+	JoinAddr                   string `config:"join"`
 	DefaultWaitWindow          uint64 `config:"wait_window"`
 	DefaultWaitWindowThreshold uint64 `config:"wait_window_threshold"`
 	DefaultMaxWaitWindow       uint64 `config:"max_wait_window"`
@@ -59,7 +60,7 @@ func (s *Service) eventHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Service) addRule(w http.ResponseWriter, r *http.Request) {
+func (s *Service) addRuleHandler(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		util.ErrStatus(w, r, "invalid request body, expected a valid rule", http.StatusNotAcceptable, err)
@@ -98,7 +99,7 @@ func (s *Service) addRule(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func (s *Service) removeRule(w http.ResponseWriter, r *http.Request) {
+func (s *Service) removeRuleHandler(w http.ResponseWriter, r *http.Request) {
 	ruleID := chi.URLParam(r, "id")
 	err := s.store.RemoveRule(ruleID)
 	if err != nil {
@@ -108,7 +109,7 @@ func (s *Service) removeRule(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Service) getRules(w http.ResponseWriter, r *http.Request) {
+func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) {
 	rules := s.store.GetRules()
 
 	b, err := json.Marshal(&rules)
@@ -122,32 +123,52 @@ func (s *Service) getRules(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (s *Service) leaveHandler(w http.ResponseWriter, r *http.Request) {
+	nodeID := chi.URLParam(r, "id")
+	err := s.store.Leave(nodeID)
+	if err != nil {
+		util.ErrStatus(w, r, "could not leave cluster", http.StatusNotFound, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Service) joinHandler(w http.ResponseWriter, r *http.Request) {
+	addr := chi.URLParam(r, "addr")
+	err := s.store.Join(addr)
+	if err != nil {
+		util.ErrStatus(w, r, "could not join cluster", http.StatusNotFound, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 // New returns the aggregate store service
 func New(cfg *Config) (*Service, error) {
-	if cfg.ID == "" {
+
+	if cfg.NodeID == "" {
 		return nil, fmt.Errorf("no id provided")
 	}
 
-	store, err := newStore(&options{
-		id:   cfg.ID,
-		bind: cfg.Bind,
-		dir:  cfg.Dir,
-		join: cfg.Join,
-	})
+	store, err := newStore(cfg)
 
 	if err != nil {
 		return nil, err
 	}
+
 	svc := &Service{
-		store: store,
+		store:  store,
+		config: cfg,
 	}
 
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
 	router.Post("/event", svc.eventHandler)
-	router.Get("/rule/list", svc.getRules)
-	router.Post("/rule", svc.addRule)
-	router.Delete("/rule/:id", svc.removeRule)
+	router.Get("/rule/list", svc.getRulesHandler)
+	router.Post("/rule", svc.addRuleHandler)
+	router.Delete("/rule/:id", svc.removeRuleHandler)
+	router.Get("/join/:addr", svc.joinHandler)
+	router.Get("/leave/:id", svc.leaveHandler)
 
 	srv := &http.Server{
 		ReadTimeout:  10 * time.Second,

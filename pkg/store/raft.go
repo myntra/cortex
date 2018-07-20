@@ -27,6 +27,8 @@ type Store interface {
 	RemoveRule(ruleID string) error
 	FlushRule(ruleID string) error
 	GetRules() []*event.Rule
+	Join(addr string) error
+	Leave(id string) error
 }
 
 type command struct {
@@ -37,24 +39,18 @@ type command struct {
 }
 
 type defaultStore struct {
-	opt     *options
+	opt     *Config
 	raft    *raft.Raft
 	storage *storage
 }
 
-type options struct {
-	dir  string
-	bind string
-	id   string
-	join string
-}
-
-func newStore(opt *options) (*defaultStore, error) {
+func newStore(opt *Config) (*defaultStore, error) {
 
 	store := &defaultStore{
 		storage: &storage{
-			m:           make(map[string]*event.RuleBucket),
-			flusherChan: make(chan string),
+			m:               make(map[string]*event.RuleBucket),
+			flusherChan:     make(chan string),
+			quitFlusherChan: make(chan struct{}),
 		},
 		opt: opt,
 	}
@@ -64,20 +60,20 @@ func newStore(opt *options) (*defaultStore, error) {
 
 func (d *defaultStore) open() error {
 	config := raft.DefaultConfig()
-	config.LocalID = raft.ServerID(d.opt.id)
+	config.LocalID = raft.ServerID(d.opt.NodeID)
 
 	// Setup Raft communication.
-	addr, err := net.ResolveTCPAddr("tcp", d.opt.bind)
+	addr, err := net.ResolveTCPAddr("tcp", d.opt.BindAddr)
 	if err != nil {
 		return err
 	}
-	transport, err := raft.NewTCPTransport(d.opt.bind, addr, 3, 10*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransport(d.opt.BindAddr, addr, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return err
 	}
 
 	// Create the snapshot store. This allows the Raft to truncate the log.
-	snapshots, err := raft.NewFileSnapshotStore(d.opt.dir, retainSnapshotCount, os.Stderr)
+	snapshots, err := raft.NewFileSnapshotStore(d.opt.Dir, retainSnapshotCount, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("file snapshot store: %s", err)
 	}
@@ -86,7 +82,7 @@ func (d *defaultStore) open() error {
 	var logStore raft.LogStore
 	var stableStore raft.StableStore
 
-	boltDB, err := raftboltdb.NewBoltStore(filepath.Join(d.opt.dir, "raft.db"))
+	boltDB, err := raftboltdb.NewBoltStore(filepath.Join(d.opt.Dir, "raft.db"))
 	if err != nil {
 		return fmt.Errorf("new bolt store: %s", err)
 	}
@@ -100,7 +96,9 @@ func (d *defaultStore) open() error {
 	}
 	d.raft = ra
 
-	if d.opt.join == "" {
+	// single node configuration
+	if d.opt.JoinAddr == "" {
+		fmt.Printf("starting %v in a single node cluster \n", d.opt.NodeID)
 		configuration := raft.Configuration{
 			Servers: []raft.Server{
 				{
@@ -109,9 +107,12 @@ func (d *defaultStore) open() error {
 				},
 			},
 		}
-		ra.BootstrapCluster(configuration)
+		f := ra.BootstrapCluster(configuration)
+		if f.Error() != nil {
+			return f.Error()
+		}
 	} else {
-		d.join()
+		d.Join(d.opt.JoinAddr)
 	}
 
 	go d.flusher()
@@ -119,7 +120,18 @@ func (d *defaultStore) open() error {
 	return nil
 }
 
+func (d *defaultStore) close() error {
+	d.storage.quitFlusherChan <- struct{}{}
+	f := d.raft.Shutdown()
+	if f.Error() != nil {
+		return f.Error()
+	}
+	glog.Flush()
+	return nil
+}
+
 func (d *defaultStore) flusher() {
+loop:
 	for {
 		select {
 		case ruleID := <-d.storage.flusherChan:
@@ -135,6 +147,9 @@ func (d *defaultStore) flusher() {
 			}
 			err = d.FlushRule(ruleID)
 			glog.Errorf("error flushing %v", err)
+
+		case <-d.storage.quitFlusherChan:
+			break loop
 		}
 
 	}
@@ -162,6 +177,13 @@ func (d *defaultStore) Stash(event *event.Event) error {
 }
 
 func (d *defaultStore) AddRule(rule *event.Rule) error {
+
+	if rule.WaitWindow == 0 || rule.WaitWindowThreshold == 0 || rule.MaxWaitWindow == 0 {
+		rule.WaitWindow = d.opt.DefaultWaitWindow
+		rule.WaitWindowThreshold = d.opt.DefaultWaitWindowThreshold
+		rule.MaxWaitWindow = d.opt.DefaultMaxWaitWindow
+	}
+
 	return d.applyCMD(&command{
 		Op:   "add_rule",
 		Rule: rule,
@@ -186,8 +208,8 @@ func (d *defaultStore) GetRules() []*event.Rule {
 	return d.storage.getRules()
 }
 
-func (d *defaultStore) join() error {
-	glog.Infof("received join request for remote node %s at %s", d.opt.id, d.opt.bind)
+func (d *defaultStore) Join(addr string) error {
+	glog.Infof("received join request for remote node %s at %s", d.opt.NodeID, addr)
 
 	configFuture := d.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
@@ -198,25 +220,55 @@ func (d *defaultStore) join() error {
 	for _, srv := range configFuture.Configuration().Servers {
 		// If a node already exists with either the joining node's ID or address,
 		// that node may need to be removed from the config first.
-		if srv.ID == raft.ServerID(d.opt.id) || srv.Address == raft.ServerAddress(d.opt.join) {
+		if srv.ID == raft.ServerID(d.opt.NodeID) || srv.Address == raft.ServerAddress(addr) {
 			// However if *both* the ID and the address are the same, then nothing -- not even
 			// a join operation -- is needed.
-			if srv.Address == raft.ServerAddress(d.opt.join) && srv.ID == raft.ServerID(d.opt.id) {
-				glog.Infof("node %s at %s already member of cluster, ignoring join request", d.opt.id, d.opt.join)
+			if srv.Address == raft.ServerAddress(addr) && srv.ID == raft.ServerID(d.opt.NodeID) {
+				glog.Infof("node %s at %s already member of cluster, ignoring join request", d.opt.NodeID, addr)
 				return nil
 			}
 
 			future := d.raft.RemoveServer(srv.ID, 0, 0)
 			if err := future.Error(); err != nil {
-				return fmt.Errorf("error removing existing node %s at %s: %s", d.opt.id, d.opt.join, err)
+				return fmt.Errorf("error removing existing node %s at %s: %s", d.opt.NodeID, addr, err)
 			}
 		}
 	}
 
-	f := d.raft.AddVoter(raft.ServerID(d.opt.id), raft.ServerAddress(d.opt.join), 0, 0)
+	f := d.raft.AddVoter(raft.ServerID(d.opt.NodeID), raft.ServerAddress(addr), 0, 0)
 	if f.Error() != nil {
 		return f.Error()
 	}
-	glog.Infof("node %s at %s joined successfully", d.opt.id, d.opt.join)
+	glog.Infof("node %s at %s joined successfully", d.opt.NodeID, addr)
 	return nil
+}
+
+func (d *defaultStore) Leave(nodeID string) error {
+
+	glog.Infof("received leave request for remote node %s", nodeID)
+
+	cf := d.raft.GetConfiguration()
+
+	if err := cf.Error(); err != nil {
+		glog.Infof("failed to get raft configuration")
+		return err
+	}
+
+	for _, server := range cf.Configuration().Servers {
+		if server.ID == raft.ServerID(nodeID) {
+			f := d.raft.RemoveServer(server.ID, 0, 0)
+			if err := f.Error(); err != nil {
+				glog.Infof("failed to remove server %s", nodeID)
+				return err
+			}
+
+			glog.Infof("node %s leaved successfully", nodeID)
+			return nil
+		}
+	}
+
+	glog.Infof("node %s not exists in raft group", nodeID)
+
+	return nil
+
 }
