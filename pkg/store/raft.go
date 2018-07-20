@@ -1,4 +1,4 @@
-package aggregate
+package store
 
 import (
 	"encoding/json"

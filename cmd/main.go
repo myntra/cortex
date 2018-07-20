@@ -12,7 +12,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend/flags"
-	"github.com/myntra/aggo/pkg/aggregate"
+
+	"github.com/myntra/aggo/pkg/store"
 )
 
 var (
@@ -30,7 +31,7 @@ var (
 	commit  = "none"
 	date    = "unknown"
 
-	config *aggregate.Config
+	config *store.Config
 )
 
 func usage() {
@@ -48,7 +49,7 @@ func init() {
 	// flag.StringVar(&dir, "dir", "data", "raft data directory")
 	// flag.StringVar(&join, "join", "", "raft join by cluster addr")
 
-	config = &aggregate.Config{
+	config = &store.Config{
 		ID:                         "",
 		Bind:                       ":8878",
 		Dir:                        "./data",
@@ -75,7 +76,7 @@ func main() {
 		usage()
 	}
 
-	svc, err := aggregate.New(config)
+	svc, err := store.New(config)
 	if err != nil {
 		glog.Fatal(err)
 	}
