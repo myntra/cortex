@@ -1,6 +1,7 @@
 package event
 
 import (
+	"bytes"
 	"log"
 	"testing"
 	"time"
@@ -61,15 +62,15 @@ func TestEventHashMatch(t *testing.T) {
 		},
 	}
 
-	hash1, _ := existingEvent.Hash()
-	hash2, _ := incomingEventDuplicate.Hash()
-	hash3, _ := incomingEventUnique.Hash()
+	hash1 := existingEvent.Hash()
+	hash2 := incomingEventDuplicate.Hash()
+	hash3 := incomingEventUnique.Hash()
 
-	if hash1 != hash2 {
+	if !bytes.Equal(hash1, hash2) {
 		log.Fatal("matching duplicate events failed")
 	}
 
-	if hash2 == hash3 {
+	if bytes.Equal(hash2, hash3) {
 		log.Fatal("mathed unique events")
 	}
 }

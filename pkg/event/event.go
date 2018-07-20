@@ -18,7 +18,7 @@ type Event struct {
 }
 
 // Hash returns md5 hash string of the type
-func (e *Event) Hash() (string, error) {
+func (e *Event) Hash() []byte {
 
 	data := new(cloudevent.CloudEvent)
 	data.CloudEventsVersion = e.CloudEventsVersion
@@ -31,7 +31,7 @@ func (e *Event) Hash() (string, error) {
 	data.SchemaURL = e.SchemaURL
 	data.Source = e.Source
 
-	return structhash.Hash(data, 1)
+	return structhash.Md5(data, 1)
 }
 
 // FromRequest parses the event from request

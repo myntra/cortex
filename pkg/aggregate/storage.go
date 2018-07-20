@@ -1,6 +1,7 @@
 package aggregate
 
 import (
+	"bytes"
 	"encoding/json"
 	"sync"
 	"time"
@@ -51,6 +52,22 @@ func (s *storage) stash(event *event.Event) {
 					}()
 				}
 				// dedup, reschedule flusher(sliding wait window), frequency count
+				dup := false
+				for _, existingEvent := range s.m[ruleID].Bucket {
+					// check if source is equal
+					if existingEvent.Source == event.Source {
+						// check if equal hash
+						if bytes.Equal(existingEvent.Hash(), event.Hash()) {
+							dup = true
+						}
+					}
+				}
+
+				if dup {
+					// is a duplicate event
+					continue
+				}
+
 				s.m[ruleID].Bucket = append(s.m[ruleID].Bucket, event)
 			}
 		}
