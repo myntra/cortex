@@ -2,11 +2,8 @@ package aggregate
 
 import (
 	"bytes"
-	"encoding/json"
 	"sync"
 	"time"
-
-	"github.com/golang/glog"
 
 	"github.com/myntra/aggo/pkg/event"
 )
@@ -21,35 +18,56 @@ func isMatch(eventType, pattern string) bool {
 	return eventType == pattern
 }
 
+func flush(ruleID string, rb *event.RuleBucket, flusherChan chan string) {
+
+	flusherStartedAt := time.Now()
+	tickerStartedAt := time.Now()
+	waitWindowDuration := time.Duration(rb.Rule.WaitWindow) * time.Millisecond
+	ticker := time.NewTicker(waitWindowDuration)
+
+loop:
+	for {
+		select {
+		case <-ticker.C:
+			flusherChan <- ruleID
+			break loop
+		case <-rb.Touch:
+
+			tickerRanDuration := time.Since(tickerStartedAt)
+			// if ticker has run less than the wait window threshold duration, do nothing
+			if tickerRanDuration < time.Millisecond*time.Duration(rb.Rule.WaitWindowThreshold) {
+				continue
+			}
+
+			flusherRunDuration := time.Since(flusherStartedAt)
+			// if flusher running duration is greater than max waiting window, do nothing
+			if flusherRunDuration >= time.Millisecond*time.Duration(rb.Rule.MaxWaitWindow) {
+				continue
+			}
+
+			// else reset the ticker
+			ticker = time.NewTicker(waitWindowDuration)
+			tickerStartedAt = time.Now()
+		}
+	}
+}
+
 func (s *storage) stash(event *event.Event) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// TODO: dedup events in a window
 	// TODO: efficient regex matching for rule bucket
-	// TODO: sliding wait window
-	// TODO: frequency count of event
 
 	for ruleID, ruleBucket := range s.m {
 		for _, eventTypePattern := range ruleBucket.Rule.EventTypes {
 			// add event to all matching rule buckets
 			if isMatch(event.EventType, eventTypePattern) {
-				if len(s.m[ruleID].Bucket) == 0 {
+				// has rule bucket been initialized ?
+				if s.m[ruleID].Touch == nil {
 					// start a flusher for this rule
-					go func() {
-						time.Sleep(time.Millisecond * time.Duration(ruleBucket.Rule.WaitWindow))
-						rb := s.getRule(ruleID)
-						if rb == nil {
-							glog.Errorf("unexpected err ruleID %v not found", ruleID)
-							return
-						}
-						err := rb.Post()
-						if err != nil {
-							b, err2 := json.Marshal(rb)
-							glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, string(b), err2)
-						}
-						s.flusherChan <- ruleID
-					}()
+					s.m[ruleID].Touch = make(chan struct{})
+					// flusher routine
+					go flush(ruleID, s.m[ruleID], s.flusherChan)
 				}
 				// dedup, reschedule flusher(sliding wait window), frequency count
 				dup := false
@@ -64,7 +82,7 @@ func (s *storage) stash(event *event.Event) {
 				}
 
 				if dup {
-					// is a duplicate event
+					// is a duplicate event, skip append
 					continue
 				}
 
