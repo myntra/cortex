@@ -1,0 +1,10 @@
+{
+  "log": {
+    "level": {
+      "morgan": "dev",
+      "winston": "debug"
+    }
+  },
+  "port":5000
+}
+
