@@ -39,9 +39,10 @@ type command struct {
 }
 
 type defaultStore struct {
-	opt     *Config
-	raft    *raft.Raft
-	storage *storage
+	opt             *Config
+	raft            *raft.Raft
+	storage         *storage
+	postBucketQueue chan *event.RuleBucket
 }
 
 func newStore(opt *Config) (*defaultStore, error) {
@@ -52,7 +53,8 @@ func newStore(opt *Config) (*defaultStore, error) {
 			flusherChan:     make(chan string),
 			quitFlusherChan: make(chan struct{}),
 		},
-		opt: opt,
+		opt:             opt,
+		postBucketQueue: make(chan *event.RuleBucket),
 	}
 	store.open()
 	return store, nil
@@ -130,6 +132,21 @@ func (d *defaultStore) close() error {
 	return nil
 }
 
+func (d *defaultStore) poster() {
+	for {
+		select {
+		case rb := <-d.postBucketQueue:
+			go func(rb *event.RuleBucket) {
+				err := rb.Post()
+				if err != nil {
+					b, err2 := json.Marshal(rb)
+					glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, string(b), err2)
+				}
+			}(rb)
+		}
+	}
+}
+
 func (d *defaultStore) flusher() {
 loop:
 	for {
@@ -140,13 +157,15 @@ loop:
 				glog.Errorf("unexpected err ruleID %v not found", ruleID)
 				return
 			}
-			err := rb.Post()
+
+			go func() {
+				d.postBucketQueue <- rb
+			}()
+
+			err := d.FlushRule(ruleID)
 			if err != nil {
-				b, err2 := json.Marshal(rb)
-				glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, string(b), err2)
+				glog.Errorf("error flushing %v", err)
 			}
-			err = d.FlushRule(ruleID)
-			glog.Errorf("error flushing %v", err)
 
 		case <-d.storage.quitFlusherChan:
 			break loop
