@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 
@@ -47,7 +46,7 @@ func init() {
 	flag.Usage = usage
 	config = &util.Config{
 		NodeID:                     "",
-		BindAddr:                   ":8878",
+		RaftBindPort:               8878,
 		Dir:                        "./data",
 		JoinAddr:                   "",
 		DefaultWaitWindow:          3 * 60 * 1000,   // 3 minutes
@@ -62,7 +61,6 @@ func main() {
 	lb := littleboss.New("aggo")
 	lb.Command("lb", flag.String("lb", "start", "littleboss start command"))
 
-	flagHTTP := lb.Listener("http", "tcp", ":8877", "littleboss listener address")
 	flag.Parse()
 
 	err := loader.Load(context.Background(), config)
@@ -77,16 +75,16 @@ func main() {
 	}
 
 	lb.Run(func(ctx context.Context) {
-		run(ctx, svc, flagHTTP.Listener())
+		run(ctx, svc)
 	})
 
 	glog.Info("aggo exited")
 }
 
-func run(ctx context.Context, svc *service.Service, ln net.Listener) {
+func run(ctx context.Context, svc *service.Service) {
 
 	go func() {
-		if err := svc.HTTP().Serve(ln); err != nil {
+		if err := svc.HTTP().ListenAndServe(); err != nil {
 			if err == http.ErrServerClosed {
 				return
 			}

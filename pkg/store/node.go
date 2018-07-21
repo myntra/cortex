@@ -1,9 +1,11 @@
 package store
 
 import (
-	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"net"
+	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -15,16 +17,15 @@ import (
 
 // Node represents a raft node
 type Node struct {
-	mu       sync.RWMutex
-	listener net.Listener
-	store    *defaultStore
-	quit     chan struct{}
+	mu    sync.RWMutex
+	store *defaultStore
 }
 
 // NewNode returns a new raft node
 func NewNode(cfg *util.Config) (*Node, error) {
-	if cfg.NodeID == "" {
-		return nil, fmt.Errorf("no id provided")
+
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config: %v", err)
 	}
 
 	store, err := newStore(cfg)
@@ -35,120 +36,21 @@ func NewNode(cfg *util.Config) (*Node, error) {
 
 	// join a remote node
 	if cfg.JoinAddr != "" {
-		err := tcpRaftJoin(cfg.JoinAddr, cfg.NodeID, cfg.BindAddr)
+		err := httpRaftJoin(cfg.JoinAddr, cfg.NodeID, cfg.GetBindAddr())
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	listener, err := net.Listen("tcp", cfg.ListenAddr)
-	glog.Infof("raft server listen in %s", cfg.ListenAddr)
-	if err != nil {
-		return nil, err
-	}
+	node := &Node{store: store}
 
-	node := &Node{store: store, listener: listener, quit: make(chan struct{})}
-	go node.run()
 	return node, nil
-}
-
-func (n *Node) handleConn(conn net.Conn) {
-
-	defer conn.Close()
-
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-		ln := scanner.Text()
-		fs := strings.Fields(ln)
-
-		switch fs[0] {
-		case "join":
-			if len(fs) != 3 {
-				glog.Errorf("Invalid join command %v", fs)
-				continue
-			}
-			nodeID := fs[1]
-			addr := fs[2]
-			glog.Info(nodeID, addr)
-			n.store.acceptJoin(nodeID, addr)
-		case "leave":
-			if len(fs) != 2 {
-				glog.Errorf("Invalid leave command %v", fs)
-				continue
-			}
-			nodeID := fs[1]
-			glog.Info(nodeID)
-			n.store.acceptLeave(nodeID)
-
-		case "addr":
-			if len(fs) != 1 {
-				glog.Errorf("Invalid addr command %v", fs)
-				continue
-			}
-
-			_, err := conn.Write([]byte(n.store.opt.ListenAddr))
-			if err != nil {
-				glog.Errorf("could not write listenaddr %v", fs)
-				continue
-			}
-		}
-
-	}
-}
-
-// run accepts connections
-func (n *Node) run() {
-
-	// accept connections
-	for {
-		select {
-
-		default:
-			// accept new client connect and perform
-			conn, err := n.listener.Accept()
-			if err != nil {
-				glog.Error(err.Error())
-				select {
-				case <-n.quit:
-					return
-				default:
-					// thanks to martingx on reddit for noticing I am missing a default
-					// case. without the default case the select will block.
-				}
-
-				glog.Errorf("raft tcp accept err %v", err)
-				continue
-			}
-
-			go n.handleConn(conn)
-		}
-	}
-
-}
-
-// LeaderAddr returns the http addr of the leader of the cluster. If empty, the current node is the leader
-func (n *Node) LeaderAddr() string {
-
-	if n.store.raft.State() != raft.Leader {
-		return ""
-	}
-
-	addr, err := getListenAddr(string(n.store.raft.Leader()))
-	if err != nil {
-		return ""
-	}
-
-	return addr
 }
 
 // Shutdown store
 func (n *Node) Shutdown() error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
-	glog.Info("quit accept conn loop")
-	close(n.quit)
-	n.listener.Close()
-	glog.Info("accept conn loop shutdown")
 	err := n.store.close()
 	if err != nil {
 		glog.Errorf("error shutting down node %v", err)
@@ -156,6 +58,42 @@ func (n *Node) Shutdown() error {
 	}
 
 	return nil
+}
+
+// LeaderAddr returns the http addr of the leader of the cluster. If empty, the current node is the leader
+func (n *Node) LeaderAddr() string {
+
+	if n.store.raft.State() == raft.Leader {
+		return ""
+	}
+
+	raftAddress := string(n.store.raft.Leader())
+
+	fields := strings.Split(raftAddress, ":")
+
+	if len(fields) == 0 || len(fields) != 2 {
+		glog.Errorf("invalid raftAddress %v", raftAddress)
+		return ""
+	}
+
+	raftPortStr := fields[1]
+	raftPort, err := strconv.Atoi(raftPortStr)
+	if err != nil {
+		glog.Errorf("invalid port %v %v", raftAddress, raftPortStr)
+		return ""
+	}
+
+	tcpPort := raftPort - 1
+	tcpURL := fields[0]
+	if tcpURL == "" {
+		tcpURL = "0.0.0.0"
+	}
+
+	glog.Info("LeaderAddr ", tcpURL, tcpPort)
+
+	tcpAddr := fmt.Sprintf("%s:%d", tcpURL, tcpPort)
+
+	return tcpAddr
 }
 
 // AddRule adds a rule to the store
@@ -173,77 +111,55 @@ func (n *Node) RemoveRule(ruleID string) error {
 	return n.store.removeRule(ruleID)
 }
 
+// Join a remote node at the addr
+func (n *Node) Join(nodeID, addr string) error {
+	return n.store.acceptJoin(nodeID, addr)
+}
+
+// Leave a remote node
+func (n *Node) Leave(nodeID string) error {
+	return n.store.acceptLeave(nodeID)
+}
+
 // GetRules returns all the stored rules
 func (n *Node) GetRules() []*event.Rule {
 	return n.store.getRules()
 }
 
-func tcpRaftJoin(joinAddr, nodeID, bindAddr string) error {
-	cmd := "join " + nodeID + " " + bindAddr
-	return tcpcmd(joinAddr, []byte(cmd))
-}
+func httpRaftJoin(joinAddr, nodeID, bindAddr string) error {
 
-func tcpRaftLeave(leaveAddr, nodeID string) error {
-	cmd := "leave " + nodeID
-	return tcpcmd(leaveAddr, []byte(cmd))
-}
+	jr := &util.JoinRequest{
+		NodeID: nodeID,
+		Addr:   bindAddr,
+	}
 
-func tcpcmd(remoteAddr string, cmd []byte) error {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", remoteAddr)
+	err := jr.Validate()
 	if err != nil {
-		glog.Errorf("resolveTCPAddr failed: %v", err)
 		return err
 	}
 
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	b := new(bytes.Buffer)
+	err = json.NewEncoder(b).Encode(jr)
 	if err != nil {
-		glog.Errorf("dial remote node failed: %v", err)
 		return err
 	}
 
-	defer conn.Close()
+	glog.Infof("joinRequest Body %v", b.String())
 
-	_, err = conn.Write(cmd)
+	req, err := http.NewRequest("POST", "http://"+joinAddr+"/join", b)
 	if err != nil {
-		glog.Errorf("write cmd failed: %v", err)
 		return err
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("join failed, unexpected status code %v", resp.StatusCode)
 	}
 
 	return nil
-}
-
-func getListenAddr(remoteAddr string) (string, error) {
-	var addr string
-
-	tcpAddr, err := net.ResolveTCPAddr("tcp", remoteAddr)
-	if err != nil {
-		glog.Errorf("resolveTCPAddr failed: %v", err)
-		return "", err
-	}
-
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		glog.Errorf("dial remote node failed: %v", err)
-		return "", err
-	}
-
-	defer conn.Close()
-
-	_, err = conn.Write([]byte("addr"))
-	if err != nil {
-		glog.Errorf("write cmd failed: %v", err)
-		return "", err
-	}
-
-	reply := make([]byte, 1024)
-
-	_, err = conn.Read(reply)
-	if err != nil {
-		glog.Errorf("read from conn failed: %v", err)
-		return "", err
-	}
-
-	addr = string(reply)
-
-	return addr, nil
 }

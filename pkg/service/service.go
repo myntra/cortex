@@ -32,9 +32,13 @@ func (s *Service) HTTP() *http.Server {
 }
 
 // Shutdown everything
-func (s *Service) Shutdown(ctx context.Context) {
-	s.node.Shutdown()
+func (s *Service) Shutdown(ctx context.Context) error {
 	s.srv.Shutdown(ctx)
+	if err := s.node.Shutdown(); err != nil {
+		return err
+	}
+	return nil
+
 }
 
 func (s *Service) leaderProxy(h http.HandlerFunc) http.HandlerFunc {
@@ -46,6 +50,7 @@ func (s *Service) leaderProxy(h http.HandlerFunc) http.HandlerFunc {
 		} else {
 			glog.Infof("proxying request to leader at %v", leaderAddr)
 			proxy := httputil.ReverseProxy{Director: func(r *http.Request) {
+				r.URL.Scheme = "http"
 				r.URL.Host = leaderAddr
 				r.Host = leaderAddr
 			}}
@@ -53,7 +58,6 @@ func (s *Service) leaderProxy(h http.HandlerFunc) http.HandlerFunc {
 			proxy.ServeHTTP(w, r)
 
 		}
-
 	})
 }
 
@@ -81,6 +85,8 @@ func (s *Service) addRuleHandler(w http.ResponseWriter, r *http.Request) {
 		util.ErrStatus(w, r, "invalid request body, expected a valid rule", http.StatusNotAcceptable, err)
 		return
 	}
+
+	defer r.Body.Close()
 
 	var rule event.Rule
 	err = json.Unmarshal(reqBody, &rule)
@@ -138,6 +144,49 @@ func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (s *Service) leaveHandler(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	err := s.node.Leave(id)
+	if err != nil {
+		util.ErrStatus(w, r, "could not leave node ", http.StatusNotFound, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Service) joinHandler(w http.ResponseWriter, r *http.Request) {
+
+	reqBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body, expected a valid joinRequest", http.StatusNotAcceptable, err)
+		return
+	}
+
+	defer r.Body.Close()
+
+	joinRequest := &util.JoinRequest{}
+	err = json.Unmarshal(reqBody, joinRequest)
+	if err != nil {
+		util.ErrStatus(w, r, "joinRequest parsing failed", http.StatusNotAcceptable, err)
+		return
+	}
+
+	err = joinRequest.Validate()
+	if err != nil {
+		util.ErrStatus(w, r, "joinRequest validation failed", http.StatusNotAcceptable, err)
+		return
+	}
+
+	err = s.node.Join(joinRequest.NodeID, joinRequest.Addr)
+	if err != nil {
+		util.ErrStatus(w, r, "joinining failed", http.StatusNotAcceptable, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+}
+
 // New returns the http service wrapper for the store.
 func New(cfg *util.Config) (*Service, error) {
 
@@ -152,16 +201,22 @@ func New(cfg *util.Config) (*Service, error) {
 
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
+
 	router.Post("/event", svc.leaderProxy(svc.eventHandler))
-	router.Get("/rule/list", svc.getRulesHandler)
-	router.Post("/rule", svc.leaderProxy(svc.addRuleHandler))
-	router.Delete("/rule/:id", svc.leaderProxy(svc.removeRuleHandler))
+
+	router.Get("/rules", svc.getRulesHandler)
+	router.Post("/rules", svc.leaderProxy(svc.addRuleHandler))
+	router.Delete("/rules/{id}", svc.leaderProxy(svc.removeRuleHandler))
+
+	router.Get("/leave/{id}", svc.leaveHandler)
+	router.Post("/join", svc.joinHandler)
 
 	srv := &http.Server{
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
 		Handler:      router,
+		Addr:         cfg.GetHTTPAddr(),
 	}
 
 	svc.srv = srv

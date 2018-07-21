@@ -51,8 +51,7 @@ func singleNode(t *testing.T, f func(node *Node)) {
 	// open store
 	cfg := &util.Config{
 		NodeID:                     "node0",
-		BindAddr:                   "127.0.0.1:8878",
-		ListenAddr:                 "127.0.0.1:6678",
+		RaftBindPort:               6678,
 		Dir:                        tmpDir,
 		DefaultWaitWindow:          4000, // 3 minutes
 		DefaultMaxWaitWindow:       8000, // 6 minutes
@@ -78,88 +77,6 @@ func singleNode(t *testing.T, f func(node *Node)) {
 	}
 
 	glog.Info("done test")
-}
-
-func multiNode(t *testing.T, f func(nodes []*Node)) {
-
-	var nodes []*Node
-	tmpDir1, _ := ioutil.TempDir("", "store_test1")
-	defer os.RemoveAll(tmpDir1)
-
-	// open store 1
-	cfg1 := &util.Config{
-		NodeID:                     "node0",
-		BindAddr:                   "127.0.0.1:8878",
-		ListenAddr:                 "127.0.0.1:6678",
-		Dir:                        tmpDir1,
-		DefaultWaitWindow:          4000, // 3 minutes
-		DefaultMaxWaitWindow:       8000, // 6 minutes
-		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		DisablePostHook:            true,
-	}
-
-	node1, err := NewNode(cfg1)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// run test
-	time.Sleep(time.Second * 3)
-
-	tmpDir2, _ := ioutil.TempDir("", "store_test2")
-	defer os.RemoveAll(tmpDir2)
-
-	// open store 2
-	cfg2 := &util.Config{
-		NodeID:                     "node1",
-		BindAddr:                   "127.0.0.1:8879",
-		JoinAddr:                   cfg1.ListenAddr,
-		ListenAddr:                 "127.0.0.1:6679",
-		Dir:                        tmpDir2,
-		DefaultWaitWindow:          4000, // 3 minutes
-		DefaultMaxWaitWindow:       8000, // 6 minutes
-		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		DisablePostHook:            true,
-	}
-
-	node2, err := NewNode(cfg2)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tmpDir3, _ := ioutil.TempDir("", "store_test3")
-	defer os.RemoveAll(tmpDir3)
-
-	// open store 2
-	cfg3 := &util.Config{
-		NodeID:                     "node2",
-		BindAddr:                   "127.0.0.1:8880",
-		JoinAddr:                   cfg1.ListenAddr,
-		ListenAddr:                 "127.0.0.1:6680",
-		Dir:                        tmpDir3,
-		DefaultWaitWindow:          4000, // 3 minutes
-		DefaultMaxWaitWindow:       8000, // 6 minutes
-		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		DisablePostHook:            true,
-	}
-
-	node3, err := NewNode(cfg3)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	nodes = append(nodes, node1, node2, node3)
-
-	time.Sleep(time.Second * 5)
-
-	f(nodes)
-
-	for _, node := range nodes {
-		err = node.Shutdown()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
 }
 
 func TestRuleSingleNode(t *testing.T) {
@@ -256,49 +173,6 @@ func TestEventSingleNode(t *testing.T) {
 
 		if rb == nil {
 			t.Fatal("event was not stashed")
-		}
-	})
-}
-
-func TestRuleMultiNode(t *testing.T) {
-	multiNode(t, func(nodes []*Node) {
-		node1 := nodes[0]
-		node2 := nodes[1]
-		node3 := nodes[2]
-		err := node1.AddRule(&testRule)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		time.Sleep(time.Second * 5)
-
-		rules := node2.GetRules()
-		found := false
-		for _, rule := range rules {
-			if rule.ID == testRule.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatal("added rule  was not found")
-		}
-
-		err = node3.RemoveRule(testRule.ID)
-		if err == nil {
-			t.Fatal(err)
-		}
-
-		rules = node1.GetRules()
-		found = false
-		for _, rule := range rules {
-			if rule.ID == testRule.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatal("removing rule was successful")
 		}
 	})
 }

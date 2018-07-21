@@ -55,11 +55,11 @@ func (d *defaultStore) open() error {
 	config.LocalID = raft.ServerID(d.opt.NodeID)
 
 	// Setup Raft communication.
-	addr, err := net.ResolveTCPAddr("tcp", d.opt.BindAddr)
+	addr, err := net.ResolveTCPAddr("tcp", d.opt.GetBindAddr())
 	if err != nil {
 		return err
 	}
-	transport, err := raft.NewTCPTransport(d.opt.BindAddr, addr, 3, 10*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransport(d.opt.GetBindAddr(), addr, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -102,6 +102,18 @@ func (d *defaultStore) open() error {
 		f := ra.BootstrapCluster(configuration)
 		if f.Error() != nil {
 			return f.Error()
+		}
+
+		// since in bootstrap mode, block until leadership is attained.
+	loop:
+		for {
+			select {
+			case leader := <-d.raft.LeaderCh():
+				glog.Info("isLeader ", leader)
+				if leader {
+					break loop
+				}
+			}
 		}
 	}
 
