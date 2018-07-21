@@ -13,23 +13,13 @@ import (
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 
 	"github.com/myntra/aggo/pkg/event"
+	"github.com/myntra/aggo/pkg/util"
 )
 
 const (
 	retainSnapshotCount = 2
 	raftTimeout         = 10 * time.Second
 )
-
-// Store is the raft backed json storage
-type Store interface {
-	Stash(event *event.Event) error // stash to an aggregate map by event type
-	AddRule(rule *event.Rule) error // rule which correlates aggregated events
-	RemoveRule(ruleID string) error
-	FlushRule(ruleID string) error
-	GetRules() []*event.Rule
-	Join(addr string) error
-	Leave(id string) error
-}
 
 type command struct {
 	Op     string       `json:"op"` // stash or evict
@@ -39,13 +29,13 @@ type command struct {
 }
 
 type defaultStore struct {
-	opt             *Config
+	opt             *util.Config
 	raft            *raft.Raft
 	storage         *storage
 	postBucketQueue chan *event.RuleBucket
 }
 
-func newStore(opt *Config) (*defaultStore, error) {
+func newStore(opt *util.Config) (*defaultStore, error) {
 
 	store := &defaultStore{
 		storage: &storage{
@@ -54,7 +44,7 @@ func newStore(opt *Config) (*defaultStore, error) {
 			quitFlusherChan: make(chan struct{}),
 		},
 		opt:             opt,
-		postBucketQueue: make(chan *event.RuleBucket),
+		postBucketQueue: make(chan *event.RuleBucket, 100),
 	}
 	store.open()
 	return store, nil
@@ -98,7 +88,7 @@ func (d *defaultStore) open() error {
 	}
 	d.raft = ra
 
-	// single node configuration
+	// bootstrap single node configuration
 	if d.opt.JoinAddr == "" {
 		fmt.Printf("starting %v in a single node cluster \n", d.opt.NodeID)
 		configuration := raft.Configuration{
@@ -113,8 +103,6 @@ func (d *defaultStore) open() error {
 		if f.Error() != nil {
 			return f.Error()
 		}
-	} else {
-		d.Join(d.opt.JoinAddr)
 	}
 
 	go d.flusher()
@@ -136,6 +124,7 @@ func (d *defaultStore) poster() {
 	for {
 		select {
 		case rb := <-d.postBucketQueue:
+			glog.Infof("received bucket %+v", rb)
 			go func(rb *event.RuleBucket) {
 				err := rb.Post()
 				if err != nil {
@@ -148,6 +137,10 @@ func (d *defaultStore) poster() {
 }
 
 func (d *defaultStore) flusher() {
+	if !d.opt.DisablePostHook {
+		go d.poster()
+	}
+
 loop:
 	for {
 		select {
@@ -159,10 +152,16 @@ loop:
 			}
 
 			go func() {
+
+				if d.opt.DisablePostHook {
+					glog.Infof("post bucket to hook %v ", rb)
+				}
+
 				d.postBucketQueue <- rb
+
 			}()
 
-			err := d.FlushRule(ruleID)
+			err := d.flushRule(ruleID)
 			if err != nil {
 				glog.Errorf("error flushing %v", err)
 			}
@@ -188,14 +187,14 @@ func (d *defaultStore) applyCMD(cmd *command) error {
 	return f.Error()
 }
 
-func (d *defaultStore) Stash(event *event.Event) error {
+func (d *defaultStore) stash(event *event.Event) error {
 	return d.applyCMD(&command{
 		Op:    "stash",
 		Event: event,
 	})
 }
 
-func (d *defaultStore) AddRule(rule *event.Rule) error {
+func (d *defaultStore) addRule(rule *event.Rule) error {
 
 	if rule.WaitWindow == 0 || rule.WaitWindowThreshold == 0 || rule.MaxWaitWindow == 0 {
 		rule.WaitWindow = d.opt.DefaultWaitWindow
@@ -209,26 +208,26 @@ func (d *defaultStore) AddRule(rule *event.Rule) error {
 	})
 }
 
-func (d *defaultStore) RemoveRule(ruleID string) error {
+func (d *defaultStore) removeRule(ruleID string) error {
 	return d.applyCMD(&command{
 		Op:     "remove_rule",
 		RuleID: ruleID,
 	})
 }
 
-func (d *defaultStore) FlushRule(ruleID string) error {
+func (d *defaultStore) flushRule(ruleID string) error {
 	return d.applyCMD(&command{
 		Op:     "flush_rule",
 		RuleID: ruleID,
 	})
 }
 
-func (d *defaultStore) GetRules() []*event.Rule {
+func (d *defaultStore) getRules() []*event.Rule {
 	return d.storage.getRules()
 }
 
-func (d *defaultStore) Join(addr string) error {
-	glog.Infof("received join request for remote node %s at %s", d.opt.NodeID, addr)
+func (d *defaultStore) acceptJoin(nodeID, addr string) error {
+	glog.Infof("received join request for remote node %s at %s", nodeID, addr)
 
 	configFuture := d.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
@@ -239,30 +238,31 @@ func (d *defaultStore) Join(addr string) error {
 	for _, srv := range configFuture.Configuration().Servers {
 		// If a node already exists with either the joining node's ID or address,
 		// that node may need to be removed from the config first.
-		if srv.ID == raft.ServerID(d.opt.NodeID) || srv.Address == raft.ServerAddress(addr) {
+		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(addr) {
 			// However if *both* the ID and the address are the same, then nothing -- not even
 			// a join operation -- is needed.
-			if srv.Address == raft.ServerAddress(addr) && srv.ID == raft.ServerID(d.opt.NodeID) {
-				glog.Infof("node %s at %s already member of cluster, ignoring join request", d.opt.NodeID, addr)
+			if srv.Address == raft.ServerAddress(addr) && srv.ID == raft.ServerID(nodeID) {
+				glog.Infof("node %s at %s already member of cluster, ignoring join request", nodeID, addr)
 				return nil
 			}
 
 			future := d.raft.RemoveServer(srv.ID, 0, 0)
 			if err := future.Error(); err != nil {
-				return fmt.Errorf("error removing existing node %s at %s: %s", d.opt.NodeID, addr, err)
+				return fmt.Errorf("error removing existing node %s at %s: %s", nodeID, addr, err)
 			}
 		}
 	}
 
-	f := d.raft.AddVoter(raft.ServerID(d.opt.NodeID), raft.ServerAddress(addr), 0, 0)
+	f := d.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
 	if f.Error() != nil {
 		return f.Error()
 	}
-	glog.Infof("node %s at %s joined successfully", d.opt.NodeID, addr)
+	glog.Infof("node %s at %s joined successfully", nodeID, addr)
 	return nil
+
 }
 
-func (d *defaultStore) Leave(nodeID string) error {
+func (d *defaultStore) acceptLeave(nodeID string) error {
 
 	glog.Infof("received leave request for remote node %s", nodeID)
 
@@ -281,7 +281,7 @@ func (d *defaultStore) Leave(nodeID string) error {
 				return err
 			}
 
-			glog.Infof("node %s leaved successfully", nodeID)
+			glog.Infof("node %s left successfully", nodeID)
 			return nil
 		}
 	}
