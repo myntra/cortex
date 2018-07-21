@@ -13,7 +13,8 @@ import (
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend/flags"
 
-	"github.com/myntra/aggo/pkg/store"
+	"github.com/myntra/aggo/pkg/service"
+	"github.com/myntra/aggo/pkg/util"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 	commit  = "none"
 	date    = "unknown"
 
-	config *store.Config
+	config *util.Config
 )
 
 func usage() {
@@ -44,7 +45,7 @@ func usage() {
 
 func init() {
 	flag.Usage = usage
-	config = &store.Config{
+	config = &util.Config{
 		NodeID:                     "",
 		BindAddr:                   ":8878",
 		Dir:                        "./data",
@@ -70,22 +71,22 @@ func main() {
 		usage()
 	}
 
-	svc, err := store.New(config)
+	svc, err := service.New(config)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
 	lb.Run(func(ctx context.Context) {
-		run(ctx, svc.HTTP(), flagHTTP.Listener())
+		run(ctx, svc, flagHTTP.Listener())
 	})
 
 	glog.Info("aggo exited")
 }
 
-func run(ctx context.Context, srv *http.Server, ln net.Listener) {
+func run(ctx context.Context, svc *service.Service, ln net.Listener) {
 
 	go func() {
-		if err := srv.Serve(ln); err != nil {
+		if err := svc.HTTP().Serve(ln); err != nil {
 			if err == http.ErrServerClosed {
 				return
 			}
@@ -94,6 +95,6 @@ func run(ctx context.Context, srv *http.Server, ln net.Listener) {
 	}()
 
 	<-ctx.Done()
-	srv.Shutdown(ctx)
+	svc.Shutdown(ctx)
 
 }
