@@ -97,7 +97,18 @@ func (e *eventStorage) stash(event *event.Event) error {
 	return nil
 }
 
-func (e *eventStorage) getRule(ruleID string) *event.RuleBucket {
+func (e *eventStorage) getRule(ruleID string) *event.Rule {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	var rb *event.RuleBucket
+	var ok bool
+	if rb, ok = e.m[ruleID]; !ok {
+		return nil
+	}
+	return rb.Rule
+}
+
+func (e *eventStorage) getRuleBucket(ruleID string) *event.RuleBucket {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	var rb *event.RuleBucket

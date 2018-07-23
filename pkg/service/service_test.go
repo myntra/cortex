@@ -1,9 +1,7 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -11,7 +9,6 @@ import (
 	"time"
 
 	"github.com/fnproject/cloudevent"
-	"github.com/golang/glog"
 	"github.com/myntra/aggo/pkg/event"
 	"github.com/myntra/aggo/pkg/util"
 	httpexpect "gopkg.in/gavv/httpexpect.v1"
@@ -40,10 +37,13 @@ var testevent = event.Event{
 }
 
 var testRule = event.Rule{
-	ID:           "123",
-	HookEndpoint: "http://localhost:3000/testrule",
-	HookRetry:    2,
-	EventTypes:   []string{"myntra.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
+	ID:                  "123",
+	HookEndpoint:        "http://localhost:3000/testrule",
+	HookRetry:           2,
+	EventTypes:          []string{"myntra.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
+	WaitWindow:          1000,
+	WaitWindowThreshold: 800,
+	MaxWaitWindow:       2000,
 }
 
 var scriptRequest = ScriptRequest{
@@ -192,172 +192,97 @@ func multiService(t *testing.T, f func(urls []string)) {
 	f(urls)
 }
 
-func fail(t *testing.T, err error) {
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func addRule(t *testing.T, url string) {
-	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(&testRule)
-	req, err := http.NewRequest("POST", url+"/rules", b)
-	fail(t, err)
-	glog.Infof("post rule at %v", req.URL.String())
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	fail(t, err)
-
-	body, err := ioutil.ReadAll(resp.Body)
-	fail(t, err)
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		t.Fatal("unexpected status code", resp.StatusCode)
-	}
-
-	var r event.Rule
-	err = json.Unmarshal(body, &r)
-	fail(t, err)
-
-	if r.ID != testRule.ID {
-		t.Fatal("unexpected rule id")
-	}
-}
-
-func getRulesVerify(t *testing.T, url string) bool {
-	req, err := http.NewRequest("GET", url+"/rules", nil)
-	fail(t, err)
-	glog.Infof("get alls rule at %v", req.URL.String())
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	fail(t, err)
-
-	body, err := ioutil.ReadAll(resp.Body)
-	fail(t, err)
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		t.Fatal("unexpected status code", resp.StatusCode)
-	}
-
-	var rules []*event.Rule
-	err = json.Unmarshal(body, &rules)
-	fail(t, err)
-
-	found := false
-	for _, rule := range rules {
-		glog.Infof("%+v", rule)
-		if rule.ID == testRule.ID {
-			found = true
-			break
-		}
-
-	}
-	return found
-}
-
-func removeRule(t *testing.T, url string) {
-
-	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(&testRule)
-	req, err := http.NewRequest("DELETE", url+"/rules/"+testRule.ID, nil)
-	fail(t, err)
-	glog.Infof("delete rule at %v", req.URL.String())
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	fail(t, err)
-
-	body, err := ioutil.ReadAll(resp.Body)
-	fail(t, err)
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		t.Fatal("unexpected status code", resp.StatusCode, string(body))
-	}
-
-}
-
-func addScript(t *testing.T, url string) {
+func ruletest(t *testing.T, url string) {
+	// add rule
 	e := httpexpect.New(t, url)
-	e.POST("/scripts").WithJSON(scriptRequest).Expect().Status(http.StatusOK)
-	e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequest)
-}
 
-func removeScript(t *testing.T, url string) {
+	// add
+	e.POST("/rules").WithJSON(testRule).Expect().Status(http.StatusOK)
+	e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
 
-}
-
-func updateScript(t *testing.T, url string) {
-	e := httpexpect.New(t, url)
-	e.PUT("/scripts").WithJSON(scriptRequestUpdated).Expect().Status(http.StatusOK)
-	e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequestUpdated)
+	//remove
+	e.DELETE("/rules/" + testRule.ID).Expect().Status(http.StatusOK)
+	e.GET("/rules/" + testRule.ID).Expect().Status(http.StatusNotFound)
 }
 
 func TestRuleSingleService(t *testing.T) {
 	singleService(t, func(url string) {
-
-		// add rule
-		addRule(t, url)
-
-		// get rules and verify
-		if !getRulesVerify(t, url) {
-			t.Fatal("added rule was not found")
-		}
-
-		// remove rule
-		removeRule(t, url)
-
-		if getRulesVerify(t, url) {
-			t.Fatal("removed rule was found")
-		}
-
+		ruletest(t, url)
 	})
 
 }
 
 func TestRuleMultiService(t *testing.T) {
 	multiService(t, func(urls []string) {
-		url1 := urls[0]
-		url2 := urls[1]
-		url3 := urls[2]
 
-		// add rule to node0
-		addRule(t, url1)
-
+		// add to node 1
+		e := httpexpect.New(t, urls[0])
+		e.POST("/rules").WithJSON(testRule).Expect().Status(http.StatusOK)
 		time.Sleep(time.Second)
+		// verify from node 2
+		e = httpexpect.New(t, urls[1])
+		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
 
-		// get rules and verify from node1, replication
-		if !getRulesVerify(t, url2) {
-			t.Fatal("added rule was not found")
-		}
-
-		// remove rule from node2, forwarding
-		removeRule(t, url2)
-
+		// delete from node3
+		e = httpexpect.New(t, urls[2])
+		e.DELETE("/rules/" + testRule.ID).Expect().Status(http.StatusOK)
 		time.Sleep(time.Second)
-
-		if getRulesVerify(t, url3) {
-			t.Fatal("removed rule was found")
-		}
+		// verify from node 3
+		e = httpexpect.New(t, urls[2])
+		e.GET("/rules/" + testRule.ID).Expect().Status(http.StatusNotFound)
 
 	})
 }
 
+func scriptstest(t *testing.T, url string) {
+	e := httpexpect.New(t, url)
+	// add
+	e.POST("/scripts").WithJSON(scriptRequest).Expect().Status(http.StatusOK)
+	e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequest)
+
+	// update
+	e.PUT("/scripts").WithJSON(scriptRequestUpdated).Expect().Status(http.StatusOK)
+	e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequestUpdated)
+
+	//remove
+	e.DELETE("/scripts/" + scriptRequest.ID).Expect().Status(http.StatusOK)
+	e.GET("/scripts/" + scriptRequest.ID).Expect().Status(http.StatusNotFound)
+}
+
 func TestScriptsSingleSerive(t *testing.T) {
 	singleService(t, func(url string) {
-		e := httpexpect.New(t, url)
+		scriptstest(t, url)
+	})
+}
 
-		// add
+func TestScriptsMultiService(t *testing.T) {
+	multiService(t, func(urls []string) {
+
+		// add scripts to node 1
+		e := httpexpect.New(t, urls[0])
 		e.POST("/scripts").WithJSON(scriptRequest).Expect().Status(http.StatusOK)
+		time.Sleep(time.Second)
+
+		// verify on node 2
+		e = httpexpect.New(t, urls[1])
 		e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequest)
 
-		// update
-		e.PUT("/scripts").WithJSON(scriptRequestUpdated).Expect().Status(http.StatusOK)
-		e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequestUpdated)
-
-		//remove
-		e.DELETE("/scripts/" + scriptRequest.ID).WithJSON(scriptRequestUpdated).Expect().Status(http.StatusOK)
+		// update scripts on node 2
+		e = httpexpect.New(t, urls[1])
+		e.POST("/scripts").WithJSON(scriptRequest).Expect().Status(http.StatusOK)
 		time.Sleep(time.Second)
-		//e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Null()
+
+		// verify on node 3
+		e = httpexpect.New(t, urls[2])
+		e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequest)
+
+		// delete on node 3
+		e = httpexpect.New(t, urls[2])
+		e.DELETE("/scripts/" + scriptRequest.ID).Expect().Status(http.StatusOK)
+
+		// verify on node 1
+		e = httpexpect.New(t, urls[0])
+		e.GET("/scripts/" + scriptRequest.ID).Expect().Status(http.StatusNotFound)
+
 	})
 }

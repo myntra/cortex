@@ -133,6 +133,26 @@ func (s *Service) removeRuleHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (s *Service) getRuleHandler(w http.ResponseWriter, r *http.Request) {
+	ruleID := chi.URLParam(r, "id")
+
+	rule := s.node.GetRule(ruleID)
+	if rule == nil {
+		util.ErrStatus(w, r, "rule not found", http.StatusNotFound, fmt.Errorf("rule is nil"))
+	}
+
+	b, err := json.Marshal(rule)
+	if err != nil {
+		util.ErrStatus(w, r, "rules parsing failed", http.StatusNotFound, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
+
+}
+
 func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) {
 	rules := s.node.GetRules()
 
@@ -346,6 +366,7 @@ func New(cfg *util.Config) (*Service, error) {
 	router.Post("/event", svc.leaderProxy(svc.eventHandler))
 
 	router.Get("/rules", svc.getRulesHandler)
+	router.Get("/rules/{id}", svc.getRuleHandler)
 	router.Post("/rules", svc.leaderProxy(svc.addRuleHandler))
 	router.Delete("/rules/{id}", svc.leaderProxy(svc.removeRuleHandler))
 

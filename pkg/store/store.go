@@ -163,7 +163,7 @@ loop:
 	for {
 		select {
 		case ruleID := <-d.eventStorage.flusherChan:
-			rb := d.eventStorage.getRule(ruleID)
+			rb := d.eventStorage.getRuleBucket(ruleID)
 			if rb == nil {
 				glog.Errorf("unexpected err ruleID %v not found", ruleID)
 				return
@@ -273,6 +273,10 @@ func (d *defaultStore) flushRule(ruleID string) error {
 
 func (d *defaultStore) getRules() []*event.Rule {
 	return d.eventStorage.getRules()
+}
+
+func (d *defaultStore) getRule(ruleID string) *event.Rule {
+	return d.eventStorage.getRule(ruleID)
 }
 
 func (d *defaultStore) acceptJoin(nodeID, addr string) error {

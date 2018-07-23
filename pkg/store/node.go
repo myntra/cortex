@@ -111,14 +111,9 @@ func (n *Node) RemoveRule(ruleID string) error {
 	return n.store.removeRule(ruleID)
 }
 
-// Join a remote node at the addr
-func (n *Node) Join(nodeID, addr string) error {
-	return n.store.acceptJoin(nodeID, addr)
-}
-
-// Leave a remote node
-func (n *Node) Leave(nodeID string) error {
-	return n.store.acceptLeave(nodeID)
+// GetRule returns all the stored rules
+func (n *Node) GetRule(ruleID string) *event.Rule {
+	return n.store.getRule(ruleID)
 }
 
 // GetRules returns all the stored rules
@@ -149,6 +144,16 @@ func (n *Node) GetScripts() []string {
 // GetScript returns the script data
 func (n *Node) GetScript(id string) []byte {
 	return n.store.getScript(id)
+}
+
+// Join a remote node at the addr
+func (n *Node) Join(nodeID, addr string) error {
+	return n.store.acceptJoin(nodeID, addr)
+}
+
+// Leave a remote node
+func (n *Node) Leave(nodeID string) error {
+	return n.store.acceptLeave(nodeID)
 }
 
 func httpRaftJoin(joinAddr, nodeID, bindAddr string) error {
