@@ -13,7 +13,7 @@ import (
 // Execute js
 func Execute(script []byte, data interface{}) interface{} {
 	r, err := js.New(&lib.SourceData{
-		Filename: "/script.js",
+		Filename: "correlate.js",
 		Data:     script,
 	}, afero.NewMemMapFs(), lib.RuntimeOptions{})
 

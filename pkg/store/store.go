@@ -31,14 +31,14 @@ type command struct {
 type defaultStore struct {
 	opt             *util.Config
 	raft            *raft.Raft
-	storage         *storage
+	eventStorage    *eventStorage
 	postBucketQueue chan *event.RuleBucket
 }
 
 func newStore(opt *util.Config) (*defaultStore, error) {
 
 	store := &defaultStore{
-		storage: &storage{
+		eventStorage: &eventStorage{
 			m:               make(map[string]*event.RuleBucket),
 			flusherChan:     make(chan string),
 			quitFlusherChan: make(chan struct{}),
@@ -123,7 +123,7 @@ func (d *defaultStore) open() error {
 }
 
 func (d *defaultStore) close() error {
-	d.storage.quitFlusherChan <- struct{}{}
+	d.eventStorage.quitFlusherChan <- struct{}{}
 	f := d.raft.Shutdown()
 	if f.Error() != nil {
 		return f.Error()
@@ -156,8 +156,8 @@ func (d *defaultStore) flusher() {
 loop:
 	for {
 		select {
-		case ruleID := <-d.storage.flusherChan:
-			rb := d.storage.getRule(ruleID)
+		case ruleID := <-d.eventStorage.flusherChan:
+			rb := d.eventStorage.getRule(ruleID)
 			if rb == nil {
 				glog.Errorf("unexpected err ruleID %v not found", ruleID)
 				return
@@ -178,7 +178,7 @@ loop:
 				glog.Errorf("error flushing %v", err)
 			}
 
-		case <-d.storage.quitFlusherChan:
+		case <-d.eventStorage.quitFlusherChan:
 			break loop
 		}
 
@@ -235,7 +235,7 @@ func (d *defaultStore) flushRule(ruleID string) error {
 }
 
 func (d *defaultStore) getRules() []*event.Rule {
-	return d.storage.getRules()
+	return d.eventStorage.getRules()
 }
 
 func (d *defaultStore) acceptJoin(nodeID, addr string) error {
