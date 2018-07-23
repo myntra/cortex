@@ -1,6 +1,8 @@
 package util
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -8,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/sethgrid/pester"
 )
 
 // JoinRequest is the request to join a node
@@ -44,4 +47,39 @@ func ErrStatus(w http.ResponseWriter, r *http.Request, message string, statusCod
 	glog.Errorf("msg %v, r.Body %v, err: %v", message, string(content), err)
 
 	http.Error(w, message, statusCode)
+}
+
+// RetryPost posts the value to a remote endpoint. also retries
+func RetryPost(val interface{}, url string, retry int) {
+
+	b := new(bytes.Buffer)
+	err := json.NewEncoder(b).Encode(val)
+	if err != nil {
+		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
+		return
+	}
+	req, err := http.NewRequest("POST", url, b)
+	if err != nil {
+		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
+		return
+	}
+	req.Header.Add("Content-type", "application/json")
+
+	client := pester.New()
+	client.MaxRetries = retry
+	resp, err := client.Do(req)
+	if err != nil {
+		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 && resp.StatusCode != 202 {
+		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
+		return //fmt.Errorf("invalid status code return from %v endpoint", url)
+	}
+
+	return
+
 }

@@ -13,6 +13,7 @@ import (
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 
 	"github.com/myntra/aggo/pkg/event"
+	"github.com/myntra/aggo/pkg/js"
 	"github.com/myntra/aggo/pkg/util"
 )
 
@@ -144,12 +145,21 @@ func (d *defaultStore) poster() {
 		case rb := <-d.postBucketQueue:
 			glog.Infof("received bucket %+v", rb)
 			go func(rb *event.RuleBucket) {
-				err := rb.Post()
-				if err != nil {
-					b, err2 := json.Marshal(rb)
-					glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, string(b), err2)
+				script := d.getScript(rb.Rule.ScriptID)
+				if len(script) == 0 {
+					util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+					return
 				}
+
+				result := js.Execute(script, rb)
+				if result == nil {
+					util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+					return
+				}
+				util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+
 			}(rb)
+
 		}
 	}
 }
