@@ -33,29 +33,20 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 }
 
 func (f *fsm) applyStash(event *event.Event) interface{} {
-	f.eventStorage.stash(event)
-	return nil
+
+	return f.eventStorage.stash(event)
 }
 
 func (f *fsm) applyAddRule(rule *event.Rule) interface{} {
-	ok := f.eventStorage.addRule(rule)
-	if !ok {
-		return fmt.Errorf("error adding rule %v", rule)
-	}
-	return nil
+	return f.eventStorage.addRule(rule)
 }
 
 func (f *fsm) applyRemoveRule(ruleID string) interface{} {
-	ok := f.eventStorage.removeRule(ruleID)
-	if !ok {
-		return fmt.Errorf("error removing rule %v", ruleID)
-	}
-	return nil
+	return f.eventStorage.removeRule(ruleID)
 }
 
 func (f *fsm) applyFlushRule(ruleID string) interface{} {
-	f.eventStorage.flushRule(ruleID)
-	return nil
+	return f.eventStorage.flushRule(ruleID)
 }
 
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {

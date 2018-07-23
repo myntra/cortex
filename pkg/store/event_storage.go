@@ -2,6 +2,7 @@ package store
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 	"time"
 
@@ -53,7 +54,7 @@ loop:
 	}
 }
 
-func (e *eventStorage) stash(event *event.Event) {
+func (e *eventStorage) stash(event *event.Event) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -92,6 +93,8 @@ func (e *eventStorage) stash(event *event.Event) {
 			}
 		}
 	}
+
+	return nil
 }
 
 func (e *eventStorage) getRule(ruleID string) *event.RuleBucket {
@@ -105,19 +108,19 @@ func (e *eventStorage) getRule(ruleID string) *event.RuleBucket {
 	return rb
 }
 
-func (e *eventStorage) flushRule(ruleID string) {
+func (e *eventStorage) flushRule(ruleID string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.m[ruleID].Bucket = nil
+	return nil
 }
 
-func (e *eventStorage) addRule(rule *event.Rule) bool {
+func (e *eventStorage) addRule(rule *event.Rule) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	if _, ok := e.m[rule.ID]; ok {
-		// rule id already exists
-		return false
+		return fmt.Errorf("rule id already exists")
 	}
 
 	ruleBucket := &event.RuleBucket{
@@ -126,21 +129,20 @@ func (e *eventStorage) addRule(rule *event.Rule) bool {
 
 	e.m[rule.ID] = ruleBucket
 
-	return true
+	return nil
 }
 
-func (e *eventStorage) removeRule(ruleID string) bool {
+func (e *eventStorage) removeRule(ruleID string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	if _, ok := e.m[ruleID]; !ok {
-		// rule id does not exist
-		return false
+		return fmt.Errorf("rule id does not exist")
 	}
 
 	delete(e.m, ruleID)
 
-	return true
+	return nil
 }
 
 func (e *eventStorage) getRules() []*event.Rule {
