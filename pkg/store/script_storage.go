@@ -29,12 +29,11 @@ func (s *scriptStorage) updateScript(id string, script []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.m[id]; ok {
-		return fmt.Errorf("script does not exist")
+	if _, ok := s.m[id]; !ok {
+		return fmt.Errorf("script name not found. can't update")
 	}
 
 	s.m[id] = script
-
 	return nil
 }
 

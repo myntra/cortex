@@ -14,6 +14,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/myntra/aggo/pkg/event"
 	"github.com/myntra/aggo/pkg/util"
+	httpexpect "gopkg.in/gavv/httpexpect.v1"
 )
 
 type exampleData struct {
@@ -43,6 +44,20 @@ var testRule = event.Rule{
 	HookEndpoint: "http://localhost:3000/testrule",
 	HookRetry:    2,
 	EventTypes:   []string{"myntra.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
+}
+
+var scriptRequest = ScriptRequest{
+	ID: "myscript",
+	Data: []byte(`
+	let result = 0;
+	export default function() { result++; }`),
+}
+
+var scriptRequestUpdated = ScriptRequest{
+	ID: "myscript",
+	Data: []byte(`
+	let result = 1;
+	export default function() { result--; }`),
 }
 
 func startService(t *testing.T, cfg *util.Config, svc *Service) {
@@ -262,6 +277,22 @@ func removeRule(t *testing.T, url string) {
 
 }
 
+func addScript(t *testing.T, url string) {
+	e := httpexpect.New(t, url)
+	e.POST("/scripts").WithJSON(scriptRequest).Expect().Status(http.StatusOK)
+	e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequest)
+}
+
+func removeScript(t *testing.T, url string) {
+
+}
+
+func updateScript(t *testing.T, url string) {
+	e := httpexpect.New(t, url)
+	e.PUT("/scripts").WithJSON(scriptRequestUpdated).Expect().Status(http.StatusOK)
+	e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequestUpdated)
+}
+
 func TestRuleSingleService(t *testing.T) {
 	singleService(t, func(url string) {
 
@@ -309,5 +340,24 @@ func TestRuleMultiService(t *testing.T) {
 			t.Fatal("removed rule was found")
 		}
 
+	})
+}
+
+func TestScriptsSingleSerive(t *testing.T) {
+	singleService(t, func(url string) {
+		e := httpexpect.New(t, url)
+
+		// add
+		e.POST("/scripts").WithJSON(scriptRequest).Expect().Status(http.StatusOK)
+		e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequest)
+
+		// update
+		e.PUT("/scripts").WithJSON(scriptRequestUpdated).Expect().Status(http.StatusOK)
+		e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Equal(scriptRequestUpdated)
+
+		//remove
+		e.DELETE("/scripts/" + scriptRequest.ID).WithJSON(scriptRequestUpdated).Expect().Status(http.StatusOK)
+		time.Sleep(time.Second)
+		//e.GET("/scripts/" + scriptRequest.ID).Expect().JSON().Null()
 	})
 }

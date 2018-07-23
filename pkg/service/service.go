@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -76,6 +77,7 @@ func (s *Service) eventHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -116,6 +118,7 @@ func (s *Service) addRuleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
 }
@@ -139,6 +142,7 @@ func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
 
@@ -151,6 +155,7 @@ func (s *Service) leaveHandler(w http.ResponseWriter, r *http.Request) {
 		util.ErrStatus(w, r, "could not leave node ", http.StatusNotFound, err)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -182,9 +187,145 @@ func (s *Service) joinHandler(w http.ResponseWriter, r *http.Request) {
 		util.ErrStatus(w, r, "joinining failed", http.StatusNotAcceptable, err)
 		return
 	}
-
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
+}
+
+// ScriptRequest is the container for add/update script
+type ScriptRequest struct {
+	ID   string `json:"id"`
+	Data []byte `json:"data"`
+}
+
+// Validate validates the scriptrequst
+func (s *ScriptRequest) Validate() error {
+	if s.ID == "" {
+		return fmt.Errorf("no id provided")
+	}
+
+	if len(s.Data) == 0 {
+		return fmt.Errorf("script data len 0")
+	}
+	return nil
+}
+
+func (s *Service) addScriptHandler(w http.ResponseWriter, r *http.Request) {
+
+	scriptData, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	defer r.Body.Close()
+	sr := &ScriptRequest{}
+	err = json.Unmarshal(scriptData, sr)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	err = sr.Validate()
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	err = s.node.AddScript(sr.ID, sr.Data)
+	if err != nil {
+		util.ErrStatus(w, r, "error adding script", http.StatusNotAcceptable, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+}
+
+func (s *Service) updateScriptHandler(w http.ResponseWriter, r *http.Request) {
+
+	scriptData, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	defer r.Body.Close()
+	sr := &ScriptRequest{}
+	err = json.Unmarshal(scriptData, sr)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	err = sr.Validate()
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	err = s.node.UpdateScript(sr.ID, sr.Data)
+	if err != nil {
+		util.ErrStatus(w, r, "error adding script", http.StatusNotAcceptable, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+}
+
+func (s *Service) removeScriptHandler(w http.ResponseWriter, r *http.Request) {
+	scriptID := chi.URLParam(r, "id")
+	err := s.node.RemoveScript(scriptID)
+	if err != nil {
+		util.ErrStatus(w, r, "could not remove script", http.StatusNotFound, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+}
+
+func (s *Service) getScriptHandler(w http.ResponseWriter, r *http.Request) {
+	scriptID := chi.URLParam(r, "id")
+	scriptData := s.node.GetScript(scriptID)
+	if len(scriptData) == 0 {
+		util.ErrStatus(w, r, "no script data", http.StatusNotFound, fmt.Errorf("script data len 0"))
+		return
+	}
+
+	sr := &ScriptRequest{
+		ID:   scriptID,
+		Data: scriptData,
+	}
+
+	b, err := json.Marshal(&sr)
+	if err != nil {
+		util.ErrStatus(w, r, "error writing script data ", http.StatusNotFound, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
+
+}
+
+func (s *Service) getScriptListHandler(w http.ResponseWriter, r *http.Request) {
+	scriptIds := s.node.GetScripts()
+
+	b, err := json.Marshal(&scriptIds)
+	if err != nil {
+		util.ErrStatus(w, r, "scripts list parsing failed", http.StatusNotFound, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
 }
 
 // New returns the http service wrapper for the store.
@@ -207,6 +348,12 @@ func New(cfg *util.Config) (*Service, error) {
 	router.Get("/rules", svc.getRulesHandler)
 	router.Post("/rules", svc.leaderProxy(svc.addRuleHandler))
 	router.Delete("/rules/{id}", svc.leaderProxy(svc.removeRuleHandler))
+
+	router.Get("/scripts", svc.getScriptListHandler)
+	router.Get("/scripts/{id}", svc.getScriptHandler)
+	router.Post("/scripts", svc.leaderProxy(svc.addScriptHandler))
+	router.Put("/scripts", svc.leaderProxy(svc.updateScriptHandler))
+	router.Delete("/scripts/{id}", svc.leaderProxy(svc.removeScriptHandler))
 
 	router.Get("/leave/{id}", svc.leaveHandler)
 	router.Post("/join", svc.joinHandler)
