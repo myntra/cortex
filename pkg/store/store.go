@@ -11,6 +11,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
+	"github.com/myntra/aggo/pkg/config"
 
 	"github.com/myntra/aggo/pkg/event"
 	"github.com/myntra/aggo/pkg/js"
@@ -32,14 +33,15 @@ type command struct {
 }
 
 type defaultStore struct {
-	opt             *util.Config
+	opt *config.Config
+
 	raft            *raft.Raft
 	eventStorage    *eventStorage
 	scriptStorage   *scriptStorage
 	postBucketQueue chan *event.RuleBucket
 }
 
-func newStore(opt *util.Config) (*defaultStore, error) {
+func newStore(opt *config.Config) (*defaultStore, error) {
 
 	store := &defaultStore{
 		eventStorage: &eventStorage{
@@ -157,9 +159,7 @@ func (d *defaultStore) poster() {
 					return
 				}
 				util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
-
 			}(rb)
-
 		}
 	}
 }

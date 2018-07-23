@@ -11,8 +11,8 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/fnproject/cloudevent"
+	"github.com/myntra/aggo/pkg/config"
 	"github.com/myntra/aggo/pkg/event"
-	"github.com/myntra/aggo/pkg/util"
 )
 
 type exampleData struct {
@@ -50,7 +50,7 @@ func singleNode(t *testing.T, f func(node *Node)) {
 	defer os.RemoveAll(tmpDir)
 
 	// open store
-	cfg := &util.Config{
+	cfg := &config.Config{
 		NodeID:                     "node0",
 		RaftBindPort:               4678,
 		Dir:                        tmpDir,

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/fnproject/cloudevent"
+	"github.com/myntra/aggo/pkg/config"
 	"github.com/myntra/aggo/pkg/event"
-	"github.com/myntra/aggo/pkg/util"
 	httpexpect "gopkg.in/gavv/httpexpect.v1"
 )
 
@@ -60,7 +60,7 @@ var scriptRequestUpdated = ScriptRequest{
 	export default function() { result--; }`),
 }
 
-func startService(t *testing.T, cfg *util.Config, svc *Service) {
+func startService(t *testing.T, cfg *config.Config, svc *Service) {
 
 	go func() {
 		if err := svc.HTTP().ListenAndServe(); err != nil {
@@ -86,7 +86,7 @@ func singleService(t *testing.T, f func(url string)) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	defer os.RemoveAll(tmpDir)
 
-	cfg := &util.Config{
+	cfg := &config.Config{
 		NodeID:                     "service0",
 		RaftBindPort:               6678,
 		Dir:                        tmpDir,
@@ -117,7 +117,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 	defer os.RemoveAll(tmpDir1)
 
 	// open store 1
-	cfg1 := &util.Config{
+	cfg1 := &config.Config{
 		NodeID:                     "node0",
 		RaftBindPort:               6778,
 		Dir:                        tmpDir1,
@@ -138,7 +138,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 	defer os.RemoveAll(tmpDir2)
 
 	// open store 2
-	cfg2 := &util.Config{
+	cfg2 := &config.Config{
 		NodeID:                     "node1",
 		RaftBindPort:               6878,
 		JoinAddr:                   "0.0.0.0" + cfg1.GetHTTPAddr(),
@@ -160,7 +160,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 	defer os.RemoveAll(tmpDir3)
 
 	// open store 2
-	cfg3 := &util.Config{
+	cfg3 := &config.Config{
 		NodeID:                     "node2",
 		RaftBindPort:               6978,
 		JoinAddr:                   "0.0.0.0" + cfg1.GetHTTPAddr(),

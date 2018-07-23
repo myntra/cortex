@@ -12,8 +12,8 @@ import (
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend/flags"
 
+	"github.com/myntra/aggo/pkg/config"
 	"github.com/myntra/aggo/pkg/service"
-	"github.com/myntra/aggo/pkg/util"
 )
 
 var (
@@ -31,7 +31,7 @@ var (
 	commit  = "none"
 	date    = "unknown"
 
-	config *util.Config
+	cfg *config.Config
 )
 
 func usage() {
@@ -44,7 +44,7 @@ func usage() {
 
 func init() {
 	flag.Usage = usage
-	config = &util.Config{
+	cfg = &config.Config{
 		NodeID:                     "",
 		RaftBindPort:               8878,
 		Dir:                        "./data",
@@ -63,13 +63,13 @@ func main() {
 
 	flag.Parse()
 
-	err := loader.Load(context.Background(), config)
+	err := loader.Load(context.Background(), cfg)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		usage()
 	}
 
-	svc, err := service.New(config)
+	svc, err := service.New(cfg)
 	if err != nil {
 		glog.Fatal(err)
 	}

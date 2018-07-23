@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
+	"github.com/myntra/aggo/pkg/config"
 	"github.com/myntra/aggo/pkg/event"
 	"github.com/myntra/aggo/pkg/util"
 )
@@ -22,7 +23,7 @@ type Node struct {
 }
 
 // NewNode returns a new raft node
-func NewNode(cfg *util.Config) (*Node, error) {
+func NewNode(cfg *config.Config) (*Node, error) {
 
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %v", err)
