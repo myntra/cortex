@@ -7,14 +7,19 @@ import (
 	"github.com/myntra/aggo/pkg/event"
 )
 
+type db struct {
+	ruleBuckets map[string]*event.RuleBucket
+	scripts     map[string][]byte
+}
+
 type fsmSnapShot struct {
-	db map[string]*event.RuleBucket
+	data *db
 }
 
 func (f *fsmSnapShot) Persist(sink raft.SnapshotSink) error {
 	err := func() error {
 		// Encode data.
-		b, err := json.Marshal(f.db)
+		b, err := json.Marshal(f.data)
 		if err != nil {
 			return err
 		}

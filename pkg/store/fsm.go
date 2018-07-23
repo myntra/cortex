@@ -26,6 +26,12 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 		return f.applyRemoveRule(c.RuleID)
 	case "flush_rule":
 		return f.applyFlushRule(c.RuleID)
+	case "add_script":
+		return f.applyAddScript(c.ScriptID, c.Script)
+	case "update_script":
+		return f.applyUpdateScript(c.ScriptID, c.Script)
+	case "remove_script":
+		return f.applyRemoveScript(c.ScriptID)
 	default:
 		panic(fmt.Sprintf("unrecognized command op: %s", c.Op))
 	}
@@ -33,7 +39,6 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 }
 
 func (f *fsm) applyStash(event *event.Event) interface{} {
-
 	return f.eventStorage.stash(event)
 }
 
@@ -50,19 +55,32 @@ func (f *fsm) applyFlushRule(ruleID string) interface{} {
 }
 
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
-	db := f.eventStorage.clone()
-	return &fsmSnapShot{db: db}, nil
+	ruleBuckets := f.eventStorage.clone()
+	return &fsmSnapShot{data: &db{ruleBuckets: ruleBuckets, scripts: make(map[string][]byte)}}, nil
+}
+
+func (f *fsm) applyAddScript(id string, script []byte) interface{} {
+	return f.scriptStorage.addScript(id, script)
+}
+
+func (f *fsm) applyUpdateScript(id string, script []byte) interface{} {
+	return f.scriptStorage.updateScript(id, script)
+}
+
+func (f *fsm) applyRemoveScript(id string) interface{} {
+	return f.scriptStorage.removeScript(id)
 }
 
 func (f *fsm) Restore(rc io.ReadCloser) error {
 	defer rc.Close()
-	db := make(map[string]*event.RuleBucket)
+	var data db
 
-	if err := json.NewDecoder(rc).Decode(&db); err != nil {
+	if err := json.NewDecoder(rc).Decode(&data); err != nil {
 		return err
 	}
 
-	f.eventStorage.restore(db)
+	f.eventStorage.restore(data.ruleBuckets)
+	f.scriptStorage.restore(data.scripts)
 
 	return nil
 }

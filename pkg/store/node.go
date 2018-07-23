@@ -126,6 +126,31 @@ func (n *Node) GetRules() []*event.Rule {
 	return n.store.getRules()
 }
 
+// AddScript adds a script to the db
+func (n *Node) AddScript(id string, script []byte) error {
+	return n.store.addScript(id, script)
+}
+
+// UpdateScript updates an already added script
+func (n *Node) UpdateScript(id string, script []byte) error {
+	return n.store.updateScript(id, script)
+}
+
+// RemoveScript remove a script from the db
+func (n *Node) RemoveScript(id string) error {
+	return n.store.removeScript(id)
+}
+
+// GetScripts returns all  script ids
+func (n *Node) GetScripts() []string {
+	return n.store.getScripts()
+}
+
+// GetScript returns the script data
+func (n *Node) GetScript(id string) []byte {
+	return n.store.getScript(id)
+}
+
 func httpRaftJoin(joinAddr, nodeID, bindAddr string) error {
 
 	jr := &util.JoinRequest{

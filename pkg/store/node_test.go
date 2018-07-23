@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -51,7 +52,7 @@ func singleNode(t *testing.T, f func(node *Node)) {
 	// open store
 	cfg := &util.Config{
 		NodeID:                     "node0",
-		RaftBindPort:               6678,
+		RaftBindPort:               4678,
 		Dir:                        tmpDir,
 		DefaultWaitWindow:          4000, // 3 minutes
 		DefaultMaxWaitWindow:       8000, // 6 minutes
@@ -114,6 +115,44 @@ func TestRuleSingleNode(t *testing.T) {
 		}
 		if found {
 			t.Fatal("removed rule was found")
+		}
+
+	})
+}
+
+func TestScriptSingleNode(t *testing.T) {
+	singleNode(t, func(node *Node) {
+		script := []byte(`
+	let result = 0;
+	export default function() { result++; }`)
+
+		// add script
+		err := node.AddScript("myscript", script)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// get script
+
+		respScript := node.GetScript("myscript")
+
+		if !bytes.Equal(script, respScript) {
+			t.Fatal("unexpected get script response")
+		}
+
+		// remove script
+
+		err = node.RemoveScript("myscript")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// get script
+
+		respScript = node.GetScript("myscript")
+
+		if bytes.Equal(script, respScript) {
+			t.Fatal("received removed script")
 		}
 
 	})

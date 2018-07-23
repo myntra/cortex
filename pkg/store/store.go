@@ -22,16 +22,19 @@ const (
 )
 
 type command struct {
-	Op     string       `json:"op"` // stash or evict
-	Rule   *event.Rule  `json:"rule,omitempty"`
-	RuleID string       `json:"ruleID,omitempty"`
-	Event  *event.Event `json:"event,omitempty"`
+	Op       string       `json:"op"` // stash or evict
+	Rule     *event.Rule  `json:"rule,omitempty"`
+	RuleID   string       `json:"ruleID,omitempty"`
+	Event    *event.Event `json:"event,omitempty"`
+	ScriptID string       `json:"script_id,omitempty"`
+	Script   []byte       `json:"script,omitempty"`
 }
 
 type defaultStore struct {
 	opt             *util.Config
 	raft            *raft.Raft
 	eventStorage    *eventStorage
+	scriptStorage   *scriptStorage
 	postBucketQueue chan *event.RuleBucket
 }
 
@@ -42,6 +45,9 @@ func newStore(opt *util.Config) (*defaultStore, error) {
 			m:               make(map[string]*event.RuleBucket),
 			flusherChan:     make(chan string),
 			quitFlusherChan: make(chan struct{}),
+		},
+		scriptStorage: &scriptStorage{
+			m: make(map[string][]byte),
 		},
 		opt:             opt,
 		postBucketQueue: make(chan *event.RuleBucket, 100),
@@ -218,6 +224,37 @@ func (d *defaultStore) addRule(rule *event.Rule) error {
 		Op:   "add_rule",
 		Rule: rule,
 	})
+}
+
+func (d *defaultStore) addScript(id string, script []byte) error {
+	return d.applyCMD(&command{
+		Op:       "add_script",
+		ScriptID: id,
+		Script:   script,
+	})
+}
+
+func (d *defaultStore) updateScript(id string, script []byte) error {
+	return d.applyCMD(&command{
+		Op:       "update_script",
+		ScriptID: id,
+		Script:   script,
+	})
+}
+
+func (d *defaultStore) removeScript(id string) error {
+	return d.applyCMD(&command{
+		Op:       "remove_script",
+		ScriptID: id,
+	})
+}
+
+func (d *defaultStore) getScripts() []string {
+	return d.scriptStorage.getScripts()
+}
+
+func (d *defaultStore) getScript(id string) []byte {
+	return d.scriptStorage.getScript(id)
 }
 
 func (d *defaultStore) removeRule(ruleID string) error {
