@@ -12,6 +12,9 @@ import (
 
 // Execute js
 func Execute(script []byte, data interface{}) interface{} {
+	if len(script) == 0 {
+		return nil
+	}
 	r, err := js.New(&lib.SourceData{
 		Filename: "correlate.js",
 		Data:     script,

@@ -18,10 +18,10 @@ type Config struct {
 	DefaultWaitWindow          uint64 `config:"wait_window"`
 	DefaultWaitWindowThreshold uint64 `config:"wait_window_threshold"`
 	DefaultMaxWaitWindow       uint64 `config:"max_wait_window"`
+	MaxHistory                 int    `config:"max_history"`
 	Version                    string `config:"version"`
 	Commit                     string `config:"commit"`
 	Date                       string `config:"date"`
-	DisablePostHook            bool   `config:"dev"`
 }
 
 // Validate the config

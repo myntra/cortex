@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/myntra/cortex/pkg/executions"
+
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
 	"github.com/myntra/cortex/pkg/config"
@@ -31,7 +33,6 @@ func NewNode(cfg *config.Config) (*Node, error) {
 	}
 
 	store, err := newStore(cfg)
-
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +122,11 @@ func (n *Node) RemoveRule(ruleID string) error {
 // GetRule returns all the stored rules
 func (n *Node) GetRule(ruleID string) *rules.Rule {
 	return n.store.getRule(ruleID)
+}
+
+// GetRuleExectutions returns the executions for a rule
+func (n *Node) GetRuleExectutions(ruleID string) []*executions.Record {
+	return n.store.getRecords(ruleID)
 }
 
 // GetRules returns all the stored rules

@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/satori/go.uuid"
+
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/executions"
 	"github.com/myntra/cortex/pkg/rules"
 
 	"github.com/myntra/cortex/pkg/js"
@@ -21,22 +24,25 @@ const (
 )
 
 type command struct {
-	Op       string        `json:"op"` // stash or evict
-	Rule     *rules.Rule   `json:"rule,omitempty"`
-	RuleID   string        `json:"ruleID,omitempty"`
-	Event    *events.Event `json:"event,omitempty"`
-	ScriptID string        `json:"script_id,omitempty"`
-	Script   []byte        `json:"script,omitempty"`
+	Op       string             `json:"op"` // stash or evict
+	Rule     *rules.Rule        `json:"rule,omitempty"`
+	RuleID   string             `json:"ruleID,omitempty"`
+	Event    *events.Event      `json:"event,omitempty"`
+	ScriptID string             `json:"script_id,omitempty"`
+	Script   []byte             `json:"script,omitempty"`
+	Record   *executions.Record `json:"record,omitempty"`
+	RecordID string             `json:"record_id,omitempty"`
 }
 
 type defaultStore struct {
 	opt *config.Config
 
-	raft            *raft.Raft
-	scriptStorage   *scriptStorage
-	bucketStorage   *bucketStorage
-	postBucketQueue chan *events.Bucket
-	quitFlusherChan chan struct{}
+	raft                 *raft.Raft
+	scriptStorage        *scriptStorage
+	bucketStorage        *bucketStorage
+	executionStorage     *executionStorage
+	executionBucketQueue chan *events.Bucket
+	quitFlusherChan      chan struct{}
 }
 
 func newStore(opt *config.Config) (*defaultStore, error) {
@@ -44,6 +50,9 @@ func newStore(opt *config.Config) (*defaultStore, error) {
 	store := &defaultStore{
 		scriptStorage: &scriptStorage{
 			m: make(map[string][]byte),
+		},
+		executionStorage: &executionStorage{
+			m: make(map[string]*executions.Record),
 		},
 		bucketStorage: &bucketStorage{
 			es: &eventStorage{
@@ -53,41 +62,57 @@ func newStore(opt *config.Config) (*defaultStore, error) {
 				m: make(map[string]*rules.Rule),
 			},
 		},
-		opt:             opt,
-		quitFlusherChan: make(chan struct{}),
-		postBucketQueue: make(chan *events.Bucket, 100),
+		opt:                  opt,
+		quitFlusherChan:      make(chan struct{}),
+		executionBucketQueue: make(chan *events.Bucket, 1000),
 	}
-	store.open()
+
+	if err := store.open(); err != nil {
+		return nil, err
+	}
+
+	go store.flusher()
+
 	return store, nil
 }
 
-func (d *defaultStore) poster() {
+func (d *defaultStore) executor() {
 	for {
 		select {
-		case rb := <-d.postBucketQueue:
+		case rb := <-d.executionBucketQueue:
 			glog.Infof("received bucket %+v", rb)
 			go func(rb *events.Bucket) {
-				script := d.getScript(rb.Rule.ScriptID)
-				if len(script) == 0 {
-					util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
-					return
+				statusCode := 0
+				var noScriptResult bool
+				result := js.Execute(d.getScript(rb.Rule.ScriptID), rb)
+				if result == nil {
+					noScriptResult = true
+				}
+				if noScriptResult {
+					statusCode = util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+				} else {
+					statusCode = util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
 				}
 
-				result := js.Execute(script, rb)
-				if result == nil {
-					util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
-					return
+				id, _ := uuid.NewV4()
+				record := &executions.Record{
+					ID:             id.String(),
+					Bucket:         *rb,
+					ScriptResult:   result,
+					HookStatusCode: statusCode,
+					CreatedAt:      time.Now(),
 				}
-				util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+
+				d.addRecord(record)
+
 			}(rb)
 		}
 	}
 }
 
 func (d *defaultStore) flusher() {
-	if !d.opt.DisablePostHook {
-		go d.poster()
-	}
+
+	go d.executor()
 
 	ticker := time.NewTicker(time.Second)
 loop:
@@ -95,28 +120,39 @@ loop:
 		select {
 		case <-ticker.C:
 			glog.Info("rule flusher ==> ticker called")
-			for ruleID, rb := range d.bucketStorage.es.clone() {
-				glog.Info("rule flusher ==> ", ruleID, rb.CanFlush())
-				if rb.CanFlush() {
-					if d.opt.DisablePostHook {
-						glog.Infof("post bucket to hook %v ", rb)
-						go func() {
-							d.postBucketQueue <- rb
-						}()
-					}
+			for ruleID, bucket := range d.bucketStorage.es.clone() {
+				glog.Info("rule flusher ==> ", ruleID, bucket.CanFlush())
+				if bucket.CanFlush() {
+					go func() {
+						glog.Infof("post bucket to hook %+v ", bucket)
+						d.executionBucketQueue <- bucket
 
-					err := d.flushBucket(ruleID)
-					if err != nil {
-						glog.Errorf("error flushing %v", err)
-					}
+						err := d.flushBucket(ruleID)
+						if err != nil {
+							glog.Errorf("error flushing %v", err)
+						}
+					}()
 				}
 			}
-
 		case <-d.quitFlusherChan:
 			break loop
 		}
 	}
 
+}
+
+func (d *defaultStore) expirer() {
+	ticker := time.NewTicker(time.Hour)
+
+	for {
+		select {
+		case <-ticker.C:
+			if d.executionStorage.getTotalRecordsCount() > d.opt.MaxHistory {
+				// TODO, remove oldest records
+			}
+		}
+
+	}
 }
 
 func (d *defaultStore) applyCMD(cmd *command) error {
@@ -213,6 +249,20 @@ func (d *defaultStore) flushBucket(ruleID string) error {
 	})
 }
 
+func (d *defaultStore) addRecord(r *executions.Record) error {
+	return d.applyCMD(&command{
+		Op:     "add_record",
+		Record: r,
+	})
+}
+
+func (d *defaultStore) removeRecord(id string) error {
+	return d.applyCMD(&command{
+		Op:       "remove_record",
+		RecordID: id,
+	})
+}
+
 func (d *defaultStore) getScripts() []string {
 	return d.scriptStorage.getScripts()
 }
@@ -229,68 +279,10 @@ func (d *defaultStore) getRule(ruleID string) *rules.Rule {
 	return d.bucketStorage.rs.getRule(ruleID)
 }
 
-func (d *defaultStore) acceptJoin(nodeID, addr string) error {
-	glog.Infof("received join request for remote node %s at %s", nodeID, addr)
-
-	configFuture := d.raft.GetConfiguration()
-	if err := configFuture.Error(); err != nil {
-		glog.Infof("failed to get raft configuration: %v", err)
-		return err
-	}
-
-	for _, srv := range configFuture.Configuration().Servers {
-		// If a node already exists with either the joining node's ID or address,
-		// that node may need to be removed from the config first.
-		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(addr) {
-			// However if *both* the ID and the address are the same, then nothing -- not even
-			// a join operation -- is needed.
-			if srv.Address == raft.ServerAddress(addr) && srv.ID == raft.ServerID(nodeID) {
-				glog.Infof("node %s at %s already member of cluster, ignoring join request", nodeID, addr)
-				return nil
-			}
-
-			future := d.raft.RemoveServer(srv.ID, 0, 0)
-			if err := future.Error(); err != nil {
-				return fmt.Errorf("error removing existing node %s at %s: %s", nodeID, addr, err)
-			}
-		}
-	}
-
-	f := d.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
-	if f.Error() != nil {
-		return f.Error()
-	}
-	glog.Infof("node %s at %s joined successfully", nodeID, addr)
-	return nil
-
+func (d *defaultStore) getRecords(ruleID string) []*executions.Record {
+	return d.executionStorage.getRecords(ruleID)
 }
 
-func (d *defaultStore) acceptLeave(nodeID string) error {
-
-	glog.Infof("received leave request for remote node %s", nodeID)
-
-	cf := d.raft.GetConfiguration()
-
-	if err := cf.Error(); err != nil {
-		glog.Infof("failed to get raft configuration")
-		return err
-	}
-
-	for _, server := range cf.Configuration().Servers {
-		if server.ID == raft.ServerID(nodeID) {
-			f := d.raft.RemoveServer(server.ID, 0, 0)
-			if err := f.Error(); err != nil {
-				glog.Infof("failed to remove server %s", nodeID)
-				return err
-			}
-
-			glog.Infof("node %s left successfully", nodeID)
-			return nil
-		}
-	}
-
-	glog.Infof("node %s not exists in raft group", nodeID)
-
-	return nil
-
+func (d *defaultStore) getRecordsCount(ruleID string) int {
+	return d.executionStorage.getRecordsCount(ruleID)
 }

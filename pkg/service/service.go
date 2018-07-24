@@ -214,6 +214,23 @@ func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (s *Service) getRulesExecutions(w http.ResponseWriter, r *http.Request) {
+	ruleID := chi.URLParam(r, "id")
+
+	records := s.node.GetRuleExectutions(ruleID)
+
+	b, err := json.Marshal(records)
+	if err != nil {
+		util.ErrStatus(w, r, "records marshalling failed", http.StatusNotFound, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
+
+}
+
 func (s *Service) leaveHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	err := s.node.Leave(id)
@@ -413,6 +430,7 @@ func New(cfg *config.Config) (*Service, error) {
 
 	router.Get("/rules", svc.getRulesHandler)
 	router.Get("/rules/{id}", svc.getRuleHandler)
+	router.Get("/rules/{id}/executions", svc.getRulesExecutions)
 	router.Post("/rules", svc.leaderProxy(svc.addRuleHandler))
 	router.Put("/rules", svc.leaderProxy(svc.updateRuleHandler))
 	router.Delete("/rules/{id}", svc.leaderProxy(svc.removeRuleHandler))

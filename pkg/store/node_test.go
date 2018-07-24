@@ -65,7 +65,7 @@ func singleNode(t *testing.T, f func(node *Node)) {
 		DefaultWaitWindow:          4000, // 3 minutes
 		DefaultMaxWaitWindow:       8000, // 6 minutes
 		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		DisablePostHook:            true,
+		MaxHistory:                 1000,
 	}
 
 	node, err := NewNode(cfg)
@@ -187,7 +187,7 @@ func TestOrphanEventSingleNode(t *testing.T) {
 	loop:
 		for {
 			select {
-			case rb = <-node.store.postBucketQueue:
+			case rb = <-node.store.executionBucketQueue:
 				fmt.Println("rb=>", rb)
 
 			case <-time.After(time.Millisecond * time.Duration(node.store.opt.DefaultWaitWindow+1000)):
@@ -215,21 +215,15 @@ func TestEventSingleNode(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		var rb *events.Bucket
-	loop:
-		for {
-			select {
-			case rb = <-node.store.postBucketQueue:
-				fmt.Printf("received => %+v", rb)
-
-			case <-time.After(time.Millisecond * time.Duration(node.store.opt.DefaultWaitWindow+3000)):
-				break loop
-			}
-
+		time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultWaitWindow+3000))
+		records := node.GetRuleExectutions(testRule.ID)
+		if len(records) == 0 {
+			t.Fatal("no record of execution, event was not stashed")
+		}
+		if records[0].Bucket.Rule.ID != testRule.ID {
+			t.Fatalf("unexpected rule id, event was not stashed %v %v", records[0].Bucket.Rule.ID, testRule.ID)
 		}
 
-		if rb == nil {
-			t.Fatal("event was not stashed")
-		}
+		t.Logf("%+v\n", records[0])
 	})
 }

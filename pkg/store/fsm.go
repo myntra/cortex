@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/executions"
 	"github.com/myntra/cortex/pkg/rules"
 )
 
@@ -35,6 +36,10 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 		return f.applyUpdateScript(c.ScriptID, c.Script)
 	case "remove_script":
 		return f.applyRemoveScript(c.ScriptID)
+	case "add_record":
+		return f.applyAddRecord(c.Record)
+	case "remove_record":
+		return f.applyRemoveRecord(c.RecordID)
 	default:
 		panic(fmt.Sprintf("unrecognized command op: %s", c.Op))
 	}
@@ -61,19 +66,6 @@ func (f *fsm) applyFlushBucket(ruleID string) interface{} {
 	return f.bucketStorage.es.flushBucket(ruleID)
 }
 
-func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
-	buckets := f.bucketStorage.es.clone()
-	rules := f.bucketStorage.rs.clone()
-	scripts := f.scriptStorage.clone()
-
-	return &fsmSnapShot{
-		data: &db{
-			buckets: buckets,
-			rules:   rules,
-			scripts: scripts,
-		}}, nil
-}
-
 func (f *fsm) applyAddScript(id string, script []byte) interface{} {
 	return f.scriptStorage.addScript(id, script)
 }
@@ -84,6 +76,28 @@ func (f *fsm) applyUpdateScript(id string, script []byte) interface{} {
 
 func (f *fsm) applyRemoveScript(id string) interface{} {
 	return f.scriptStorage.removeScript(id)
+}
+
+func (f *fsm) applyAddRecord(r *executions.Record) interface{} {
+	return f.executionStorage.add(r)
+}
+
+func (f *fsm) applyRemoveRecord(id string) interface{} {
+	return f.executionStorage.remove(id)
+}
+
+func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
+	buckets := f.bucketStorage.es.clone()
+	rules := f.bucketStorage.rs.clone()
+	scripts := f.scriptStorage.clone()
+	history := f.executionStorage.clone()
+	return &fsmSnapShot{
+		data: &db{
+			buckets: buckets,
+			rules:   rules,
+			scripts: scripts,
+			history: history,
+		}}, nil
 }
 
 func (f *fsm) Restore(rc io.ReadCloser) error {
@@ -97,6 +111,7 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 	f.bucketStorage.es.restore(data.buckets)
 	f.bucketStorage.rs.restore(data.rules)
 	f.scriptStorage.restore(data.scripts)
+	f.executionStorage.restore(data.history)
 
 	return nil
 }

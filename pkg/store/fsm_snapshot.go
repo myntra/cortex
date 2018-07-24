@@ -3,6 +3,8 @@ package store
 import (
 	"encoding/json"
 
+	"github.com/myntra/cortex/pkg/executions"
+
 	"github.com/myntra/cortex/pkg/rules"
 
 	"github.com/hashicorp/raft"
@@ -12,6 +14,7 @@ import (
 type db struct {
 	buckets map[string]*events.Bucket
 	rules   map[string]*rules.Rule
+	history map[string]*executions.Record
 	scripts map[string][]byte
 }
 

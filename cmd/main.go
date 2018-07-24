@@ -52,6 +52,7 @@ func init() {
 		DefaultWaitWindow:          3 * 60 * 1000,   // 3 minutes
 		DefaultMaxWaitWindow:       6 * 60 * 1000,   // 6 minutes
 		DefaultWaitWindowThreshold: 2.5 * 60 * 1000, // 2.5 minutes
+		MaxHistory:                 1000,
 	}
 }
 

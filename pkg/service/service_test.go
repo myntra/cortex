@@ -101,7 +101,7 @@ func singleService(t *testing.T, f func(url string)) {
 		DefaultWaitWindow:          4000, // 3 minutes
 		DefaultMaxWaitWindow:       8000, // 6 minutes
 		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		DisablePostHook:            true,
+		MaxHistory:                 1000,
 	}
 
 	svc, err := New(cfg)
@@ -132,7 +132,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 		DefaultWaitWindow:          4000, // 3 minutes
 		DefaultMaxWaitWindow:       8000, // 6 minutes
 		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		DisablePostHook:            true,
+		MaxHistory:                 1000,
 	}
 
 	svc1, err := New(cfg1)
@@ -154,7 +154,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 		DefaultWaitWindow:          4000, // 3 minutes
 		DefaultMaxWaitWindow:       8000, // 6 minutes
 		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		DisablePostHook:            true,
+		MaxHistory:                 1000,
 	}
 
 	svc2, err := New(cfg2)
@@ -176,7 +176,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 		DefaultWaitWindow:          4000, // 3 minutes
 		DefaultMaxWaitWindow:       8000, // 6 minutes
 		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		DisablePostHook:            true,
+		MaxHistory:                 1000,
 	}
 
 	svc3, err := New(cfg3)

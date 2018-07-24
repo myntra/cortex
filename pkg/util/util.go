@@ -50,18 +50,18 @@ func ErrStatus(w http.ResponseWriter, r *http.Request, message string, statusCod
 }
 
 // RetryPost posts the value to a remote endpoint. also retries
-func RetryPost(val interface{}, url string, retry int) {
+func RetryPost(val interface{}, url string, retry int) int {
 
 	b := new(bytes.Buffer)
 	err := json.NewEncoder(b).Encode(val)
 	if err != nil {
-		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
-		return
+		glog.Errorf("http post bucket encoding failed. %v %v", err, url)
+		return http.StatusInternalServerError
 	}
 	req, err := http.NewRequest("POST", url, b)
 	if err != nil {
-		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
-		return
+		glog.Errorf("http post rule bucket newrequest failed. %v %v", err, url)
+		return http.StatusInternalServerError
 	}
 	req.Header.Add("Content-type", "application/json")
 
@@ -69,19 +69,17 @@ func RetryPost(val interface{}, url string, retry int) {
 	client.MaxRetries = retry
 	resp, err := client.Do(req)
 	if err != nil {
-		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
-		return
+		glog.Errorf("http post rule bucket client.Do failed %v %v", err, url)
+		return http.StatusInternalServerError
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 && resp.StatusCode != 202 {
-		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
-		return //fmt.Errorf("invalid status code return from %v endpoint", url)
+		glog.Errorf("http post rule bucket unexpected status code %v %v", err, resp.StatusCode)
 	}
 
-	return
-
+	return resp.StatusCode
 }
 
 // PatternMatch checks if the input is a match to a field of the patterns array
