@@ -23,7 +23,7 @@ type exampleData struct {
 func tptr(t time.Time) *time.Time { return nil }
 
 var testevent = event.Event{
-	&cloudevent.CloudEvent{
+	CloudEvent: &cloudevent.CloudEvent{
 		EventType:          "myntra.prod.icinga.check_disk",
 		EventTypeVersion:   "1.0",
 		CloudEventsVersion: "0.1",
