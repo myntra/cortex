@@ -30,8 +30,14 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import withMobileDialog from '@material-ui/core/withMobileDialog';
+import brace from 'brace';
+import AceEditor from 'react-ace';
+
+import 'brace/mode/javascript';
+import 'brace/theme/github';
 
 import fakerules from './fakerules';
+import fakescripts from './fakescripts';
 
 const styles = theme => ({
   root: {
@@ -115,6 +121,15 @@ const RuleCard = (props) => {
     </ExpansionPanel>)
 }
 
+const ScriptCard = (props) => {
+  const { classes, script } = props;
+  return (
+    <Paper className={classes.paper}>
+      <Typography variant="title" > {script.title} </Typography>
+    </Paper>
+  )
+}
+
 function TabContainer({ children, dir }) {
   return (
     <Typography component="div" dir={dir} style={{ padding: 8 * 3 }}>
@@ -162,6 +177,10 @@ class App extends Component {
   handleRuleDialogClose = () => {
     this.setState({ ruleDialogOpen: false });
   };
+
+  handleOnScriptChange = (newValue) => {
+
+  }
 
 
   render() {
@@ -266,7 +285,74 @@ class App extends Component {
               </Grid>
             </Grid>
           </TabContainer>
-          <TabContainer dir={theme.direction}>Item Two</TabContainer>
+          <TabContainer dir={theme.direction}>
+            <Grid container >
+                <Button onClick={this.handleRuleDialogOpen} variant="contained" color="primary" className={classes.button}>
+                  Add
+                <AddIcon className={classes.rightIcon} />
+              </Button>
+
+              <Button variant="contained" color="secondary" className={classes.button}>
+                Delete
+                <DeleteIcon className={classes.rightIcon} />
+              </Button>
+            </Grid>
+            <Grid container spacing={24}>
+              <Grid item xs={4}>
+                <List>
+                  {fakescripts.map((script, index) => (
+                    <Grid key={index} container>
+                      <Grid item xs={2}>
+                        <ListItem
+                          key={index}
+                          role={undefined}
+                          onClick={this.handleRuleCheckToggle(index)}
+                          className={classes.listItem}
+                        >
+                          <Checkbox
+                            checked={this.state.rulesChecked.indexOf(index) !== -1}
+                            tabIndex={-1}
+                            disableRipple
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={10} >
+                        <ScriptCard key={index} classes={classes} script={script} />
+                      </Grid>
+                    </Grid>
+                  ))}
+                </List>
+              </Grid>
+              <Grid item xs={8}>
+                
+                <Paper className={classes.paper}>
+                <AceEditor
+                  mode="javascript"
+                  theme="github"
+                  name="blah2"
+                  onLoad={this.onLoad}
+                  onChange={this.onChange}
+                  fontSize={14}
+                  showPrintMargin={true}
+                  showGutter={true}
+                  highlightActiveLine={true}
+                  value={
+                    `function onLoad(editor) {
+                        console.log("i've loaded");
+                     }`
+                  }
+                  setOptions={{
+                  enableBasicAutocompletion: true,
+                  enableLiveAutocompletion: true,
+                  enableSnippets: true,
+                  showLineNumbers: true,
+                  tabSize: 2,
+                }}/>
+            
+                </Paper>
+              </Grid>
+            </Grid>
+          </TabContainer>
         </SwipeableViews>
 
       </div>
