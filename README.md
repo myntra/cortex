@@ -1,7 +1,7 @@
 
 # experimental
 
-aggo is a HA cloudevents.io aggregator
+cortex is a HA cloudevents.io aggregator
 
 
 ```
@@ -35,7 +35,7 @@ Event Types are of the format:
 A rule is an array of related eventypes.
 
 ```{
-    rule: ["service1.site24x7.up",,service2.icinga.metric]
+    rule: ["service1.site24x7.",service2.icinga.metric*.businessname.productname.x, service2.icinga.*.businessname.productname.x]
     endpoint: "http://localhost:8080/correlate/search/up,
     waitWindow: 30000,
     slideWindow: 1000,
