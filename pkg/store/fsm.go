@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/hashicorp/raft"
-	"github.com/myntra/aggo/pkg/event"
+	"github.com/myntra/cortex/pkg/event"
 )
 
 type fsm defaultStore

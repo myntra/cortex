@@ -11,9 +11,9 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
-	"github.com/myntra/aggo/pkg/config"
-	"github.com/myntra/aggo/pkg/event"
-	"github.com/myntra/aggo/pkg/util"
+	"github.com/myntra/cortex/pkg/config"
+	"github.com/myntra/cortex/pkg/event"
+	"github.com/myntra/cortex/pkg/util"
 )
 
 // Node represents a raft node

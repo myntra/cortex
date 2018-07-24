@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/myntra/aggo/pkg/event"
+	"github.com/myntra/cortex/pkg/event"
 )
 
 type eventStorage struct {

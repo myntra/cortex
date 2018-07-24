@@ -16,10 +16,10 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 
-	"github.com/myntra/aggo/pkg/config"
-	"github.com/myntra/aggo/pkg/event"
-	"github.com/myntra/aggo/pkg/store"
-	"github.com/myntra/aggo/pkg/util"
+	"github.com/myntra/cortex/pkg/config"
+	"github.com/myntra/cortex/pkg/event"
+	"github.com/myntra/cortex/pkg/store"
+	"github.com/myntra/cortex/pkg/util"
 )
 
 // Service encapsulates the http server and the raft store

@@ -24,6 +24,12 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
 import ListItemText from '@material-ui/core/ListItemText';
 import Checkbox from '@material-ui/core/Checkbox';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';
+import withMobileDialog from '@material-ui/core/withMobileDialog';
 
 import fakerules from './fakerules';
 
@@ -78,6 +84,13 @@ const schema = {
   }
 };
 
+const uiSchema = {
+  event_types: {
+    "ui:widget": "textarea"
+  }
+};
+
+
 
 const log = (type) => console.log.bind(console, type);
 
@@ -87,14 +100,16 @@ const RuleCard = (props) => {
   return (
     <ExpansionPanel>
       <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography className={classes.heading}>{rule.title}</Typography>
+        <Typography className={classes.heading}>{rule && rule.title}</Typography>
       </ExpansionPanelSummary>
       <ExpansionPanelDetails>
-        <Form schema={schema}
-          formData={rule}
-          onChange={log("changed")}
-          onSubmit={log("submitted")}
-          onError={log("errors")} />
+          <Form
+            uiSchema={uiSchema}
+            schema={schema}
+            formData={rule}
+            onChange={log("changed")}
+            onSubmit={log("submitted")}
+            onError={log("errors")} />
       </ExpansionPanelDetails>
 
     </ExpansionPanel>)
@@ -113,6 +128,7 @@ class App extends Component {
   state = {
     tabValue: 0,
     rulesChecked: [0],
+    ruleDialogOpen: false,
   };
 
   handleTabChange = (event, tabValue) => {
@@ -139,14 +155,50 @@ class App extends Component {
     });
   };
 
+  handleRuleDialogOpen = () => {
+    this.setState({ ruleDialogOpen: true });
+  };
+
+  handleRuleDialogClose = () => {
+    this.setState({ ruleDialogOpen: false });
+  };
+
+
   render() {
     const { classes, theme } = this.props;
     fakerules.map((rule, index) => console.log(rule, index))
-    const ruleCardList = fakerules.map((rule, index) => (
-      <RuleCard key={index} classes={classes} rule={rule} />
-    ))
+
+    
     return (
       <div className={classes.root}>
+      <Dialog
+          fullScreen={false}
+          fullWidth={true}
+          open={this.state.ruleDialogOpen}
+          onClose={this.handleRuleDialogClose}
+          aria-labelledby="responsive-dialog-title"
+        >
+          <DialogTitle id="responsive-dialog-title">Create New Rule</DialogTitle>
+          <DialogContent>
+              <Form
+                uiSchema={uiSchema}
+                schema={schema}
+                onChange={log("changed")}
+                onError={log("errors")} > 
+                <div>
+                  {/* empty div hides default submit button */}
+                </div>
+              </Form>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={this.handleRuleDialogClose} color="primary">
+              Cancel
+            </Button>
+            <Button onClick={this.handleRuleDialogClose} color="primary" autoFocus>
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
         <CssBaseline />
         <AppBar position="static" color="primary">
           <Toolbar>
@@ -155,7 +207,7 @@ class App extends Component {
           </Typography>
           </Toolbar>
         </AppBar>
-
+        
         <Tabs
           value={this.state.tabValue}
           indicatorColor="primary"
@@ -172,8 +224,8 @@ class App extends Component {
           onChangeIndex={this.handleChangeTabIndex}
         >
           <TabContainer dir={theme.direction}>
-            <Grid container > 
-            <Button variant="contained" color="primary" className={classes.button}>
+            <Grid container >
+              <Button onClick={this.handleRuleDialogOpen} variant="contained" color="primary" className={classes.button}>
                 Add
                 <AddIcon className={classes.rightIcon} />
               </Button>
@@ -182,35 +234,32 @@ class App extends Component {
                 Delete
                 <DeleteIcon className={classes.rightIcon} />
               </Button>
-              </Grid>
+            </Grid>
             <Grid container spacing={24}>
-
-
               <Grid item xs={6}>
-              <List>
-                {fakerules.map((rule,index) => (
-                  <ListItem
-                    key={index}
-                    role={undefined}
-                    
-                    
-                    onClick={this.handleRuleCheckToggle(index)}
-                    className={classes.listItem}
-                  >
-                   <Grid item xs={2} >
-                    <Checkbox
-                      checked={this.state.rulesChecked.indexOf(index) !== -1}
-                      tabIndex={-1}
-                      disableRipple
-                    />
+                <List>
+                  {fakerules.map((rule, index) => (
+                    <Grid key={index} container>
+                      <Grid item xs={2}>
+                        <ListItem
+                          key={index}
+                          role={undefined}
+                          onClick={this.handleRuleCheckToggle(index)}
+                          className={classes.listItem}
+                        >
+                          <Checkbox
+                            checked={this.state.rulesChecked.indexOf(index) !== -1}
+                            tabIndex={-1}
+                            disableRipple
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={10} >
+                        <RuleCard key={index} classes={classes} rule={rule} />
+                      </Grid>
                     </Grid>
-                    <Grid item xs={10} >
-                    <RuleCard key={index} classes={classes} rule={rule} />
-                    </Grid>
-                    
-                  </ListItem>
-                ))}
-              </List>
+                  ))}
+                </List>
               </Grid>
               <Grid item xs>
                 {/* <Paper className={classes.paper}></Paper> */}

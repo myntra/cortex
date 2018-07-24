@@ -12,8 +12,8 @@ import (
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend/flags"
 
-	"github.com/myntra/aggo/pkg/config"
-	"github.com/myntra/aggo/pkg/service"
+	"github.com/myntra/cortex/pkg/config"
+	"github.com/myntra/cortex/pkg/service"
 )
 
 var (
@@ -35,8 +35,8 @@ var (
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: \n\n ./aggo -stderrthreshold=INFO -log_dir=$(pwd) -id=node1 lb=start & \n "+
-		"./aggo-new-version -stderrthreshold=INFO  -log_dir=$(pwd) -id=node1 -lb=reload \n ./aggo -lb=stop \n \n")
+	fmt.Fprintf(os.Stderr, "usage: \n\n ./cortex -stderrthreshold=INFO -log_dir=$(pwd) -id=node1 lb=start & \n "+
+		"./cortex-new-version -stderrthreshold=INFO  -log_dir=$(pwd) -id=node1 -lb=reload \n ./cortex -lb=stop \n \n")
 	flag.PrintDefaults()
 
 	os.Exit(2)
@@ -58,7 +58,7 @@ func init() {
 func main() {
 
 	loader := confita.NewLoader(flags.NewBackend())
-	lb := littleboss.New("aggo")
+	lb := littleboss.New("cortex")
 	lb.Command("lb", flag.String("lb", "start", "littleboss start command"))
 
 	flag.Parse()
@@ -78,7 +78,7 @@ func main() {
 		run(ctx, svc)
 	})
 
-	glog.Info("aggo exited")
+	glog.Info("cortex exited")
 }
 
 func run(ctx context.Context, svc *service.Service) {

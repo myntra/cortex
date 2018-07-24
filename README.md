@@ -1,7 +1,7 @@
 
 # experimental
 
-aggo is a HA cloudevents.io aggregator
+cortex is a HA cloudevents.io aggregator
 
 
 ```

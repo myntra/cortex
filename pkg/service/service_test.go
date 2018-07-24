@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/fnproject/cloudevent"
-	"github.com/myntra/aggo/pkg/config"
-	"github.com/myntra/aggo/pkg/event"
+	"github.com/myntra/cortex/pkg/config"
+	"github.com/myntra/cortex/pkg/event"
 	httpexpect "gopkg.in/gavv/httpexpect.v1"
 )
 
