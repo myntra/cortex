@@ -49,6 +49,7 @@ func (rb *RuleBucket) Post() error {
 
 // Rule is the array of related service events
 type Rule struct {
+	Title               string   `json:"title"`
 	ID                  string   `json:"id"`
 	ScriptID            string   `json:"script_id"`             // javascript script which is called before hookEndPoint is called.
 	HookEndpoint        string   `json:"hook_endpoint"`         // endpoint which accepts a POST json objects
