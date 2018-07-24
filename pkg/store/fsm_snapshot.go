@@ -3,13 +3,16 @@ package store
 import (
 	"encoding/json"
 
+	"github.com/myntra/cortex/pkg/rules"
+
 	"github.com/hashicorp/raft"
-	"github.com/myntra/cortex/pkg/event"
+	"github.com/myntra/cortex/pkg/events"
 )
 
 type db struct {
-	ruleBuckets map[string]*event.RuleBucket
-	scripts     map[string][]byte
+	buckets map[string]*events.Bucket
+	rules   map[string]*rules.Rule
+	scripts map[string][]byte
 }
 
 type fsmSnapShot struct {

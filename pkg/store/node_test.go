@@ -12,7 +12,8 @@ import (
 
 	"github.com/fnproject/cloudevent"
 	"github.com/myntra/cortex/pkg/config"
-	"github.com/myntra/cortex/pkg/event"
+	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/rules"
 )
 
 type exampleData struct {
@@ -22,7 +23,7 @@ type exampleData struct {
 
 func tptr(t time.Time) *time.Time { return nil }
 
-var testevent = event.Event{
+var testevent = events.Event{
 	CloudEvent: &cloudevent.CloudEvent{
 		EventType:          "myntra.prod.icinga.check_disk",
 		EventTypeVersion:   "1.0",
@@ -37,11 +38,18 @@ var testevent = event.Event{
 	},
 }
 
-var testRule = event.Rule{
+var testRule = rules.Rule{
 	ID:           "test-rule-id-1",
 	HookEndpoint: "http://localhost:3000/testrule",
 	HookRetry:    2,
 	EventTypes:   []string{"myntra.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
+}
+
+var testRuleUpdated = rules.Rule{
+	ID:           "test-rule-id-1",
+	HookEndpoint: "http://localhost:3000/testrule",
+	HookRetry:    2,
+	EventTypes:   []string{"apple.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
 }
 
 func singleNode(t *testing.T, f func(node *Node)) {
@@ -100,6 +108,16 @@ func TestRuleSingleNode(t *testing.T) {
 			t.Fatal("added rule  was not found")
 		}
 
+		err = node.UpdateRule(&testRuleUpdated)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		updatedRule := node.GetRule(testRule.ID)
+		if updatedRule.EventTypes[0] != testRuleUpdated.EventTypes[0] {
+			t.Fatal("rule was not updated")
+		}
+
 		err = node.RemoveRule(testRule.ID)
 		if err != nil {
 			t.Fatal(err)
@@ -123,8 +141,8 @@ func TestRuleSingleNode(t *testing.T) {
 func TestScriptSingleNode(t *testing.T) {
 	singleNode(t, func(node *Node) {
 		script := []byte(`
-	let result = 0;
-	export default function() { result++; }`)
+			let result = 0;
+			export default function() { result++; }`)
 
 		// add script
 		err := node.AddScript("myscript", script)
@@ -165,7 +183,7 @@ func TestOrphanEventSingleNode(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		var rb *event.RuleBucket
+		var rb *events.Bucket
 	loop:
 		for {
 			select {
@@ -197,14 +215,14 @@ func TestEventSingleNode(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		var rb *event.RuleBucket
+		var rb *events.Bucket
 	loop:
 		for {
 			select {
 			case rb = <-node.store.postBucketQueue:
-				fmt.Println(rb)
+				fmt.Printf("received => %+v", rb)
 
-			case <-time.After(time.Millisecond * time.Duration(node.store.opt.DefaultWaitWindow+1000)):
+			case <-time.After(time.Millisecond * time.Duration(node.store.opt.DefaultWaitWindow+3000)):
 				break loop
 			}
 

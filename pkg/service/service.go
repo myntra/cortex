@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/imdario/mergo"
 
 	"github.com/satori/go.uuid"
 
@@ -17,7 +18,8 @@ import (
 	"github.com/go-chi/chi/middleware"
 
 	"github.com/myntra/cortex/pkg/config"
-	"github.com/myntra/cortex/pkg/event"
+	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/rules"
 	"github.com/myntra/cortex/pkg/store"
 	"github.com/myntra/cortex/pkg/util"
 )
@@ -66,7 +68,7 @@ func (s *Service) leaderProxy(h http.HandlerFunc) http.HandlerFunc {
 // eventHandler expects a event in request body and aggregates by type
 func (s *Service) eventHandler(w http.ResponseWriter, r *http.Request) {
 
-	event, err := event.FromRequest(r)
+	event, err := events.FromRequest(r)
 	if err != nil {
 		util.ErrStatus(w, r, "invalid request body, expected a cloudevents.io event", http.StatusNotAcceptable, err)
 		return
@@ -91,7 +93,7 @@ func (s *Service) addRuleHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	var rule event.Rule
+	var rule rules.Rule
 	err = json.Unmarshal(reqBody, &rule)
 	if err != nil {
 		util.ErrStatus(w, r, "rule parsing failed", http.StatusNotAcceptable, err)
@@ -116,6 +118,49 @@ func (s *Service) addRuleHandler(w http.ResponseWriter, r *http.Request) {
 	b, err := json.Marshal(&rule)
 	if err != nil {
 		util.ErrStatus(w, r, "rules parsing failed", http.StatusNotFound, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
+}
+
+func (s *Service) updateRuleHandler(w http.ResponseWriter, r *http.Request) {
+	reqBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body, expected a valid rule", http.StatusNotAcceptable, err)
+		return
+	}
+
+	defer r.Body.Close()
+
+	var rule rules.Rule
+	err = json.Unmarshal(reqBody, &rule)
+	if err != nil {
+		util.ErrStatus(w, r, "rule parsing failed", http.StatusNotAcceptable, err)
+		return
+	}
+
+	existingRule := s.node.GetRule(rule.ID)
+	if existingRule == nil {
+		util.ErrStatus(w, r, "update rule failed, rule not found", http.StatusNotFound, fmt.Errorf("rule is nil"))
+	}
+
+	if err := mergo.Merge(&rule, existingRule); err != nil {
+		util.ErrStatus(w, r, "updating rule failed", http.StatusInternalServerError, err)
+		return
+	}
+
+	err = s.node.UpdateRule(&rule)
+	if err != nil {
+		util.ErrStatus(w, r, "updating rule failed", http.StatusNotAcceptable, err)
+		return
+	}
+
+	b, err := json.Marshal(&rule)
+	if err != nil {
+		util.ErrStatus(w, r, "updating rule failed. rules parsing failed", http.StatusNotFound, err)
 		return
 	}
 
@@ -369,6 +414,7 @@ func New(cfg *config.Config) (*Service, error) {
 	router.Get("/rules", svc.getRulesHandler)
 	router.Get("/rules/{id}", svc.getRuleHandler)
 	router.Post("/rules", svc.leaderProxy(svc.addRuleHandler))
+	router.Put("/rules", svc.leaderProxy(svc.updateRuleHandler))
 	router.Delete("/rules/{id}", svc.leaderProxy(svc.removeRuleHandler))
 
 	router.Get("/scripts", svc.getScriptListHandler)

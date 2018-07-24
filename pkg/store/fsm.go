@@ -6,7 +6,8 @@ import (
 	"io"
 
 	"github.com/hashicorp/raft"
-	"github.com/myntra/cortex/pkg/event"
+	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/rules"
 )
 
 type fsm defaultStore
@@ -19,13 +20,15 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 
 	switch c.Op {
 	case "stash":
-		return f.applyStash(c.Event)
+		return f.applyStash(c.RuleID, c.Event)
 	case "add_rule":
 		return f.applyAddRule(c.Rule)
+	case "update_rule":
+		return f.applyUpdateRule(c.Rule)
 	case "remove_rule":
 		return f.applyRemoveRule(c.RuleID)
-	case "flush_rule":
-		return f.applyFlushRule(c.RuleID)
+	case "flush_bucket":
+		return f.applyFlushBucket(c.RuleID)
 	case "add_script":
 		return f.applyAddScript(c.ScriptID, c.Script)
 	case "update_script":
@@ -38,25 +41,37 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 
 }
 
-func (f *fsm) applyStash(event *event.Event) interface{} {
-	return f.eventStorage.stash(event)
+func (f *fsm) applyStash(ruleID string, event *events.Event) interface{} {
+	return f.bucketStorage.stash(ruleID, event)
 }
 
-func (f *fsm) applyAddRule(rule *event.Rule) interface{} {
-	return f.eventStorage.addRule(rule)
+func (f *fsm) applyAddRule(rule *rules.Rule) interface{} {
+	return f.bucketStorage.rs.addRule(rule)
+}
+
+func (f *fsm) applyUpdateRule(rule *rules.Rule) interface{} {
+	return f.bucketStorage.rs.updateRule(rule)
 }
 
 func (f *fsm) applyRemoveRule(ruleID string) interface{} {
-	return f.eventStorage.removeRule(ruleID)
+	return f.bucketStorage.rs.removeRule(ruleID)
 }
 
-func (f *fsm) applyFlushRule(ruleID string) interface{} {
-	return f.eventStorage.flushRule(ruleID)
+func (f *fsm) applyFlushBucket(ruleID string) interface{} {
+	return f.bucketStorage.es.flushBucket(ruleID)
 }
 
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
-	ruleBuckets := f.eventStorage.clone()
-	return &fsmSnapShot{data: &db{ruleBuckets: ruleBuckets, scripts: make(map[string][]byte)}}, nil
+	buckets := f.bucketStorage.es.clone()
+	rules := f.bucketStorage.rs.clone()
+	scripts := f.scriptStorage.clone()
+
+	return &fsmSnapShot{
+		data: &db{
+			buckets: buckets,
+			rules:   rules,
+			scripts: scripts,
+		}}, nil
 }
 
 func (f *fsm) applyAddScript(id string, script []byte) interface{} {
@@ -79,7 +94,8 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 		return err
 	}
 
-	f.eventStorage.restore(data.ruleBuckets)
+	f.bucketStorage.es.restore(data.buckets)
+	f.bucketStorage.rs.restore(data.rules)
 	f.scriptStorage.restore(data.scripts)
 
 	return nil

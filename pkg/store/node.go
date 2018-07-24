@@ -12,7 +12,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
 	"github.com/myntra/cortex/pkg/config"
-	"github.com/myntra/cortex/pkg/event"
+	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/rules"
 	"github.com/myntra/cortex/pkg/util"
 )
 
@@ -98,13 +99,18 @@ func (n *Node) LeaderAddr() string {
 }
 
 // AddRule adds a rule to the store
-func (n *Node) AddRule(rule *event.Rule) error {
+func (n *Node) AddRule(rule *rules.Rule) error {
 	return n.store.addRule(rule)
 }
 
+// UpdateRule updates a rule to the store
+func (n *Node) UpdateRule(rule *rules.Rule) error {
+	return n.store.updateRule(rule)
+}
+
 // Stash adds a event to the store
-func (n *Node) Stash(event *event.Event) error {
-	return n.store.stash(event)
+func (n *Node) Stash(event *events.Event) error {
+	return n.store.matchAndStash(event)
 }
 
 // RemoveRule removes a rule from the store
@@ -113,12 +119,12 @@ func (n *Node) RemoveRule(ruleID string) error {
 }
 
 // GetRule returns all the stored rules
-func (n *Node) GetRule(ruleID string) *event.Rule {
+func (n *Node) GetRule(ruleID string) *rules.Rule {
 	return n.store.getRule(ruleID)
 }
 
 // GetRules returns all the stored rules
-func (n *Node) GetRules() []*event.Rule {
+func (n *Node) GetRules() []*rules.Rule {
 	return n.store.getRules()
 }
 

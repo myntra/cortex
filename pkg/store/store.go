@@ -3,17 +3,14 @@ package store
 import (
 	"encoding/json"
 	"fmt"
-	"net"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/myntra/cortex/pkg/config"
+	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/rules"
 
-	"github.com/myntra/cortex/pkg/event"
 	"github.com/myntra/cortex/pkg/js"
 	"github.com/myntra/cortex/pkg/util"
 )
@@ -24,121 +21,44 @@ const (
 )
 
 type command struct {
-	Op       string       `json:"op"` // stash or evict
-	Rule     *event.Rule  `json:"rule,omitempty"`
-	RuleID   string       `json:"ruleID,omitempty"`
-	Event    *event.Event `json:"event,omitempty"`
-	ScriptID string       `json:"script_id,omitempty"`
-	Script   []byte       `json:"script,omitempty"`
+	Op       string        `json:"op"` // stash or evict
+	Rule     *rules.Rule   `json:"rule,omitempty"`
+	RuleID   string        `json:"ruleID,omitempty"`
+	Event    *events.Event `json:"event,omitempty"`
+	ScriptID string        `json:"script_id,omitempty"`
+	Script   []byte        `json:"script,omitempty"`
 }
 
 type defaultStore struct {
 	opt *config.Config
 
 	raft            *raft.Raft
-	eventStorage    *eventStorage
 	scriptStorage   *scriptStorage
-	postBucketQueue chan *event.RuleBucket
+	bucketStorage   *bucketStorage
+	postBucketQueue chan *events.Bucket
+	quitFlusherChan chan struct{}
 }
 
 func newStore(opt *config.Config) (*defaultStore, error) {
 
 	store := &defaultStore{
-		eventStorage: &eventStorage{
-			m:               make(map[string]*event.RuleBucket),
-			flusherChan:     make(chan string),
-			quitFlusherChan: make(chan struct{}),
-		},
 		scriptStorage: &scriptStorage{
 			m: make(map[string][]byte),
 		},
+		bucketStorage: &bucketStorage{
+			es: &eventStorage{
+				m: make(map[string]*events.Bucket),
+			},
+			rs: &ruleStorage{
+				m: make(map[string]*rules.Rule),
+			},
+		},
 		opt:             opt,
-		postBucketQueue: make(chan *event.RuleBucket, 100),
+		quitFlusherChan: make(chan struct{}),
+		postBucketQueue: make(chan *events.Bucket, 100),
 	}
 	store.open()
 	return store, nil
-}
-
-func (d *defaultStore) open() error {
-	config := raft.DefaultConfig()
-	config.LocalID = raft.ServerID(d.opt.NodeID)
-
-	// Setup Raft communication.
-	addr, err := net.ResolveTCPAddr("tcp", d.opt.GetBindAddr())
-	if err != nil {
-		return err
-	}
-	transport, err := raft.NewTCPTransport(d.opt.GetBindAddr(), addr, 3, 10*time.Second, os.Stderr)
-	if err != nil {
-		return err
-	}
-
-	// Create the snapshot store. This allows the Raft to truncate the log.
-	snapshots, err := raft.NewFileSnapshotStore(d.opt.Dir, retainSnapshotCount, os.Stderr)
-	if err != nil {
-		return fmt.Errorf("file snapshot store: %s", err)
-	}
-
-	// Create the log store and stable store.
-	var logStore raft.LogStore
-	var stableStore raft.StableStore
-
-	boltDB, err := raftboltdb.NewBoltStore(filepath.Join(d.opt.Dir, "raft.db"))
-	if err != nil {
-		return fmt.Errorf("new bolt store: %s", err)
-	}
-	logStore = boltDB
-	stableStore = boltDB
-
-	// Instantiate the Raft systemd.
-	ra, err := raft.NewRaft(config, (*fsm)(d), logStore, stableStore, snapshots, transport)
-	if err != nil {
-		return fmt.Errorf("new raft: %s", err)
-	}
-	d.raft = ra
-
-	// bootstrap single node configuration
-	if d.opt.JoinAddr == "" {
-		fmt.Printf("starting %v in a single node cluster \n", d.opt.NodeID)
-		configuration := raft.Configuration{
-			Servers: []raft.Server{
-				{
-					ID:      config.LocalID,
-					Address: transport.LocalAddr(),
-				},
-			},
-		}
-		f := ra.BootstrapCluster(configuration)
-		if f.Error() != nil {
-			return f.Error()
-		}
-
-		// since in bootstrap mode, block until leadership is attained.
-	loop:
-		for {
-			select {
-			case leader := <-d.raft.LeaderCh():
-				glog.Info("isLeader ", leader)
-				if leader {
-					break loop
-				}
-			}
-		}
-	}
-
-	go d.flusher()
-
-	return nil
-}
-
-func (d *defaultStore) close() error {
-	d.eventStorage.quitFlusherChan <- struct{}{}
-	f := d.raft.Shutdown()
-	if f.Error() != nil {
-		return f.Error()
-	}
-	glog.Flush()
-	return nil
 }
 
 func (d *defaultStore) poster() {
@@ -146,7 +66,7 @@ func (d *defaultStore) poster() {
 		select {
 		case rb := <-d.postBucketQueue:
 			glog.Infof("received bucket %+v", rb)
-			go func(rb *event.RuleBucket) {
+			go func(rb *events.Bucket) {
 				script := d.getScript(rb.Rule.ScriptID)
 				if len(script) == 0 {
 					util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
@@ -169,36 +89,34 @@ func (d *defaultStore) flusher() {
 		go d.poster()
 	}
 
+	ticker := time.NewTicker(time.Second)
 loop:
 	for {
 		select {
-		case ruleID := <-d.eventStorage.flusherChan:
-			rb := d.eventStorage.getRuleBucket(ruleID)
-			if rb == nil {
-				glog.Errorf("unexpected err ruleID %v not found", ruleID)
-				return
-			}
+		case <-ticker.C:
+			glog.Info("rule flusher ==> ticker called")
+			for ruleID, rb := range d.bucketStorage.es.clone() {
+				glog.Info("rule flusher ==> ", ruleID, rb.CanFlush())
+				if rb.CanFlush() {
+					if d.opt.DisablePostHook {
+						glog.Infof("post bucket to hook %v ", rb)
+						go func() {
+							d.postBucketQueue <- rb
+						}()
+					}
 
-			go func() {
-
-				if d.opt.DisablePostHook {
-					glog.Infof("post bucket to hook %v ", rb)
+					err := d.flushBucket(ruleID)
+					if err != nil {
+						glog.Errorf("error flushing %v", err)
+					}
 				}
-
-				d.postBucketQueue <- rb
-
-			}()
-
-			err := d.flushRule(ruleID)
-			if err != nil {
-				glog.Errorf("error flushing %v", err)
 			}
 
-		case <-d.eventStorage.quitFlusherChan:
+		case <-d.quitFlusherChan:
 			break loop
 		}
-
 	}
+
 }
 
 func (d *defaultStore) applyCMD(cmd *command) error {
@@ -215,14 +133,29 @@ func (d *defaultStore) applyCMD(cmd *command) error {
 	return f.Error()
 }
 
-func (d *defaultStore) stash(event *event.Event) error {
+func (d *defaultStore) matchAndStash(event *events.Event) error {
+	for _, rule := range d.getRules() {
+		go d.match(rule, event)
+	}
+	return nil
+}
+
+func (d *defaultStore) match(rule *rules.Rule, event *events.Event) error {
+	if util.PatternMatch(event.EventType, rule.EventTypes) {
+		go d.stash(rule.ID, event)
+	}
+	return nil
+}
+
+func (d *defaultStore) stash(ruleID string, event *events.Event) error {
 	return d.applyCMD(&command{
-		Op:    "stash",
-		Event: event,
+		Op:     "stash",
+		RuleID: ruleID,
+		Event:  event,
 	})
 }
 
-func (d *defaultStore) addRule(rule *event.Rule) error {
+func (d *defaultStore) addRule(rule *rules.Rule) error {
 
 	if rule.WaitWindow == 0 || rule.WaitWindowThreshold == 0 || rule.MaxWaitWindow == 0 {
 		rule.WaitWindow = d.opt.DefaultWaitWindow
@@ -232,6 +165,13 @@ func (d *defaultStore) addRule(rule *event.Rule) error {
 
 	return d.applyCMD(&command{
 		Op:   "add_rule",
+		Rule: rule,
+	})
+}
+
+func (d *defaultStore) updateRule(rule *rules.Rule) error {
+	return d.applyCMD(&command{
+		Op:   "update_rule",
 		Rule: rule,
 	})
 }
@@ -259,6 +199,20 @@ func (d *defaultStore) removeScript(id string) error {
 	})
 }
 
+func (d *defaultStore) removeRule(ruleID string) error {
+	return d.applyCMD(&command{
+		Op:     "remove_rule",
+		RuleID: ruleID,
+	})
+}
+
+func (d *defaultStore) flushBucket(ruleID string) error {
+	return d.applyCMD(&command{
+		Op:     "flush_bucket",
+		RuleID: ruleID,
+	})
+}
+
 func (d *defaultStore) getScripts() []string {
 	return d.scriptStorage.getScripts()
 }
@@ -267,26 +221,12 @@ func (d *defaultStore) getScript(id string) []byte {
 	return d.scriptStorage.getScript(id)
 }
 
-func (d *defaultStore) removeRule(ruleID string) error {
-	return d.applyCMD(&command{
-		Op:     "remove_rule",
-		RuleID: ruleID,
-	})
+func (d *defaultStore) getRules() []*rules.Rule {
+	return d.bucketStorage.rs.getRules()
 }
 
-func (d *defaultStore) flushRule(ruleID string) error {
-	return d.applyCMD(&command{
-		Op:     "flush_rule",
-		RuleID: ruleID,
-	})
-}
-
-func (d *defaultStore) getRules() []*event.Rule {
-	return d.eventStorage.getRules()
-}
-
-func (d *defaultStore) getRule(ruleID string) *event.Rule {
-	return d.eventStorage.getRule(ruleID)
+func (d *defaultStore) getRule(ruleID string) *rules.Rule {
+	return d.bucketStorage.rs.getRule(ruleID)
 }
 
 func (d *defaultStore) acceptJoin(nodeID, addr string) error {

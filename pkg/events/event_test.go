@@ -1,4 +1,4 @@
-package event
+package events
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ func tptr(t time.Time) *time.Time { return nil }
 
 func TestEventHashMatch(t *testing.T) {
 	existingEvent := &Event{
-		&cloudevent.CloudEvent{
+		CloudEvent: &cloudevent.CloudEvent{
 			EventType:          "com.event.fortytwo",
 			EventTypeVersion:   "1.0",
 			CloudEventsVersion: "0.1",
@@ -33,7 +33,7 @@ func TestEventHashMatch(t *testing.T) {
 	}
 
 	incomingEventDuplicate := &Event{
-		&cloudevent.CloudEvent{
+		CloudEvent: &cloudevent.CloudEvent{
 			EventType:          "com.event.fortytwo",
 			EventTypeVersion:   "1.0",
 			CloudEventsVersion: "0.1",
@@ -48,7 +48,7 @@ func TestEventHashMatch(t *testing.T) {
 	}
 
 	incomingEventUnique := &Event{
-		&cloudevent.CloudEvent{
+		CloudEvent: &cloudevent.CloudEvent{
 			EventType:          "com.event.fortytwo",
 			EventTypeVersion:   "1.0",
 			CloudEventsVersion: "0.1",

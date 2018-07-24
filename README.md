@@ -49,7 +49,7 @@ A rule is an array of related eventypes.
 }
 ```
 
-## RuleBucket
+## Bucket
 
 A rulebucket is a collection of related cloudevents.
 

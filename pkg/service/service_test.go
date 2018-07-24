@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -9,8 +10,10 @@ import (
 	"time"
 
 	"github.com/fnproject/cloudevent"
+	"github.com/imdario/mergo"
 	"github.com/myntra/cortex/pkg/config"
-	"github.com/myntra/cortex/pkg/event"
+	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/rules"
 	httpexpect "gopkg.in/gavv/httpexpect.v1"
 )
 
@@ -21,9 +24,9 @@ type exampleData struct {
 
 func tptr(t time.Time) *time.Time { return nil }
 
-var testevent = event.Event{
-	&cloudevent.CloudEvent{
-		EventType:          "myntra.prod.icinga.check_disk",
+var testevent = events.Event{
+	CloudEvent: &cloudevent.CloudEvent{
+		EventType:          "acme.prod.icinga.check_disk",
 		EventTypeVersion:   "1.0",
 		CloudEventsVersion: "0.1",
 		Source:             "/sink",
@@ -36,14 +39,19 @@ var testevent = event.Event{
 	},
 }
 
-var testRule = event.Rule{
+var testRule = rules.Rule{
 	ID:                  "123",
 	HookEndpoint:        "http://localhost:3000/testrule",
 	HookRetry:           2,
-	EventTypes:          []string{"myntra.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
+	EventTypes:          []string{"acme.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
 	WaitWindow:          1000,
 	WaitWindowThreshold: 800,
 	MaxWaitWindow:       2000,
+}
+
+var testRuleUpdated = rules.Rule{
+	ID:         "123",
+	EventTypes: []string{"apple.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
 }
 
 var scriptRequest = ScriptRequest{
@@ -200,6 +208,11 @@ func ruletest(t *testing.T, url string) {
 	e.POST("/rules").WithJSON(testRule).Expect().Status(http.StatusOK)
 	e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
 
+	// update
+	e.PUT("/rules").WithJSON(testRuleUpdated).Expect().Status(http.StatusOK)
+	testRule.EventTypes = testRuleUpdated.EventTypes
+	e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
+
 	//remove
 	e.DELETE("/rules/" + testRule.ID).Expect().Status(http.StatusOK)
 	e.GET("/rules/" + testRule.ID).Expect().Status(http.StatusNotFound)
@@ -221,6 +234,14 @@ func TestRuleMultiService(t *testing.T) {
 		time.Sleep(time.Second)
 		// verify from node 2
 		e = httpexpect.New(t, urls[1])
+		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
+
+		// update on node3
+		e = httpexpect.New(t, urls[2])
+		e.PUT("/rules").WithJSON(testRuleUpdated).Expect().Status(http.StatusOK)
+		testRule.EventTypes = testRuleUpdated.EventTypes
+		// verifiy from node 1
+		e = httpexpect.New(t, urls[0])
 		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
 
 		// delete from node3
@@ -285,4 +306,13 @@ func TestScriptsMultiService(t *testing.T) {
 		e.GET("/scripts/" + scriptRequest.ID).Expect().Status(http.StatusNotFound)
 
 	})
+}
+
+func TestMergeRule(t *testing.T) {
+	if err := mergo.Merge(&testRuleUpdated, testRule); err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Printf("testRuleUpdated %+v", testRuleUpdated)
+
 }
