@@ -10,7 +10,6 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/fnproject/cloudevent"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/rules"
@@ -24,18 +23,16 @@ type exampleData struct {
 func tptr(t time.Time) *time.Time { return nil }
 
 var testevent = events.Event{
-	CloudEvent: &cloudevent.CloudEvent{
-		EventType:          "myntra.prod.icinga.check_disk",
-		EventTypeVersion:   "1.0",
-		CloudEventsVersion: "0.1",
-		Source:             "/sink",
-		EventID:            "42",
-		EventTime:          tptr(time.Now()),
-		SchemaURL:          "http://www.json.org",
-		ContentType:        "application/json",
-		Data:               &exampleData{Alpha: "julie", Beta: 42},
-		Extensions:         map[string]string{"ext1": "value"},
-	},
+	EventType:          "myntra.prod.icinga.check_disk",
+	EventTypeVersion:   "1.0",
+	CloudEventsVersion: "0.1",
+	Source:             "/sink",
+	EventID:            "42",
+	EventTime:          time.Now(),
+	SchemaURL:          "http://www.json.org",
+	ContentType:        "application/json",
+	Data:               &exampleData{Alpha: "julie", Beta: 42},
+	Extensions:         map[string]string{"ext1": "value"},
 }
 
 var testRule = rules.Rule{

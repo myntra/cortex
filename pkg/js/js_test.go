@@ -1,6 +1,11 @@
 package js
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+
+	"github.com/dop251/goja"
+)
 
 func TestSimple(t *testing.T) {
 	script := []byte(`
@@ -13,6 +18,24 @@ func TestSimple(t *testing.T) {
 		t.Fatal("result is nil")
 	}
 	if result.(int64) != 1 {
+		t.Fatalf("unexpected result %v", result)
+	}
+}
+
+func TestSimpleBad(t *testing.T) {
+	script := []byte(`
+	let result = 0;
+	export default function() { result++; `)
+
+	result := Execute(script, 0)
+
+	if result == nil {
+		t.Fatal("result is nil")
+	}
+	ex, ok := result.(*goja.Exception)
+	fmt.Println(ex, ok)
+
+	if !ok {
 		t.Fatalf("unexpected result %v", result)
 	}
 }

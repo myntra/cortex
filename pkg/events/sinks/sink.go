@@ -4,28 +4,24 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/myntra/cortex/pkg/events"
+	"github.com/cortex/pkg/events"
 	"github.com/cortex/pkg/types"
-	"github.com/fnproject/cloudevent"
 	"github.com/golang/glog"
 	"github.com/satori/go.uuid"
 )
 
 // EventFromSite247 converts alerts sent from site24x7 into cloud events
 func EventFromSite247(alert types.Site247Alert) *events.Event {
-	timeNow := time.Now()
 	event := events.Event{
-		CloudEvent: &cloudevent.CloudEvent{
-			Source:             "site247",
-			Data:               alert,
-			ContentType:        "application/json",
-			EventTypeVersion:   "1.0",
-			CloudEventsVersion: "0.1",
-			SchemaURL:          "",
-			EventID:            generateUUID().String(),
-			EventTime:          &timeNow,
-			EventType:          fmt.Sprintf("site247.%s.%s", alert.MonitorGroupName, alert.MonitorName),
-		},
+		Source:             "site247",
+		Data:               alert,
+		ContentType:        "application/json",
+		EventTypeVersion:   "1.0",
+		CloudEventsVersion: "0.1",
+		SchemaURL:          "",
+		EventID:            generateUUID().String(),
+		EventTime:          time.Now(),
+		EventType:          fmt.Sprintf("site247.%s.%s", alert.MonitorGroupName, alert.MonitorName),
 	}
 	return &event
 }
