@@ -1,10 +1,14 @@
 package store
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -13,16 +17,39 @@ import (
 )
 
 func (d *defaultStore) open() error {
-	config := raft.DefaultConfig()
-	config.LocalID = raft.ServerID(d.opt.NodeID)
 
-	bindAddr := d.opt.GetBindAddr()
+	id := d.opt.NodeID
+
+	if id == "" {
+		data, err := ioutil.ReadFile(filepath.Join(d.opt.Dir, "node.id"))
+		id = strings.TrimSpace(string(data))
+		if os.IsNotExist(err) || id == "" {
+			var data [4]byte
+			if _, err := rand.Read(data[:]); err != nil {
+				panic("random error: " + err.Error())
+			}
+			id = hex.EncodeToString(data[:])[:7]
+			err = ioutil.WriteFile(filepath.Join(d.opt.Dir, "node.id"), []byte(id+"\n"), 0600)
+			if err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+	}
+
+	glog.Info("opening raft store \n")
+	config := raft.DefaultConfig()
+	config.LocalID = raft.ServerID(id)
+
 	// Setup Raft communication.
-	addr, err := net.ResolveTCPAddr("tcp", bindAddr)
+	addr, err := net.ResolveTCPAddr("tcp", d.opt.RaftAddr)
 	if err != nil {
 		return err
 	}
-	transport, err := raft.NewTCPTransport(bindAddr, addr, 3, 10*time.Second, os.Stderr)
+
+	//raft.NewTCPTransportWithConfig
+	transport, err := NewTCPTransport(d.opt.RaftListener, addr, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return err
 	}
@@ -62,10 +89,7 @@ func (d *defaultStore) open() error {
 				},
 			},
 		}
-		f := ra.BootstrapCluster(configuration)
-		if f.Error() != nil {
-			return f.Error()
-		}
+		ra.BootstrapCluster(configuration)
 
 		// since in bootstrap mode, block until leadership is attained.
 	loop:
@@ -78,9 +102,23 @@ func (d *defaultStore) open() error {
 				}
 			}
 		}
+	} else {
+		// join a remote node
+		glog.Infof("join a remote node %v\n", d.opt.JoinAddr)
+		err := httpRaftJoin(d.opt.JoinAddr, d.opt.NodeID, d.opt.RaftAddr)
+		if err != nil {
+			return err
+		}
 	}
 
+	go d.flusher()
+
 	return nil
+}
+
+func (d *defaultStore) snapshot() error {
+	f := d.raft.Snapshot()
+	return f.Error()
 }
 
 func (d *defaultStore) close() error {

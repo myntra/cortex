@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/myntra/cortex/pkg/executions"
 
@@ -37,21 +38,27 @@ func NewNode(cfg *config.Config) (*Node, error) {
 		return nil, err
 	}
 
-	// join a remote node
-	if cfg.JoinAddr != "" {
-		glog.Infof("join a remote node %v\n", cfg.JoinAddr)
-		err := httpRaftJoin(cfg.JoinAddr, cfg.NodeID, cfg.GetBindAddr())
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	node := &Node{store: store}
 
 	return node, nil
 }
 
-// Shutdown store
+// Start the node
+func (n *Node) Start() error {
+
+	go func() {
+		ticker := time.NewTicker(time.Minute * 1)
+		for {
+			select {
+			case <-ticker.C:
+				glog.Infof("take snapshot => %v", n.Snapshot())
+			}
+		}
+	}()
+	return n.store.open()
+}
+
+// Shutdown the node
 func (n *Node) Shutdown() error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -87,7 +94,7 @@ func (n *Node) LeaderAddr() string {
 		return ""
 	}
 
-	tcpPort := raftPort - 1
+	tcpPort := raftPort + 1
 	tcpURL := fields[0]
 	if tcpURL == "" {
 		tcpURL = "0.0.0.0"
@@ -169,6 +176,11 @@ func (n *Node) Join(nodeID, addr string) error {
 // Leave a remote node
 func (n *Node) Leave(nodeID string) error {
 	return n.store.acceptLeave(nodeID)
+}
+
+// Snapshot takes a snapshot of the store
+func (n *Node) Snapshot() error {
+	return n.store.snapshot()
 }
 
 func httpRaftJoin(joinAddr, nodeID, bindAddr string) error {

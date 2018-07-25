@@ -67,12 +67,6 @@ func newStore(opt *config.Config) (*defaultStore, error) {
 		executionBucketQueue: make(chan *events.Bucket, 1000),
 	}
 
-	if err := store.open(); err != nil {
-		return nil, err
-	}
-
-	go store.flusher()
-
 	return store, nil
 }
 

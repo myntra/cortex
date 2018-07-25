@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -87,11 +88,10 @@ var testBucketScript = ScriptRequest{
 func startService(t *testing.T, cfg *config.Config, svc *Service) {
 
 	go func() {
-		if err := svc.HTTP().ListenAndServe(); err != nil {
+		if err := svc.Start(); err != nil {
 			if err == http.ErrServerClosed {
 				return
 			}
-			t.Fatal(err)
 		}
 	}()
 
@@ -103,6 +103,7 @@ func stopService(t *testing.T, svc *Service) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 }
 
 func singleService(t *testing.T, f func(url string)) {
@@ -110,15 +111,31 @@ func singleService(t *testing.T, f func(url string)) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	defer os.RemoveAll(tmpDir)
 
+	raftAddr := ":6878"
+	httpAddr := ":6879"
+
+	raftListener, err := net.Listen("tcp", raftAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	httpListener, err := net.Listen("tcp", httpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cfg := &config.Config{
 		NodeID:               "service0",
-		RaftBindPort:         6678,
 		Dir:                  tmpDir,
 		DefaultDwell:         4000, // 3 minutes
 		DefaultMaxDwell:      8000, // 6 minutes
 		DefaultDwellDeadline: 3800, // 2.5 minutes
 		MaxHistory:           1000,
 		FlushInterval:        1000,
+		HTTPAddr:             httpAddr,
+		RaftAddr:             raftAddr,
+		HTTPListener:         httpListener,
+		RaftListener:         raftListener,
 	}
 
 	svc, err := New(cfg)
@@ -129,7 +146,7 @@ func singleService(t *testing.T, f func(url string)) {
 	startService(t, cfg, svc)
 	defer stopService(t, svc)
 
-	url := "http://localhost" + cfg.GetHTTPAddr()
+	url := "http://localhost" + cfg.HTTPAddr
 	// run test
 	f(url)
 }
@@ -141,16 +158,32 @@ func multiService(t *testing.T, f func(urls []string)) {
 	tmpDir1, _ := ioutil.TempDir("", "store_test1")
 	defer os.RemoveAll(tmpDir1)
 
+	raftAddr := ":7878"
+	httpAddr := ":7879"
+
+	raftListener, err := net.Listen("tcp", raftAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	httpListener, err := net.Listen("tcp", httpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// open store 1
 	cfg1 := &config.Config{
 		NodeID:               "node0",
-		RaftBindPort:         6778,
 		Dir:                  tmpDir1,
 		DefaultDwell:         4000, // 3 minutes
 		DefaultMaxDwell:      8000, // 6 minutes
 		DefaultDwellDeadline: 3800, // 2.5 minutes
 		MaxHistory:           1000,
 		FlushInterval:        1000,
+		HTTPAddr:             httpAddr,
+		RaftAddr:             raftAddr,
+		HTTPListener:         httpListener,
+		RaftListener:         raftListener,
 	}
 
 	svc1, err := New(cfg1)
@@ -163,17 +196,33 @@ func multiService(t *testing.T, f func(urls []string)) {
 	tmpDir2, _ := ioutil.TempDir("", "store_test2")
 	defer os.RemoveAll(tmpDir2)
 
+	raftAddr1 := ":8878"
+	httpAddr1 := ":8879"
+
+	raftListener1, err := net.Listen("tcp", raftAddr1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	httpListener1, err := net.Listen("tcp", httpAddr1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// open store 2
 	cfg2 := &config.Config{
 		NodeID:               "node1",
-		RaftBindPort:         6878,
-		JoinAddr:             "0.0.0.0" + cfg1.GetHTTPAddr(),
+		JoinAddr:             "0.0.0.0" + cfg1.HTTPAddr,
 		Dir:                  tmpDir2,
 		DefaultDwell:         4000, // 3 minutes
 		DefaultMaxDwell:      8000, // 6 minutes
 		DefaultDwellDeadline: 3800, // 2.5 minutes
 		MaxHistory:           1000,
 		FlushInterval:        1000,
+		HTTPAddr:             httpAddr1,
+		RaftAddr:             raftAddr1,
+		HTTPListener:         httpListener1,
+		RaftListener:         raftListener1,
 	}
 
 	svc2, err := New(cfg2)
@@ -186,17 +235,33 @@ func multiService(t *testing.T, f func(urls []string)) {
 	tmpDir3, _ := ioutil.TempDir("", "store_test3")
 	defer os.RemoveAll(tmpDir3)
 
+	raftAddr2 := ":9978"
+	httpAddr2 := ":9979"
+
+	raftListener2, err := net.Listen("tcp", raftAddr2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	httpListener2, err := net.Listen("tcp", httpAddr2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// open store 2
 	cfg3 := &config.Config{
 		NodeID:               "node2",
-		RaftBindPort:         6978,
-		JoinAddr:             "0.0.0.0" + cfg1.GetHTTPAddr(),
+		JoinAddr:             "0.0.0.0" + cfg1.HTTPAddr,
 		Dir:                  tmpDir3,
 		DefaultDwell:         4000, // 3 minutes
 		DefaultMaxDwell:      8000, // 6 minutes
 		DefaultDwellDeadline: 3800, // 2.5 minutes
 		MaxHistory:           1000,
 		FlushInterval:        1000,
+		HTTPAddr:             httpAddr2,
+		RaftAddr:             raftAddr2,
+		HTTPListener:         httpListener2,
+		RaftListener:         raftListener2,
 	}
 
 	svc3, err := New(cfg3)
@@ -205,9 +270,9 @@ func multiService(t *testing.T, f func(urls []string)) {
 	}
 	startService(t, cfg3, svc3)
 
-	url1 := "http://localhost" + cfg1.GetHTTPAddr()
-	url2 := "http://localhost" + cfg2.GetHTTPAddr()
-	url3 := "http://localhost" + cfg3.GetHTTPAddr()
+	url1 := "http://localhost" + cfg1.HTTPAddr
+	url2 := "http://localhost" + cfg2.HTTPAddr
+	url3 := "http://localhost" + cfg3.HTTPAddr
 	urls = append(urls, url1, url2, url3)
 
 	time.Sleep(time.Second * 5)
