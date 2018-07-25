@@ -40,13 +40,13 @@ var testevent = events.Event{
 }
 
 var testRule = rules.Rule{
-	ID:                  "123",
-	HookEndpoint:        "http://localhost:3000/testrule",
-	HookRetry:           2,
-	EventTypes:          []string{"acme.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
-	WaitWindow:          1000,
-	WaitWindowThreshold: 800,
-	MaxWaitWindow:       2000,
+	ID:            "123",
+	HookEndpoint:  "http://localhost:3000/testrule",
+	HookRetry:     2,
+	EventTypes:    []string{"acme.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
+	Dwell:         1000,
+	DwellDeadline: 800,
+	MaxDwell:      2000,
 }
 
 var testRuleUpdated = rules.Rule{
@@ -95,13 +95,13 @@ func singleService(t *testing.T, f func(url string)) {
 	defer os.RemoveAll(tmpDir)
 
 	cfg := &config.Config{
-		NodeID:                     "service0",
-		RaftBindPort:               6678,
-		Dir:                        tmpDir,
-		DefaultWaitWindow:          4000, // 3 minutes
-		DefaultMaxWaitWindow:       8000, // 6 minutes
-		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		MaxHistory:                 1000,
+		NodeID:               "service0",
+		RaftBindPort:         6678,
+		Dir:                  tmpDir,
+		DefaultDwell:         4000, // 3 minutes
+		DefaultMaxDwell:      8000, // 6 minutes
+		DefaultDwellDeadline: 3800, // 2.5 minutes
+		MaxHistory:           1000,
 	}
 
 	svc, err := New(cfg)
@@ -126,13 +126,13 @@ func multiService(t *testing.T, f func(urls []string)) {
 
 	// open store 1
 	cfg1 := &config.Config{
-		NodeID:                     "node0",
-		RaftBindPort:               6778,
-		Dir:                        tmpDir1,
-		DefaultWaitWindow:          4000, // 3 minutes
-		DefaultMaxWaitWindow:       8000, // 6 minutes
-		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		MaxHistory:                 1000,
+		NodeID:               "node0",
+		RaftBindPort:         6778,
+		Dir:                  tmpDir1,
+		DefaultDwell:         4000, // 3 minutes
+		DefaultMaxDwell:      8000, // 6 minutes
+		DefaultDwellDeadline: 3800, // 2.5 minutes
+		MaxHistory:           1000,
 	}
 
 	svc1, err := New(cfg1)
@@ -147,14 +147,14 @@ func multiService(t *testing.T, f func(urls []string)) {
 
 	// open store 2
 	cfg2 := &config.Config{
-		NodeID:                     "node1",
-		RaftBindPort:               6878,
-		JoinAddr:                   "0.0.0.0" + cfg1.GetHTTPAddr(),
-		Dir:                        tmpDir2,
-		DefaultWaitWindow:          4000, // 3 minutes
-		DefaultMaxWaitWindow:       8000, // 6 minutes
-		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		MaxHistory:                 1000,
+		NodeID:               "node1",
+		RaftBindPort:         6878,
+		JoinAddr:             "0.0.0.0" + cfg1.GetHTTPAddr(),
+		Dir:                  tmpDir2,
+		DefaultDwell:         4000, // 3 minutes
+		DefaultMaxDwell:      8000, // 6 minutes
+		DefaultDwellDeadline: 3800, // 2.5 minutes
+		MaxHistory:           1000,
 	}
 
 	svc2, err := New(cfg2)
@@ -169,14 +169,14 @@ func multiService(t *testing.T, f func(urls []string)) {
 
 	// open store 2
 	cfg3 := &config.Config{
-		NodeID:                     "node2",
-		RaftBindPort:               6978,
-		JoinAddr:                   "0.0.0.0" + cfg1.GetHTTPAddr(),
-		Dir:                        tmpDir3,
-		DefaultWaitWindow:          4000, // 3 minutes
-		DefaultMaxWaitWindow:       8000, // 6 minutes
-		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		MaxHistory:                 1000,
+		NodeID:               "node2",
+		RaftBindPort:         6978,
+		JoinAddr:             "0.0.0.0" + cfg1.GetHTTPAddr(),
+		Dir:                  tmpDir3,
+		DefaultDwell:         4000, // 3 minutes
+		DefaultMaxDwell:      8000, // 6 minutes
+		DefaultDwellDeadline: 3800, // 2.5 minutes
+		MaxHistory:           1000,
 	}
 
 	svc3, err := New(cfg3)

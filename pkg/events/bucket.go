@@ -14,7 +14,7 @@ import (
 // NewBucket creates a new Bucket
 func NewBucket(rule rules.Rule) *Bucket {
 	return &Bucket{
-		flushWait: rule.WaitWindow,
+		flushWait: rule.Dwell,
 		UpdatedAt: time.Now(),
 		CreatedAt: time.Now(),
 		Rule:      rule,
@@ -33,7 +33,7 @@ type Bucket struct {
 // AddEvent to the bucket
 func (rb *Bucket) AddEvent(event *Event) {
 	rb.Events = append(rb.Events, event)
-	rb.updateWaitWindow()
+	rb.updateDwell()
 }
 
 // Post posts rulebucket to the configured hook endpoint
@@ -67,19 +67,19 @@ func (rb *Bucket) Post() error {
 	return nil
 }
 
-// GetWaitWindowDuration converts wait_window(ms) to time.Duration
-func (rb *Bucket) getWaitWindowDuration() time.Duration {
-	return time.Millisecond * time.Duration(rb.Rule.WaitWindow)
+// GetDwellDuration converts dwell(ms) to time.Duration
+func (rb *Bucket) getDwellDuration() time.Duration {
+	return time.Millisecond * time.Duration(rb.Rule.Dwell)
 }
 
-// getWaitWindowThresholdDuration converts wait_window_threshold(ms) to time.Duration
-func (rb *Bucket) getWaitWindowThresholdDuration() time.Duration {
-	return time.Millisecond * time.Duration(rb.Rule.WaitWindowThreshold)
+// getDwellDeadlineDuration converts dwell_threshold(ms) to time.Duration
+func (rb *Bucket) getDwellDeadlineDuration() time.Duration {
+	return time.Millisecond * time.Duration(rb.Rule.DwellDeadline)
 }
 
-// getMaxWaitWindow converts max_wait_window(ms) to time.Duration
-func (rb *Bucket) getMaxWaitWindow() time.Duration {
-	return time.Millisecond * time.Duration(rb.Rule.MaxWaitWindow)
+// getMaxDwell converts max_dwell(ms) to time.Duration
+func (rb *Bucket) getMaxDwell() time.Duration {
+	return time.Millisecond * time.Duration(rb.Rule.MaxDwell)
 }
 
 // CanFlush returns if the bucket can be evicted from the db
@@ -87,19 +87,19 @@ func (rb *Bucket) CanFlush() bool {
 	return time.Since(rb.UpdatedAt) >= time.Millisecond*time.Duration(rb.flushWait)
 }
 
-// UpdateWaitWindow updates flush waiting duration
-func (rb *Bucket) updateWaitWindow() {
+// UpdateDwell updates flush waiting duration
+func (rb *Bucket) updateDwell() {
 	timeSinceCreated := time.Since(rb.CreatedAt)
 
-	if timeSinceCreated >= rb.getMaxWaitWindow() {
+	if timeSinceCreated >= rb.getMaxDwell() {
 		rb.UpdatedAt = time.Now()
 		return
 	}
 
 	timeSinceLastEventAdded := time.Since(rb.UpdatedAt)
 
-	if timeSinceLastEventAdded >= rb.getWaitWindowThresholdDuration() {
-		rb.flushWait = rb.flushWait + rb.Rule.WaitWindow
+	if timeSinceLastEventAdded >= rb.getDwellDeadlineDuration() {
+		rb.flushWait = rb.flushWait + rb.Rule.Dwell
 	}
 
 	rb.UpdatedAt = time.Now()

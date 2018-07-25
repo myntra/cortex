@@ -59,13 +59,13 @@ func singleNode(t *testing.T, f func(node *Node)) {
 
 	// open store
 	cfg := &config.Config{
-		NodeID:                     "node0",
-		RaftBindPort:               4678,
-		Dir:                        tmpDir,
-		DefaultWaitWindow:          4000, // 3 minutes
-		DefaultMaxWaitWindow:       8000, // 6 minutes
-		DefaultWaitWindowThreshold: 3800, // 2.5 minutes
-		MaxHistory:                 1000,
+		NodeID:               "node0",
+		RaftBindPort:         4678,
+		Dir:                  tmpDir,
+		DefaultDwell:         4000, // 3 minutes
+		DefaultMaxDwell:      8000, // 6 minutes
+		DefaultDwellDeadline: 3800, // 2.5 minutes
+		MaxHistory:           1000,
 	}
 
 	node, err := NewNode(cfg)
@@ -190,7 +190,7 @@ func TestOrphanEventSingleNode(t *testing.T) {
 			case rb = <-node.store.executionBucketQueue:
 				fmt.Println("rb=>", rb)
 
-			case <-time.After(time.Millisecond * time.Duration(node.store.opt.DefaultWaitWindow+1000)):
+			case <-time.After(time.Millisecond * time.Duration(node.store.opt.DefaultDwell+1000)):
 				break loop
 			}
 
@@ -215,7 +215,7 @@ func TestEventSingleNode(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultWaitWindow+3000))
+		time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultDwell+3000))
 		records := node.GetRuleExectutions(testRule.ID)
 		if len(records) == 0 {
 			t.Fatal("no record of execution, event was not stashed")

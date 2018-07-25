@@ -11,17 +11,17 @@ import (
 
 // Config is required for initializing the service
 type Config struct {
-	NodeID                     string `config:"id"`
-	RaftBindPort               int    `config:"bind"`
-	Dir                        string `config:"dir"`
-	JoinAddr                   string `config:"join"`
-	DefaultWaitWindow          uint64 `config:"wait_window"`
-	DefaultWaitWindowThreshold uint64 `config:"wait_window_threshold"`
-	DefaultMaxWaitWindow       uint64 `config:"max_wait_window"`
-	MaxHistory                 int    `config:"max_history"`
-	Version                    string `config:"version"`
-	Commit                     string `config:"commit"`
-	Date                       string `config:"date"`
+	NodeID               string `config:"id"`
+	RaftBindPort         int    `config:"bind"`
+	Dir                  string `config:"dir"`
+	JoinAddr             string `config:"join"`
+	DefaultDwell         uint64 `config:"dwell"`
+	DefaultDwellDeadline uint64 `config:"dwell_threshold"`
+	DefaultMaxDwell      uint64 `config:"max_dwell"`
+	MaxHistory           int    `config:"max_history"`
+	Version              string `config:"version"`
+	Commit               string `config:"commit"`
+	Date                 string `config:"date"`
 }
 
 // Validate the config

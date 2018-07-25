@@ -193,10 +193,10 @@ func (d *defaultStore) stash(ruleID string, event *events.Event) error {
 
 func (d *defaultStore) addRule(rule *rules.Rule) error {
 
-	if rule.WaitWindow == 0 || rule.WaitWindowThreshold == 0 || rule.MaxWaitWindow == 0 {
-		rule.WaitWindow = d.opt.DefaultWaitWindow
-		rule.WaitWindowThreshold = d.opt.DefaultWaitWindowThreshold
-		rule.MaxWaitWindow = d.opt.DefaultMaxWaitWindow
+	if rule.Dwell == 0 || rule.DwellDeadline == 0 || rule.MaxDwell == 0 {
+		rule.Dwell = d.opt.DefaultDwell
+		rule.DwellDeadline = d.opt.DefaultDwellDeadline
+		rule.MaxDwell = d.opt.DefaultMaxDwell
 	}
 
 	return d.applyCMD(&command{

@@ -73,9 +73,9 @@ const schema = {
   hook_endpoint: "",
   hook_retry: "",
   event_types: "",
-  wait_window: "",
-  wait_window_threshold: "",
-  max_wait_window: "",
+  dwell: "",
+  dwell_threshold: "",
+  max_dwell: "",
   required: ["title", "event_types"],
   properties: {
     title: { type: "string", title: "Title", default: "A new rule" },
@@ -83,9 +83,9 @@ const schema = {
     hook_endpoint: { type: "string", title: "Hook Endpoint", default: "http://localhost:4000" },
     hook_retry: { type: "string", title: "Hook Retry", default: "2" },
     event_types: { type: "string", title: "Match Event Types", default: "com.acme.node1.cpu,com.apple.node2.cpu" },
-    wait_window: { type: "string", title: "Wait Window(seconds)", default: "120" },
-    wait_window_threshold: { type: "string", title: "Wait Window Threshold(seconds)", default: "100" },
-    max_wait_window: { type: "string", title: "Maximum Wait Window(seconds)", default: "240" },
+    dwell: { type: "string", title: "Wait Window(seconds)", default: "120" },
+    dwell_threshold: { type: "string", title: "Wait Window Threshold(seconds)", default: "100" },
+    max_dwell: { type: "string", title: "Maximum Wait Window(seconds)", default: "240" },
 
   }
 };
