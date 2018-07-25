@@ -13,6 +13,7 @@ import (
 
 // EventFromSite247 converts alerts sent from site24x7 into cloud events
 func EventFromSite247(alert types.Site247Alert) *events.Event {
+	timeNow := time.Now()
 	event := events.Event{
 		CloudEvent: &cloudevent.CloudEvent{
 			Source:             "site247",
@@ -22,7 +23,7 @@ func EventFromSite247(alert types.Site247Alert) *events.Event {
 			CloudEventsVersion: "0.1",
 			SchemaURL:          "",
 			EventID:            generateUUID().String(),
-			EventTime:          &time.Time{},
+			EventTime:          &timeNow,
 			EventType:          fmt.Sprintf("site247.%s.%s", alert.MonitorGroupName, alert.MonitorName),
 		},
 	}
