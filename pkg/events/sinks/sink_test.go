@@ -13,7 +13,7 @@ var alert = types.Site247Alert{
 	SearchPollFrequency:  1,
 	MonitorID:            2136797812307,
 	FailedLocations:      "Delhi,Bangalore",
-	MonitorURL:           "https://localhost:4000/search?query=Nike",
+	MonitorURL:           "https://localhost:4000/search?query=brand_test",
 	IncidentTimeISO:      "2018-07-24T18:43:08+0530",
 	MonitorType:          "URL",
 	Status:               "DOWN",
