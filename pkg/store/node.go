@@ -27,7 +27,7 @@ type Node struct {
 
 // NewNode returns a new raft node
 func NewNode(cfg *config.Config) (*Node, error) {
-
+	glog.Infof("NewNode %v\n", cfg)
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %v", err)
 	}
@@ -39,6 +39,7 @@ func NewNode(cfg *config.Config) (*Node, error) {
 
 	// join a remote node
 	if cfg.JoinAddr != "" {
+		glog.Infof("join a remote node %v\n", cfg.JoinAddr)
 		err := httpRaftJoin(cfg.JoinAddr, cfg.NodeID, cfg.GetBindAddr())
 		if err != nil {
 			return nil, err

@@ -16,12 +16,13 @@ func (d *defaultStore) open() error {
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(d.opt.NodeID)
 
+	bindAddr := d.opt.GetBindAddr()
 	// Setup Raft communication.
-	addr, err := net.ResolveTCPAddr("tcp", d.opt.GetBindAddr())
+	addr, err := net.ResolveTCPAddr("tcp", bindAddr)
 	if err != nil {
 		return err
 	}
-	transport, err := raft.NewTCPTransport(d.opt.GetBindAddr(), addr, 3, 10*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransport(bindAddr, addr, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return err
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 type executionStorage struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 	m  map[string]*executions.Record
 }
 

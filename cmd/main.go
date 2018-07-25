@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"crawshaw.io/littleboss"
 	"github.com/golang/glog"
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend/flags"
@@ -60,10 +59,9 @@ func init() {
 func main() {
 
 	loader := confita.NewLoader(flags.NewBackend())
-	lb := littleboss.New("cortex")
-	lb.Command("lb", flag.String("lb", "start", "littleboss start command"))
-
-	flag.Parse()
+	// lb := littleboss.New("cortex")
+	// lb.Command("lb", flag.String("lb", "start", "littleboss start command"))
+	// lb.Listener("http", "tcp", ":8878", "-http")
 
 	err := loader.Load(context.Background(), cfg)
 	if err != nil {
@@ -73,12 +71,13 @@ func main() {
 
 	svc, err := service.New(cfg)
 	if err != nil {
-		glog.Fatal(err)
+		glog.Error(err)
+		os.Exit(1)
 	}
 
-	lb.Run(func(ctx context.Context) {
-		run(ctx, svc)
-	})
+	// lb.Run(func(ctx context.Context) {
+	run(context.Background(), svc)
+	// })
 
 	glog.Info("cortex exited")
 }

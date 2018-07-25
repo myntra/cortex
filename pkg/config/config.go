@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -24,10 +25,15 @@ type Config struct {
 	Version              string `config:"version"`
 	Commit               string `config:"commit"`
 	Date                 string `config:"date"`
+
+	bindAddr string
+	httpAddr string
 }
 
 // Validate the config
 func (c *Config) Validate() error {
+
+	glog.Infof("Validating config %v \n", c)
 	if !c.validateRaftBindAddr() {
 		return fmt.Errorf("invalid bind port. must be a valid int value with the next port available e.g 8788 and 8799 must be available")
 	}
@@ -84,15 +90,34 @@ func (c *Config) validateDir() error {
 	return nil
 }
 
+var onceGetBindAddr sync.Once
+
 // GetBindAddr returns the raft bind address
 func (c *Config) GetBindAddr() string {
-	return getAddr(":" + strconv.Itoa(c.RaftBindPort+1))
+	glog.Info("GetBindAddr")
+	if c.bindAddr == "" {
+		onceGetBindAddr.Do(func() {
+			c.bindAddr = getAddr(":" + strconv.Itoa(c.RaftBindPort+1))
+		})
+	}
+
+	return c.bindAddr
 }
+
+var onceGetHTTPAddr sync.Once
 
 // GetHTTPAddr returns the raft bind address
 func (c *Config) GetHTTPAddr() string {
-	return getAddr(":" + strconv.Itoa(c.RaftBindPort))
+	glog.Info("GetHTTPAddr")
+	if c.httpAddr == "" {
+		onceGetHTTPAddr.Do(func() {
+			c.httpAddr = getAddr(":" + strconv.Itoa(c.RaftBindPort))
+		})
+	}
+	return c.httpAddr
 }
+
+var mu sync.Mutex
 
 func getAddr(addr string) string {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
@@ -105,9 +130,13 @@ func getAddr(addr string) string {
 }
 
 func checkAddrFree(addr string) bool {
-	conn, _ := net.DialTimeout("tcp", addr, time.Second)
+	conn, err := net.DialTimeout("tcp", addr, time.Second)
+	if err != nil {
+		glog.Errorf("err %v\n", err)
+	}
 	if conn != nil {
 		conn.Close()
+		glog.Errorf("addr %v is is not available ", addr)
 		return false
 	}
 	return true

@@ -6,7 +6,7 @@ import (
 )
 
 type scriptStorage struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 	m  map[string][]byte
 }
 

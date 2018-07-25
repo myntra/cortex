@@ -246,7 +246,6 @@ func TestRuleSingleService(t *testing.T) {
 	singleService(t, func(url string) {
 		ruletest(t, url)
 	})
-
 }
 
 func TestRuleMultiService(t *testing.T) {
