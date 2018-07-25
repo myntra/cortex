@@ -1,5 +1,6 @@
 const fakerules = [
     {
+        id:'1',
         title: "Revenue Down rule",
         scriptID: "revenue.js",
         hook_endpoint: "http://localhost:4000",
@@ -10,6 +11,7 @@ const fakerules = [
         max_wait_window: "240",
     },
     {
+        id:'2',
         title: "Cart Down rule",
         scriptID: "card_down.js",
         hook_endpoint: "http://localhost:4000",
@@ -20,6 +22,7 @@ const fakerules = [
         max_wait_window: "240",
     },
     {
+        id:'3',
         title: "Style Down rule",
         scriptID: "style_down.js",
         hook_endpoint: "http://localhost:4000",
