@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/myntra/cortex/pkg/executions"
 
 	"github.com/fnproject/cloudevent"
@@ -210,8 +210,12 @@ func ruletest(t *testing.T, url string) {
 
 	// update
 	e.PUT("/rules").WithJSON(testRuleUpdated).Expect().Status(http.StatusOK)
-	testRule.EventTypes = testRuleUpdated.EventTypes
-	e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
+	var cloneTestRule rules.Rule
+	if err := mergo.Merge(&cloneTestRule, testRule); err != nil {
+		t.Fatal(err)
+	}
+	cloneTestRule.EventTypes = testRuleUpdated.EventTypes
+	e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(cloneTestRule)
 
 	//remove
 	e.DELETE("/rules/" + testRule.ID).Expect().Status(http.StatusOK)
@@ -239,10 +243,14 @@ func TestRuleMultiService(t *testing.T) {
 		// update on node3
 		e = httpexpect.New(t, urls[2])
 		e.PUT("/rules").WithJSON(testRuleUpdated).Expect().Status(http.StatusOK)
-		testRule.EventTypes = testRuleUpdated.EventTypes
+		var cloneTestRule rules.Rule
+		if err := mergo.Merge(&cloneTestRule, testRule); err != nil {
+			t.Fatal(err)
+		}
+		cloneTestRule.EventTypes = testRuleUpdated.EventTypes
 		// verifiy from node 1
 		e = httpexpect.New(t, urls[0])
-		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
+		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(cloneTestRule)
 
 		// delete from node3
 		e = httpexpect.New(t, urls[2])
@@ -308,11 +316,20 @@ func TestScriptsMultiService(t *testing.T) {
 	})
 }
 
+func TestMergeRule(t *testing.T) {
+	if err := mergo.Merge(&testRuleUpdated, testRule); err != nil {
+		t.Fatal(err)
+	}
+
+	//fmt.Printf("testRuleUpdated %+v", testRuleUpdated)
+
+}
+
 func TestSingleEventSingleService(t *testing.T) {
 	singleService(t, func(url string) {
-
 		e := httpexpect.New(t, url)
 		// post rule
+		glog.Info("%+v\n", testRule)
 		e.POST("/rules").WithJSON(testRule).Expect().Status(http.StatusOK)
 		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
 
@@ -343,7 +360,8 @@ func TestSingleEventSingleService(t *testing.T) {
 		}
 
 		if len(ruleExecutions) == 0 {
-			t.Fatal("no executions found")
+			glog.Info("no executions found")
+			t.Fatal()
 		}
 
 		if testRule.ID != ruleExecutions[0].Bucket.Rule.ID {
@@ -355,13 +373,4 @@ func TestSingleEventSingleService(t *testing.T) {
 		}
 
 	})
-}
-
-func TestMergeRule(t *testing.T) {
-	if err := mergo.Merge(&testRuleUpdated, testRule); err != nil {
-		t.Fatal(err)
-	}
-
-	fmt.Printf("testRuleUpdated %+v", testRuleUpdated)
-
 }

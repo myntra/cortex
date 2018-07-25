@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/myntra/cortex/pkg/rules"
 	"github.com/sethgrid/pester"
 )
@@ -32,6 +33,7 @@ type Bucket struct {
 
 // AddEvent to the bucket
 func (rb *Bucket) AddEvent(event *Event) {
+	glog.Info("add event ==>  ", event)
 	rb.Events = append(rb.Events, event)
 	rb.updateDwell()
 }
