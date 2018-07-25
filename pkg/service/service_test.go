@@ -17,7 +17,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/rules"
-	httpexpect "gopkg.in/gavv/httpexpect.v1"
+	"gopkg.in/gavv/httpexpect.v1"
 )
 
 type exampleData struct {

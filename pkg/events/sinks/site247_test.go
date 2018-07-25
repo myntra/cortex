@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/myntra/cortex/pkg/types"
 )
 
-var alert = types.Site247Alert{
+var alert = Site247Alert{
 	MonitorName:          "brand_test",
 	MonitorGroupName:     "search",
 	SearchPollFrequency:  1,

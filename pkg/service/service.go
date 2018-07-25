@@ -17,8 +17,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 
-	"github.com/cortex/pkg/events/sinks"
-	"github.com/cortex/pkg/types"
+	"github.com/myntra/cortex/pkg/events/sinks"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/rules"
@@ -444,7 +443,7 @@ func (s *Service) site247AlertHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
-	alert := &types.Site247Alert{}
+	alert := &sinks.Site247Alert{}
 	err = json.Unmarshal(alertData, alert)
 	if err != nil {
 		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
