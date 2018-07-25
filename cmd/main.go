@@ -18,13 +18,13 @@ import (
 
 var (
 	//raft
-	bind                       string
-	join                       string
-	dir                        string
-	id                         string
-	defaultWaitWindow          uint64
-	defaultWaitWindowThreshold uint64
-	defaultMaxWaitWindow       uint64
+	bind                 string
+	join                 string
+	dir                  string
+	id                   string
+	defaultDwell         uint64
+	defaultDwellDeadline uint64
+	defaultMaxDwell      uint64
 
 	// build
 	version = "dev"
@@ -45,14 +45,14 @@ func usage() {
 func init() {
 	flag.Usage = usage
 	cfg = &config.Config{
-		NodeID:                     "",
-		RaftBindPort:               8878,
-		Dir:                        "./data",
-		JoinAddr:                   "",
-		DefaultWaitWindow:          3 * 60 * 1000,   // 3 minutes
-		DefaultMaxWaitWindow:       6 * 60 * 1000,   // 6 minutes
-		DefaultWaitWindowThreshold: 2.5 * 60 * 1000, // 2.5 minutes
-		MaxHistory:                 1000,
+		NodeID:               "",
+		RaftBindPort:         8878,
+		Dir:                  "./data",
+		JoinAddr:             "",
+		DefaultDwell:         3 * 60 * 1000,   // 3 minutes
+		DefaultMaxDwell:      6 * 60 * 1000,   // 6 minutes
+		DefaultDwellDeadline: 2.5 * 60 * 1000, // 2.5 minutes
+		MaxHistory:           1000,
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/sethgrid/pester"
 )
 
@@ -44,7 +45,7 @@ func ErrStatus(w http.ResponseWriter, r *http.Request, message string, statusCod
 		glog.Error("ioutil.ReadAll failed")
 	}
 
-	glog.Errorf("msg %v, r.Body %v, err: %v", message, string(content), err)
+	glog.Errorf("msg %v, r.Body %v, err: %v", message, string(content), errors.Wrap(err, ""))
 
 	http.Error(w, message, statusCode)
 }

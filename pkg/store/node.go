@@ -59,7 +59,7 @@ func (n *Node) Shutdown() error {
 		glog.Errorf("error shutting down node %v", err)
 		return err
 	}
-
+	glog.Info("node shut down")
 	return nil
 }
 
@@ -111,6 +111,7 @@ func (n *Node) UpdateRule(rule *rules.Rule) error {
 
 // Stash adds a event to the store
 func (n *Node) Stash(event *events.Event) error {
+	glog.Info("node stash event => ", event)
 	return n.store.matchAndStash(event)
 }
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/cortex/pkg/events/sinks"
 	"github.com/cortex/pkg/types"
+	"github.com/fnproject/cloudevent"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/rules"
@@ -70,13 +71,22 @@ func (s *Service) leaderProxy(h http.HandlerFunc) http.HandlerFunc {
 // eventHandler expects a event in request body and aggregates by type
 func (s *Service) eventHandler(w http.ResponseWriter, r *http.Request) {
 
-	event, err := events.FromRequest(r)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		util.ErrStatus(w, r, "invalid request body, expected a cloudevents.io event", http.StatusNotAcceptable, err)
 		return
 	}
 
-	err = s.node.Stash(event)
+	defer r.Body.Close()
+
+	var ce cloudevent.CloudEvent
+	err = json.Unmarshal(body, &ce)
+	if err != nil {
+		util.ErrStatus(w, r, "parsing failed, expected a cloudevents.io event", http.StatusNotAcceptable, err)
+		return
+	}
+
+	err = s.node.Stash(&events.Event{CloudEvent: &ce})
 	if err != nil {
 		util.ErrStatus(w, r, "error stashing event", http.StatusInternalServerError, err)
 		return
@@ -430,6 +440,12 @@ func (s *Service) site247AlertHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	event := sinks.EventFromSite247(*alert)
+
+	err = s.node.Stash(event)
+	if err != nil {
+		util.ErrStatus(w, r, "error stashing event", http.StatusInternalServerError, err)
+		return
+	}
 
 	b, err := json.Marshal(event)
 	if err != nil {

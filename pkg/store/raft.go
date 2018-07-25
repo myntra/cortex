@@ -88,6 +88,7 @@ func (d *defaultStore) close() error {
 	if f.Error() != nil {
 		return f.Error()
 	}
+	glog.Info("raft shut down")
 	glog.Flush()
 	return nil
 }

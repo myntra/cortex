@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/golang/glog"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/rules"
 )
@@ -17,7 +18,7 @@ type eventStorage struct {
 func (e *eventStorage) stash(rule rules.Rule, event *events.Event) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-
+	glog.Info("stash event ==>  ", event)
 	ruleID := rule.ID
 	if _, ok := e.m[ruleID]; !ok {
 		bucket := events.NewBucket(rule)

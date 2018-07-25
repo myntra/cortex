@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/events"
 	"github.com/cortex/pkg/types"
 	"github.com/fnproject/cloudevent"
 	"github.com/golang/glog"

@@ -170,6 +170,7 @@ func (d *defaultStore) applyCMD(cmd *command) error {
 }
 
 func (d *defaultStore) matchAndStash(event *events.Event) error {
+	glog.Info("match and stash event ==>  ", event)
 	for _, rule := range d.getRules() {
 		go d.match(rule, event)
 	}
@@ -177,6 +178,7 @@ func (d *defaultStore) matchAndStash(event *events.Event) error {
 }
 
 func (d *defaultStore) match(rule *rules.Rule, event *events.Event) error {
+	glog.Info("match event ==>  ", event)
 	if util.PatternMatch(event.EventType, rule.EventTypes) {
 		go d.stash(rule.ID, event)
 	}
@@ -184,6 +186,7 @@ func (d *defaultStore) match(rule *rules.Rule, event *events.Event) error {
 }
 
 func (d *defaultStore) stash(ruleID string, event *events.Event) error {
+	glog.Info("apply stash event ==>  ", event)
 	return d.applyCMD(&command{
 		Op:     "stash",
 		RuleID: ruleID,
@@ -193,10 +196,10 @@ func (d *defaultStore) stash(ruleID string, event *events.Event) error {
 
 func (d *defaultStore) addRule(rule *rules.Rule) error {
 
-	if rule.WaitWindow == 0 || rule.WaitWindowThreshold == 0 || rule.MaxWaitWindow == 0 {
-		rule.WaitWindow = d.opt.DefaultWaitWindow
-		rule.WaitWindowThreshold = d.opt.DefaultWaitWindowThreshold
-		rule.MaxWaitWindow = d.opt.DefaultMaxWaitWindow
+	if rule.Dwell == 0 || rule.DwellDeadline == 0 || rule.MaxDwell == 0 {
+		rule.Dwell = d.opt.DefaultDwell
+		rule.DwellDeadline = d.opt.DefaultDwellDeadline
+		rule.MaxDwell = d.opt.DefaultMaxDwell
 	}
 
 	return d.applyCMD(&command{
