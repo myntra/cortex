@@ -17,9 +17,9 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 
-	"github.com/myntra/cortex/pkg/events/sinks"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/events/sinks"
 	"github.com/myntra/cortex/pkg/rules"
 	"github.com/myntra/cortex/pkg/store"
 	"github.com/myntra/cortex/pkg/util"
@@ -485,6 +485,7 @@ func New(cfg *config.Config) (*Service, error) {
 	router.Use(middleware.Recoverer)
 
 	router.Post("/event", svc.leaderProxy(svc.eventHandler))
+	router.Post("/event/sink/site247", svc.site247AlertHandler)
 
 	router.Get("/rules", svc.getRulesHandler)
 	router.Get("/rules/{id}", svc.getRuleHandler)
@@ -501,8 +502,6 @@ func New(cfg *config.Config) (*Service, error) {
 
 	router.Get("/leave/{id}", svc.leaveHandler)
 	router.Post("/join", svc.joinHandler)
-
-	router.Post("/events/sink/site247", svc.site247AlertHandler)
 
 	srv := &http.Server{
 		ReadTimeout:  10 * time.Second,

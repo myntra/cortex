@@ -14,8 +14,12 @@ import (
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/executions"
 
+	"bytes"
+	"fmt"
+
 	"github.com/imdario/mergo"
 	"github.com/myntra/cortex/pkg/config"
+	"github.com/myntra/cortex/pkg/events/sinks"
 	"github.com/myntra/cortex/pkg/rules"
 	"gopkg.in/gavv/httpexpect.v1"
 )
@@ -23,6 +27,23 @@ import (
 type exampleData struct {
 	Alpha string `json:"alpha"`
 	Beta  int    `json:"beta"`
+}
+
+var testalertsite247 = &sinks.Site247Alert{
+	MonitorName:          "brand_test",
+	MonitorGroupName:     "search",
+	SearchPollFrequency:  1,
+	MonitorID:            2136797812307,
+	FailedLocations:      "Delhi,Bangalore",
+	MonitorURL:           "https://localhost:4000/search?query=brand_test",
+	IncidentTimeISO:      "2018-07-24T18:43:08+0530",
+	MonitorType:          "URL",
+	Status:               "DOWN",
+	Timezone:             "Asia/Calcutta",
+	IncidentTime:         "July 24, 2018 6:43 PM IST",
+	IncidentReason:       "Host Unavailable",
+	OutageTimeUnixFormat: 1532437988741,
+	RCALink:              "https://www.rcalinkdummy.com/somelink",
 }
 
 var testevent = &events.Event{
@@ -455,6 +476,57 @@ func TestSingleEventMultipleService(t *testing.T) {
 
 		if testevent.EventID != ruleExecutions[0].Bucket.Events[0].EventID {
 			t.Fatal("unexpected event id")
+		}
+
+	})
+}
+
+func TestSite247Handler(t *testing.T) {
+	singleService(t, func(url string) {
+		e := httpexpect.New(t, url)
+
+		// post event
+		e.POST("/event/sink/site247").WithJSON(testalertsite247).Expect().Status(http.StatusOK)
+
+		// fetch rule executions
+		s, err := json.Marshal(testalertsite247)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := http.Post(url+"/event/sink/site247", "application/json", bytes.NewReader(s))
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		defer resp.Body.Close()
+
+		var eventBody events.Event
+		err = json.Unmarshal(body, &eventBody)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		byteData, err := json.Marshal(eventBody.Data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var eventData sinks.Site247Alert
+		err = json.Unmarshal(byteData, &eventData)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if eventData != *testalertsite247 {
+			t.Fatal("unexpected eventbody data")
+		}
+
+		if eventBody.EventType != fmt.Sprintf("site247.%s.%s", testalertsite247.MonitorGroupName, testalertsite247.MonitorName) {
+			t.Fatal("unexpected eventtype data")
 		}
 
 	})
