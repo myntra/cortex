@@ -17,6 +17,8 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 
+	"github.com/cortex/pkg/events/sinks"
+	"github.com/cortex/pkg/types"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/rules"
@@ -411,6 +413,35 @@ func (s *Service) getScriptListHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
+func (s *Service) site247AlertHandler(w http.ResponseWriter, r *http.Request) {
+
+	alertData, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	defer r.Body.Close()
+	alert := &types.Site247Alert{}
+	err = json.Unmarshal(alertData, alert)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	event := sinks.EventFromSite247(*alert)
+
+	b, err := json.Marshal(event)
+	if err != nil {
+		util.ErrStatus(w, r, "error writing event data", http.StatusNotAcceptable, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
+}
+
 // New returns the http service wrapper for the store.
 func New(cfg *config.Config) (*Service, error) {
 
@@ -443,6 +474,8 @@ func New(cfg *config.Config) (*Service, error) {
 
 	router.Get("/leave/{id}", svc.leaveHandler)
 	router.Post("/join", svc.joinHandler)
+
+	router.Post("/events/sink/site247", svc.site247AlertHandler)
 
 	srv := &http.Server{
 		ReadTimeout:  10 * time.Second,
