@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"time"
 
@@ -15,8 +16,9 @@ type Config struct {
 	RaftBindPort         int    `config:"bind"`
 	Dir                  string `config:"dir"`
 	JoinAddr             string `config:"join"`
+	FlushInterval        uint64 `config:"flush_interval"`
 	DefaultDwell         uint64 `config:"dwell"`
-	DefaultDwellDeadline uint64 `config:"dwell_threshold"`
+	DefaultDwellDeadline uint64 `config:"dwell_deadline"`
 	DefaultMaxDwell      uint64 `config:"max_dwell"`
 	MaxHistory           int    `config:"max_history"`
 	Version              string `config:"version"`
@@ -33,7 +35,30 @@ func (c *Config) Validate() error {
 	if !c.validateNodeID() {
 		return fmt.Errorf("invalid id. must be valid node string e.g: node0")
 	}
+
+	err := c.validateDir()
+	if err != nil {
+		return err
+	}
+
+	if c.FlushInterval == 0 {
+		return fmt.Errorf("flush_interval is not set")
+	}
+
+	if c.DefaultDwell == 0 {
+		return fmt.Errorf("dwell is not set")
+	}
+
+	if c.DefaultDwellDeadline == 0 {
+		return fmt.Errorf("dwell_deadline is not set")
+	}
+
+	if c.DefaultMaxDwell == 0 {
+		return fmt.Errorf("max_dwell is not set")
+	}
+
 	return nil
+
 }
 
 func (c *Config) validateRaftBindAddr() bool {
@@ -42,6 +67,21 @@ func (c *Config) validateRaftBindAddr() bool {
 
 func (c *Config) validateNodeID() bool {
 	return c.NodeID != ""
+}
+
+func (c *Config) validateDir() error {
+	if c.Dir == "" {
+		return fmt.Errorf("raft dir is not set")
+	}
+
+	if _, err := os.Stat(c.Dir); os.IsNotExist(err) {
+		err := os.Mkdir(c.Dir, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("raft dir err %v", err)
+		}
+	}
+
+	return nil
 }
 
 // GetBindAddr returns the raft bind address

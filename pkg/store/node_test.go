@@ -63,6 +63,7 @@ func singleNode(t *testing.T, f func(node *Node)) {
 		DefaultMaxDwell:      8000, // 6 minutes
 		DefaultDwellDeadline: 3800, // 2.5 minutes
 		MaxHistory:           1000,
+		FlushInterval:        1000,
 	}
 
 	node, err := NewNode(cfg)

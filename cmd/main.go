@@ -53,6 +53,7 @@ func init() {
 		DefaultMaxDwell:      6 * 60 * 1000,   // 6 minutes
 		DefaultDwellDeadline: 2.5 * 60 * 1000, // 2.5 minutes
 		MaxHistory:           1000,
+		FlushInterval:        1000,
 	}
 }
 
