@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 
-	"github.com/fnproject/cloudevent"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/rules"
@@ -77,14 +76,14 @@ func (s *Service) eventHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	var ce cloudevent.CloudEvent
-	err = json.Unmarshal(body, &ce)
+	var event events.Event
+	err = json.Unmarshal(body, &event)
 	if err != nil {
 		util.ErrStatus(w, r, "parsing failed, expected a cloudevents.io event", http.StatusNotAcceptable, err)
 		return
 	}
 
-	err = s.node.Stash(&events.Event{CloudEvent: &ce})
+	err = s.node.Stash(&event)
 	if err != nil {
 		util.ErrStatus(w, r, "error stashing event", http.StatusInternalServerError, err)
 		return
@@ -300,6 +299,19 @@ func (s *ScriptRequest) Validate() error {
 	if len(s.Data) == 0 {
 		return fmt.Errorf("script data len 0")
 	}
+
+	// validationBucket := events.Bucket{
+	// 	Events: []*events.Event{
+	// 		&events.Event{},
+	// 	},
+	// }
+
+	// // result := js.Execute(s.Data, validationBucket)
+	// // ex, ok := result.(*goja.Exception)
+	// // if ok {
+	// // 	return fmt.Errorf("error executing script %v", ex)
+	// // }
+
 	return nil
 }
 

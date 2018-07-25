@@ -6,13 +6,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/executions"
 
-	"github.com/fnproject/cloudevent"
 	"github.com/imdario/mergo"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/rules"
@@ -24,15 +25,13 @@ type exampleData struct {
 	Beta  int    `json:"beta"`
 }
 
-func tptr(t time.Time) *time.Time { return nil }
-
-var testevent = &cloudevent.CloudEvent{
+var testevent = &events.Event{
 	EventType:          "acme.prod.icinga.check_disk",
 	EventTypeVersion:   "1.0",
 	CloudEventsVersion: "0.1",
 	Source:             "/sink",
 	EventID:            "42",
-	EventTime:          tptr(time.Now()),
+	EventTime:          time.Now(),
 	SchemaURL:          "http://www.json.org",
 	ContentType:        "application/json",
 	Data:               &exampleData{Alpha: "julie", Beta: 42},
@@ -41,6 +40,7 @@ var testevent = &cloudevent.CloudEvent{
 
 var testRule = rules.Rule{
 	ID:            "123",
+	ScriptID:      "myscript",
 	HookEndpoint:  "http://localhost:3000/testrule",
 	HookRetry:     2,
 	EventTypes:    []string{"acme.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
@@ -66,6 +66,22 @@ var scriptRequestUpdated = ScriptRequest{
 	Data: []byte(`
 	let result = 1;
 	export default function() { result--; }`),
+}
+
+var testBucketScript = ScriptRequest{
+	ID: "myscript",
+	Data: []byte(`
+	let result = null;
+	export default function(data) { 
+		let event = data.events[0];
+		if (!event){
+			result = {error:"event is undefined"}
+			return
+		}
+		event.data.alpha = event.data.alpha + "test";
+		event.data.beta = event.data.beta + 42;
+		result = event.data;
+	}`),
 }
 
 func startService(t *testing.T, cfg *config.Config, svc *Service) {
@@ -328,8 +344,12 @@ func TestMergeRule(t *testing.T) {
 func TestSingleEventSingleService(t *testing.T) {
 	singleService(t, func(url string) {
 		e := httpexpect.New(t, url)
+
+		//post script
+		e.POST("/scripts").WithJSON(testBucketScript).Expect().Status(http.StatusOK)
+		e.GET("/scripts/" + testBucketScript.ID).Expect().JSON().Equal(testBucketScript)
+
 		// post rule
-		glog.Info("%+v\n", testRule)
 		e.POST("/rules").WithJSON(testRule).Expect().Status(http.StatusOK)
 		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
 
@@ -341,8 +361,69 @@ func TestSingleEventSingleService(t *testing.T) {
 		time.Sleep(time.Millisecond * time.Duration(testRule.Dwell+3000))
 
 		// fetch rule executions
-
 		resp, err := http.Get(url + "/rules/" + testRule.ID + "/executions")
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		defer resp.Body.Close()
+
+		var ruleExecutions []*executions.Record
+		err = json.Unmarshal(body, &ruleExecutions)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(ruleExecutions) == 0 {
+			glog.Info("no executions found")
+			t.Fatal()
+		}
+
+		if testRule.ID != ruleExecutions[0].Bucket.Rule.ID {
+			t.Fatal("unexpected rule id")
+		}
+
+		if testevent.EventID != ruleExecutions[0].Bucket.Events[0].EventID {
+			t.Fatal("unexpected event id")
+		}
+
+		scriptResult, ok := ruleExecutions[0].ScriptResult.(map[string]interface{})
+		glog.Infof("%+v %v %v\n", ruleExecutions[0], scriptResult, ok)
+		if !ok {
+			t.Fatal("unexpected script result")
+		}
+
+		if !strings.Contains(scriptResult["alpha"].(string), "julietest") {
+			t.Fatal("unexpected script result ", scriptResult["alpha"])
+		}
+
+	})
+}
+
+func TestSingleEventMultipleService(t *testing.T) {
+	multiService(t, func(urls []string) {
+
+		// post rule to node 2
+		e := httpexpect.New(t, urls[1])
+		e.POST("/rules").WithJSON(testRule).Expect().Status(http.StatusOK)
+		// verify rule from node 1
+		e = httpexpect.New(t, urls[0])
+		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
+
+		// post event to node 3
+		e = httpexpect.New(t, urls[2])
+		e.POST("/event").WithJSON(testevent).Expect().Status(http.StatusOK)
+
+		// wait for rule execution
+
+		time.Sleep(time.Millisecond * time.Duration(testRule.Dwell+3000))
+
+		// fetch rule executions from node 1
+		resp, err := http.Get(urls[0] + "/rules/" + testRule.ID + "/executions")
 		if err != nil {
 			t.Fatal(err)
 		}

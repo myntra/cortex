@@ -15,31 +15,32 @@ func Execute(script []byte, data interface{}) interface{} {
 	if len(script) == 0 {
 		return nil
 	}
+
 	r, err := js.New(&lib.SourceData{
 		Filename: "correlate.js",
 		Data:     script,
 	}, afero.NewMemMapFs(), lib.RuntimeOptions{})
 
 	if err != nil {
-		glog.Fatal(err)
+		return err
 	}
-
+	glog.Infof("%v", data)
 	r.SetSetupData(data)
 
 	vu, err := r.NewVU(make(chan stats.SampleContainer, 100))
 	if err != nil {
-		glog.Fatal(err)
+		return err
 	}
 
 	vuc, ok := vu.(*js.VU)
 
 	if !ok {
-		glog.Fatal(err)
+		return err
 	}
 
 	err = vu.RunOnce(context.Background())
 	if err != nil {
-		glog.Fatal(err)
+		return err
 	}
 
 	result := vuc.Runtime.Get("result")
