@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/json"
 
+	"github.com/golang/glog"
 	"github.com/myntra/cortex/pkg/executions"
 
 	"github.com/myntra/cortex/pkg/rules"
@@ -11,18 +12,20 @@ import (
 	"github.com/myntra/cortex/pkg/events"
 )
 
-type db struct {
-	buckets map[string]*events.Bucket
-	rules   map[string]*rules.Rule
-	history map[string]*executions.Record
-	scripts map[string][]byte
+// DB boltdb storage
+type DB struct {
+	Buckets map[string]*events.Bucket     `json:"buckets"`
+	Rules   map[string]*rules.Rule        `json:"rules"`
+	History map[string]*executions.Record `json:"history"`
+	Scripts map[string][]byte             `json:"script"`
 }
 
 type fsmSnapShot struct {
-	data *db
+	data *DB
 }
 
 func (f *fsmSnapShot) Persist(sink raft.SnapshotSink) error {
+	glog.Info("persist =>")
 	err := func() error {
 		// Encode data.
 		b, err := json.Marshal(f.data)
@@ -30,6 +33,7 @@ func (f *fsmSnapShot) Persist(sink raft.SnapshotSink) error {
 			return err
 		}
 
+		glog.Infof("persist => %v %v", len(b), string(b))
 		// Write data to sink.
 		if _, err := sink.Write(b); err != nil {
 			return err
@@ -40,10 +44,13 @@ func (f *fsmSnapShot) Persist(sink raft.SnapshotSink) error {
 	}()
 
 	if err != nil {
+		glog.Info("persist => err ", err)
 		sink.Cancel()
 	}
 
 	return err
 }
 
-func (f *fsmSnapShot) Release() {}
+func (f *fsmSnapShot) Release() {
+	glog.Info("release =>")
+}

@@ -54,16 +54,20 @@ func (d *defaultStore) open() error {
 		return err
 	}
 
+	glog.Info("created raft transport \n")
 	// Create the snapshot store. This allows the Raft to truncate the log.
 	snapshots, err := raft.NewFileSnapshotStore(d.opt.Dir, retainSnapshotCount, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("file snapshot store: %s", err)
 	}
 
+	glog.Info("created snapshot store \n")
+
 	// Create the log store and stable store.
 	var logStore raft.LogStore
 	var stableStore raft.StableStore
 
+	glog.Info("raft.db => ", filepath.Join(d.opt.Dir, "raft.db"))
 	boltDB, err := raftboltdb.NewBoltStore(filepath.Join(d.opt.Dir, "raft.db"))
 	if err != nil {
 		return fmt.Errorf("new bolt store: %s", err)
@@ -71,12 +75,16 @@ func (d *defaultStore) open() error {
 	logStore = boltDB
 	stableStore = boltDB
 
+	glog.Info("created boltdb store \n")
 	// Instantiate the Raft systemd.
 	ra, err := raft.NewRaft(config, (*fsm)(d), logStore, stableStore, snapshots, transport)
 	if err != nil {
 		return fmt.Errorf("new raft: %s", err)
 	}
 	d.raft = ra
+	d.boltDB = boltDB
+
+	glog.Info("created raft systemd \n")
 
 	// bootstrap single node configuration
 	if d.opt.JoinAddr == "" {
@@ -127,6 +135,12 @@ func (d *defaultStore) close() error {
 	if f.Error() != nil {
 		return f.Error()
 	}
+
+	// close the raft database
+	if d.boltDB != nil {
+		d.boltDB.Close()
+	}
+
 	glog.Info("raft shut down")
 	glog.Flush()
 	return nil

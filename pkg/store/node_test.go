@@ -249,3 +249,108 @@ func TestEventSingleNode(t *testing.T) {
 		t.Logf("%+v\n", records[0])
 	})
 }
+
+func TestNodeSnapshot(t *testing.T) {
+	tmpDir, _ := ioutil.TempDir("", "store_test")
+	defer os.RemoveAll(tmpDir)
+
+	raftAddr := ":5878"
+	httpAddr := ":5879"
+
+	raftListener, err := net.Listen("tcp", raftAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	httpListener, err := net.Listen("tcp", httpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// open store
+	cfg := &config.Config{
+		NodeID:               "node0",
+		Dir:                  tmpDir,
+		DefaultDwell:         4000, // 3 minutes
+		DefaultMaxDwell:      8000, // 6 minutes
+		DefaultDwellDeadline: 3800, // 2.5 minutes
+		MaxHistory:           1000,
+		FlushInterval:        1000,
+		HTTPAddr:             httpAddr,
+		RaftAddr:             raftAddr,
+		HTTPListener:         httpListener,
+		RaftListener:         raftListener,
+	}
+
+	node, err := NewNode(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = node.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	glog.Infof("node started. 5s")
+	// run test
+	time.Sleep(time.Second * 5)
+
+	err = node.AddRule(&testRule)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rule := node.GetRule(testRule.ID)
+	if testRule.ID != rule.ID {
+		t.Fatal("rule not saved")
+	}
+
+	glog.Infof("take a snapshot")
+
+	err = node.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(time.Second * 1)
+	// close node
+	err = node.Shutdown()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(time.Second * 1)
+
+	raftListener, err = net.Listen("tcp", raftAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg.RaftListener = raftListener
+
+	// start again
+	err = node.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	glog.Infof("node started. 5s")
+	// run test
+	time.Sleep(time.Second * 5)
+
+	rule = node.GetRule(testRule.ID)
+	if testRule.ID != rule.ID {
+		t.Fatal("rule not saved")
+	}
+
+	// close node
+	err = node.Shutdown()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = httpListener.Close()
+
+	glog.Info("done test ", err)
+}

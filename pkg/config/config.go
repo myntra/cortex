@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -121,8 +120,6 @@ func (c *Config) validateDir() error {
 
 	return nil
 }
-
-var mu sync.Mutex
 
 func getAddr(addr string) string {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)

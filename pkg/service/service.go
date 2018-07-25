@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/golang/glog"
 
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/store"
@@ -41,6 +42,16 @@ func (s *Service) Start() error {
 	if err := s.srv.Serve(s.listener); err != nil {
 		return err
 	}
+
+	go func() {
+		ticker := time.NewTicker(time.Minute * 1)
+		for {
+			select {
+			case <-ticker.C:
+				glog.Infof("take snapshot => %v", s.node.Snapshot())
+			}
+		}
+	}()
 
 	return nil
 }

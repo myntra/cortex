@@ -63,7 +63,12 @@ func main() {
 	flagRaft := lb.Listener("raft", "tcp", ":4444", "-raft :4444")
 	flagHTTP := lb.Listener("http", "tcp", ":4445", "-http :4445")
 
-	flag.Parse()
+	loader := confita.NewLoader(flags.NewBackend())
+	err := loader.Load(context.Background(), cfg)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		usage()
+	}
 
 	fmt.Printf("raft addr %v, http addr %v\n", flagRaft.String(), flagHTTP.String())
 
@@ -75,12 +80,6 @@ func main() {
 }
 
 func run(ctx context.Context, flagRaft, flagHTTP *littleboss.ListenerFlag) {
-	loader := confita.NewLoader(flags.NewBackend())
-	err := loader.Load(context.Background(), cfg)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-		usage()
-	}
 
 	cfg.HTTPAddr = flagHTTP.String()
 	cfg.RaftAddr = flagRaft.String()

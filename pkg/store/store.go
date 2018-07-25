@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/satori/go.uuid"
 
 	"github.com/golang/glog"
@@ -35,8 +36,8 @@ type command struct {
 }
 
 type defaultStore struct {
-	opt *config.Config
-
+	opt                  *config.Config
+	boltDB               *raftboltdb.BoltStore
 	raft                 *raft.Raft
 	scriptStorage        *scriptStorage
 	bucketStorage        *bucketStorage

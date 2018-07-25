@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/myntra/cortex/pkg/executions"
 
@@ -45,16 +44,6 @@ func NewNode(cfg *config.Config) (*Node, error) {
 
 // Start the node
 func (n *Node) Start() error {
-
-	go func() {
-		ticker := time.NewTicker(time.Minute * 1)
-		for {
-			select {
-			case <-ticker.C:
-				glog.Infof("take snapshot => %v", n.Snapshot())
-			}
-		}
-	}()
 	return n.store.open()
 }
 
