@@ -74,7 +74,7 @@ func (rb *Bucket) getDwellDuration() time.Duration {
 	return time.Millisecond * time.Duration(rb.Rule.Dwell)
 }
 
-// getDwellDeadlineDuration converts dwell_threshold(ms) to time.Duration
+// getDwellDeadlineDuration converts dwell_deadline(ms) to time.Duration
 func (rb *Bucket) getDwellDeadlineDuration() time.Duration {
 	return time.Millisecond * time.Duration(rb.Rule.DwellDeadline)
 }

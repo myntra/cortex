@@ -74,7 +74,7 @@ const schema = {
   hook_retry: "",
   event_types: "",
   dwell: "",
-  dwell_threshold: "",
+  dwell_deadline: "",
   max_dwell: "",
   required: ["title", "event_types"],
   properties: {
@@ -84,7 +84,7 @@ const schema = {
     hook_retry: { type: "string", title: "Hook Retry", default: "2" },
     event_types: { type: "string", title: "Match Event Types", default: "com.acme.node1.cpu,com.apple.node2.cpu" },
     dwell: { type: "string", title: "Wait Window(seconds)", default: "120" },
-    dwell_threshold: { type: "string", title: "Wait Window Threshold(seconds)", default: "100" },
+    dwell_deadline: { type: "string", title: "Wait Window Threshold(seconds)", default: "100" },
     max_dwell: { type: "string", title: "Maximum Wait Window(seconds)", default: "240" },
 
   }

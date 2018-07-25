@@ -6,7 +6,7 @@ const fakerules = [
         hook_retry: "3",
         event_types: "com.acme.order.node1.check_disk,com.acme.checkout.node1.check_cpu",
         dwell: "120",
-        dwell_threshold: "100",
+        dwell_deadline: "100",
         max_dwell: "240",
     },
     {
@@ -16,7 +16,7 @@ const fakerules = [
         hook_retry: "3",
         event_types: "com.acme.cart.node1.check_disk",
         dwell: "120",
-        dwell_threshold: "100",
+        dwell_deadline: "100",
         max_dwell: "240",
     },
     {
@@ -26,7 +26,7 @@ const fakerules = [
         hook_retry: "3",
         event_types: "com.acme.style.node1.check_node",
         dwell: "120",
-        dwell_threshold: "100",
+        dwell_deadline: "100",
         max_dwell: "240",
     }
 ];

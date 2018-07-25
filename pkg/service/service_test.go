@@ -118,6 +118,7 @@ func singleService(t *testing.T, f func(url string)) {
 		DefaultMaxDwell:      8000, // 6 minutes
 		DefaultDwellDeadline: 3800, // 2.5 minutes
 		MaxHistory:           1000,
+		FlushInterval:        1000,
 	}
 
 	svc, err := New(cfg)
@@ -149,6 +150,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 		DefaultMaxDwell:      8000, // 6 minutes
 		DefaultDwellDeadline: 3800, // 2.5 minutes
 		MaxHistory:           1000,
+		FlushInterval:        1000,
 	}
 
 	svc1, err := New(cfg1)
@@ -171,6 +173,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 		DefaultMaxDwell:      8000, // 6 minutes
 		DefaultDwellDeadline: 3800, // 2.5 minutes
 		MaxHistory:           1000,
+		FlushInterval:        1000,
 	}
 
 	svc2, err := New(cfg2)
@@ -193,6 +196,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 		DefaultMaxDwell:      8000, // 6 minutes
 		DefaultDwellDeadline: 3800, // 2.5 minutes
 		MaxHistory:           1000,
+		FlushInterval:        1000,
 	}
 
 	svc3, err := New(cfg3)

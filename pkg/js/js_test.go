@@ -54,3 +54,21 @@ func TestData(t *testing.T) {
 		t.Fatalf("unexpected result %v", result)
 	}
 }
+
+func TestException(t *testing.T) {
+	script := []byte(`
+	import http from "k6/http";
+	import moment from "cdnjs.com/libraries/moment.js/2.18.1";
+	
+	export default function() {
+		http.get("http://test.loadimpact.com/");
+		console.log(moment().format());
+		throw "execption"
+	}`)
+
+	result := Execute(script, nil)
+
+	ex, ok := result.(*goja.Exception)
+	err, ok2 := result.(error)
+	fmt.Println(ex, ok, err, ok2)
+}
