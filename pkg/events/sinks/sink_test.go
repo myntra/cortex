@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cortex/pkg/types"
+	"github.com/myntra/cortex/pkg/types"
 )
 
 var alert = types.Site247Alert{
