@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -9,10 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/myntra/cortex/pkg/executions"
+
 	"github.com/fnproject/cloudevent"
 	"github.com/imdario/mergo"
 	"github.com/myntra/cortex/pkg/config"
-	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/rules"
 	httpexpect "gopkg.in/gavv/httpexpect.v1"
 )
@@ -24,19 +26,17 @@ type exampleData struct {
 
 func tptr(t time.Time) *time.Time { return nil }
 
-var testevent = events.Event{
-	CloudEvent: &cloudevent.CloudEvent{
-		EventType:          "acme.prod.icinga.check_disk",
-		EventTypeVersion:   "1.0",
-		CloudEventsVersion: "0.1",
-		Source:             "/sink",
-		EventID:            "42",
-		EventTime:          tptr(time.Now()),
-		SchemaURL:          "http://www.json.org",
-		ContentType:        "application/json",
-		Data:               &exampleData{Alpha: "julie", Beta: 42},
-		Extensions:         map[string]string{"ext1": "value"},
-	},
+var testevent = &cloudevent.CloudEvent{
+	EventType:          "acme.prod.icinga.check_disk",
+	EventTypeVersion:   "1.0",
+	CloudEventsVersion: "0.1",
+	Source:             "/sink",
+	EventID:            "42",
+	EventTime:          tptr(time.Now()),
+	SchemaURL:          "http://www.json.org",
+	ContentType:        "application/json",
+	Data:               &exampleData{Alpha: "julie", Beta: 42},
+	Extensions:         map[string]string{"ext1": "value"},
 }
 
 var testRule = rules.Rule{
@@ -304,6 +304,55 @@ func TestScriptsMultiService(t *testing.T) {
 		// verify on node 1
 		e = httpexpect.New(t, urls[0])
 		e.GET("/scripts/" + scriptRequest.ID).Expect().Status(http.StatusNotFound)
+
+	})
+}
+
+func TestSingleEventSingleService(t *testing.T) {
+	singleService(t, func(url string) {
+
+		e := httpexpect.New(t, url)
+		// post rule
+		e.POST("/rules").WithJSON(testRule).Expect().Status(http.StatusOK)
+		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(testRule)
+
+		// post event
+		e.POST("/event").WithJSON(testevent).Expect().Status(http.StatusOK)
+
+		// wait for rule execution
+
+		time.Sleep(time.Millisecond * time.Duration(testRule.Dwell+3000))
+
+		// fetch rule executions
+
+		resp, err := http.Get(url + "/rules/" + testRule.ID + "/executions")
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		defer resp.Body.Close()
+
+		var ruleExecutions []*executions.Record
+		err = json.Unmarshal(body, &ruleExecutions)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(ruleExecutions) == 0 {
+			t.Fatal("no executions found")
+		}
+
+		if testRule.ID != ruleExecutions[0].Bucket.Rule.ID {
+			t.Fatal("unexpected rule id")
+		}
+
+		if testevent.EventID != ruleExecutions[0].Bucket.Events[0].EventID {
+			t.Fatal("unexpected event id")
+		}
 
 	})
 }
