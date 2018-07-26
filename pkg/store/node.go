@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/myntra/cortex/pkg/executions"
+	"github.com/myntra/cortex/pkg/js"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
@@ -133,13 +134,13 @@ func (n *Node) GetRules() []*rules.Rule {
 }
 
 // AddScript adds a script to the db
-func (n *Node) AddScript(id string, script []byte) error {
-	return n.store.addScript(id, script)
+func (n *Node) AddScript(script *js.Script) error {
+	return n.store.addScript(script)
 }
 
 // UpdateScript updates an already added script
-func (n *Node) UpdateScript(id string, script []byte) error {
-	return n.store.updateScript(id, script)
+func (n *Node) UpdateScript(script *js.Script) error {
+	return n.store.updateScript(script)
 }
 
 // RemoveScript remove a script from the db
@@ -153,7 +154,7 @@ func (n *Node) GetScripts() []string {
 }
 
 // GetScript returns the script data
-func (n *Node) GetScript(id string) []byte {
+func (n *Node) GetScript(id string) *js.Script {
 	return n.store.getScript(id)
 }
 

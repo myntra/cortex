@@ -13,6 +13,7 @@ import (
 
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/js"
 	"github.com/myntra/cortex/pkg/rules"
 )
 
@@ -167,7 +168,7 @@ func TestScriptSingleNode(t *testing.T) {
 			export default function() { result++; }`)
 
 		// add script
-		err := node.AddScript("myscript", script)
+		err := node.AddScript(&js.Script{ID: "myscript", Data: script})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -176,7 +177,7 @@ func TestScriptSingleNode(t *testing.T) {
 
 		respScript := node.GetScript("myscript")
 
-		if !bytes.Equal(script, respScript) {
+		if !bytes.Equal(script, respScript.Data) {
 			t.Fatal("unexpected get script response")
 		}
 
@@ -191,7 +192,7 @@ func TestScriptSingleNode(t *testing.T) {
 
 		respScript = node.GetScript("myscript")
 
-		if bytes.Equal(script, respScript) {
+		if respScript != nil {
 			t.Fatal("received removed script")
 		}
 

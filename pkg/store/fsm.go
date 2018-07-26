@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/executions"
+	"github.com/myntra/cortex/pkg/js"
 	"github.com/myntra/cortex/pkg/rules"
 	"github.com/tinylib/msgp/msgp"
 )
@@ -34,9 +35,9 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 	case "flush_bucket":
 		return f.applyFlushBucket(c.RuleID)
 	case "add_script":
-		return f.applyAddScript(c.ScriptID, c.Script)
+		return f.applyAddScript(c.Script)
 	case "update_script":
-		return f.applyUpdateScript(c.ScriptID, c.Script)
+		return f.applyUpdateScript(c.Script)
 	case "remove_script":
 		return f.applyRemoveScript(c.ScriptID)
 	case "add_record":
@@ -69,12 +70,12 @@ func (f *fsm) applyFlushBucket(ruleID string) interface{} {
 	return f.bucketStorage.es.flushBucket(ruleID)
 }
 
-func (f *fsm) applyAddScript(id string, script []byte) interface{} {
-	return f.scriptStorage.addScript(id, script)
+func (f *fsm) applyAddScript(script *js.Script) interface{} {
+	return f.scriptStorage.addScript(script)
 }
 
-func (f *fsm) applyUpdateScript(id string, script []byte) interface{} {
-	return f.scriptStorage.updateScript(id, script)
+func (f *fsm) applyUpdateScript(script *js.Script) interface{} {
+	return f.scriptStorage.updateScript(script)
 }
 
 func (f *fsm) applyRemoveScript(id string) interface{} {
@@ -96,24 +97,24 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	scripts := f.scriptStorage.clone()
 	history := f.executionStorage.clone()
 	return &fsmSnapShot{
-		data: &DB{
+		msgs: &Messages{
 			Rules:   rules,
 			Scripts: scripts,
-			History: history,
+			Records: history,
 		}}, nil
 }
 
 func (f *fsm) Restore(rc io.ReadCloser) error {
 	glog.Info("restore <=")
 	defer rc.Close()
-	var data DB
+	var msgs Messages
 
 	bts, err := ioutil.ReadAll(rc)
 	if err != nil {
 		return err
 	}
 
-	left, err := data.UnmarshalMsg(bts)
+	left, err := msgs.UnmarshalMsg(bts)
 
 	if len(left) > 0 {
 		return fmt.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
@@ -127,9 +128,9 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 		return fmt.Errorf("%d bytes left over after Skip(): %q", len(left), left)
 	}
 
-	f.bucketStorage.rs.restore(data.Rules)
-	f.scriptStorage.restore(data.Scripts)
-	f.executionStorage.restore(data.History)
+	f.bucketStorage.rs.restore(msgs.Rules)
+	f.scriptStorage.restore(msgs.Scripts)
+	f.executionStorage.restore(msgs.Records)
 
 	return nil
 }

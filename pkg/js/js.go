@@ -10,15 +10,23 @@ import (
 	"github.com/spf13/afero"
 )
 
+//go:generate msgp
+
+// Script contains the javascript code
+type Script struct {
+	ID   string `json:"id"`
+	Data []byte `json:"data"`
+}
+
 // Execute js
-func Execute(script []byte, data interface{}) interface{} {
-	if len(script) == 0 {
+func Execute(script *Script, data interface{}) interface{} {
+	if script == nil || len(script.ID) == 0 {
 		return nil
 	}
 
 	r, err := js.New(&lib.SourceData{
-		Filename: "correlate.js",
-		Data:     script,
+		Filename: script.ID,
+		Data:     script.Data,
 	}, afero.NewMemMapFs(), lib.RuntimeOptions{})
 
 	if err != nil {

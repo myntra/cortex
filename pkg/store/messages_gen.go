@@ -4,12 +4,62 @@ package store
 
 import (
 	"github.com/myntra/cortex/pkg/executions"
+	"github.com/myntra/cortex/pkg/js"
 	"github.com/myntra/cortex/pkg/rules"
 	"github.com/tinylib/msgp/msgp"
 )
 
 // DecodeMsg implements msgp.Decodable
-func (z *DB) DecodeMsg(dc *msgp.Reader) (err error) {
+func (z *MessageType) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 uint8
+		zb0001, err = dc.ReadUint8()
+		if err != nil {
+			return
+		}
+		(*z) = MessageType(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z MessageType) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteUint8(uint8(z))
+	if err != nil {
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z MessageType) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendUint8(o, uint8(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *MessageType) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 uint8
+		zb0001, bts, err = msgp.ReadUint8Bytes(bts)
+		if err != nil {
+			return
+		}
+		(*z) = MessageType(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z MessageType) Msgsize() (s int) {
+	s = msgp.Uint8Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *Messages) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
 	var zb0001 uint32
@@ -62,17 +112,17 @@ func (z *DB) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Rules[za0001] = za0002
 			}
-		case "History":
+		case "Records":
 			var zb0003 uint32
 			zb0003, err = dc.ReadMapHeader()
 			if err != nil {
 				return
 			}
-			if z.History == nil && zb0003 > 0 {
-				z.History = make(map[string]*executions.Record, zb0003)
-			} else if len(z.History) > 0 {
-				for key := range z.History {
-					delete(z.History, key)
+			if z.Records == nil && zb0003 > 0 {
+				z.Records = make(map[string]*executions.Record, zb0003)
+			} else if len(z.Records) > 0 {
+				for key := range z.Records {
+					delete(z.Records, key)
 				}
 			}
 			for zb0003 > 0 {
@@ -98,7 +148,7 @@ func (z *DB) DecodeMsg(dc *msgp.Reader) (err error) {
 						return
 					}
 				}
-				z.History[za0003] = za0004
+				z.Records[za0003] = za0004
 			}
 		case "Scripts":
 			var zb0004 uint32
@@ -107,7 +157,7 @@ func (z *DB) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			if z.Scripts == nil && zb0004 > 0 {
-				z.Scripts = make(map[string][]byte, zb0004)
+				z.Scripts = make(map[string]*js.Script, zb0004)
 			} else if len(z.Scripts) > 0 {
 				for key := range z.Scripts {
 					delete(z.Scripts, key)
@@ -116,14 +166,25 @@ func (z *DB) DecodeMsg(dc *msgp.Reader) (err error) {
 			for zb0004 > 0 {
 				zb0004--
 				var za0005 string
-				var za0006 []byte
+				var za0006 *js.Script
 				za0005, err = dc.ReadString()
 				if err != nil {
 					return
 				}
-				za0006, err = dc.ReadBytes(za0006)
-				if err != nil {
-					return
+				if dc.IsNil() {
+					err = dc.ReadNil()
+					if err != nil {
+						return
+					}
+					za0006 = nil
+				} else {
+					if za0006 == nil {
+						za0006 = new(js.Script)
+					}
+					err = za0006.DecodeMsg(dc)
+					if err != nil {
+						return
+					}
 				}
 				z.Scripts[za0005] = za0006
 			}
@@ -138,7 +199,7 @@ func (z *DB) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z *DB) EncodeMsg(en *msgp.Writer) (err error) {
+func (z *Messages) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 3
 	// write "Rules"
 	err = en.Append(0x83, 0xa5, 0x52, 0x75, 0x6c, 0x65, 0x73)
@@ -166,16 +227,16 @@ func (z *DB) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 	}
-	// write "History"
-	err = en.Append(0xa7, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79)
+	// write "Records"
+	err = en.Append(0xa7, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteMapHeader(uint32(len(z.History)))
+	err = en.WriteMapHeader(uint32(len(z.Records)))
 	if err != nil {
 		return
 	}
-	for za0003, za0004 := range z.History {
+	for za0003, za0004 := range z.Records {
 		err = en.WriteString(za0003)
 		if err != nil {
 			return
@@ -206,16 +267,23 @@ func (z *DB) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return
 		}
-		err = en.WriteBytes(za0006)
-		if err != nil {
-			return
+		if za0006 == nil {
+			err = en.WriteNil()
+			if err != nil {
+				return
+			}
+		} else {
+			err = za0006.EncodeMsg(en)
+			if err != nil {
+				return
+			}
 		}
 	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z *DB) MarshalMsg(b []byte) (o []byte, err error) {
+func (z *Messages) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 3
 	// string "Rules"
@@ -232,10 +300,10 @@ func (z *DB) MarshalMsg(b []byte) (o []byte, err error) {
 			}
 		}
 	}
-	// string "History"
-	o = append(o, 0xa7, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x72, 0x79)
-	o = msgp.AppendMapHeader(o, uint32(len(z.History)))
-	for za0003, za0004 := range z.History {
+	// string "Records"
+	o = append(o, 0xa7, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73)
+	o = msgp.AppendMapHeader(o, uint32(len(z.Records)))
+	for za0003, za0004 := range z.Records {
 		o = msgp.AppendString(o, za0003)
 		if za0004 == nil {
 			o = msgp.AppendNil(o)
@@ -251,13 +319,20 @@ func (z *DB) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.AppendMapHeader(o, uint32(len(z.Scripts)))
 	for za0005, za0006 := range z.Scripts {
 		o = msgp.AppendString(o, za0005)
-		o = msgp.AppendBytes(o, za0006)
+		if za0006 == nil {
+			o = msgp.AppendNil(o)
+		} else {
+			o, err = za0006.MarshalMsg(o)
+			if err != nil {
+				return
+			}
+		}
 	}
 	return
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
-func (z *DB) UnmarshalMsg(bts []byte) (o []byte, err error) {
+func (z *Messages) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
 	var zb0001 uint32
@@ -310,17 +385,17 @@ func (z *DB) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Rules[za0001] = za0002
 			}
-		case "History":
+		case "Records":
 			var zb0003 uint32
 			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
 			if err != nil {
 				return
 			}
-			if z.History == nil && zb0003 > 0 {
-				z.History = make(map[string]*executions.Record, zb0003)
-			} else if len(z.History) > 0 {
-				for key := range z.History {
-					delete(z.History, key)
+			if z.Records == nil && zb0003 > 0 {
+				z.Records = make(map[string]*executions.Record, zb0003)
+			} else if len(z.Records) > 0 {
+				for key := range z.Records {
+					delete(z.Records, key)
 				}
 			}
 			for zb0003 > 0 {
@@ -346,7 +421,7 @@ func (z *DB) UnmarshalMsg(bts []byte) (o []byte, err error) {
 						return
 					}
 				}
-				z.History[za0003] = za0004
+				z.Records[za0003] = za0004
 			}
 		case "Scripts":
 			var zb0004 uint32
@@ -355,7 +430,7 @@ func (z *DB) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			if z.Scripts == nil && zb0004 > 0 {
-				z.Scripts = make(map[string][]byte, zb0004)
+				z.Scripts = make(map[string]*js.Script, zb0004)
 			} else if len(z.Scripts) > 0 {
 				for key := range z.Scripts {
 					delete(z.Scripts, key)
@@ -363,15 +438,26 @@ func (z *DB) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			for zb0004 > 0 {
 				var za0005 string
-				var za0006 []byte
+				var za0006 *js.Script
 				zb0004--
 				za0005, bts, err = msgp.ReadStringBytes(bts)
 				if err != nil {
 					return
 				}
-				za0006, bts, err = msgp.ReadBytesBytes(bts, za0006)
-				if err != nil {
-					return
+				if msgp.IsNil(bts) {
+					bts, err = msgp.ReadNilBytes(bts)
+					if err != nil {
+						return
+					}
+					za0006 = nil
+				} else {
+					if za0006 == nil {
+						za0006 = new(js.Script)
+					}
+					bts, err = za0006.UnmarshalMsg(bts)
+					if err != nil {
+						return
+					}
 				}
 				z.Scripts[za0005] = za0006
 			}
@@ -387,7 +473,7 @@ func (z *DB) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z *DB) Msgsize() (s int) {
+func (z *Messages) Msgsize() (s int) {
 	s = 1 + 6 + msgp.MapHeaderSize
 	if z.Rules != nil {
 		for za0001, za0002 := range z.Rules {
@@ -401,8 +487,8 @@ func (z *DB) Msgsize() (s int) {
 		}
 	}
 	s += 8 + msgp.MapHeaderSize
-	if z.History != nil {
-		for za0003, za0004 := range z.History {
+	if z.Records != nil {
+		for za0003, za0004 := range z.Records {
 			_ = za0004
 			s += msgp.StringPrefixSize + len(za0003)
 			if za0004 == nil {
@@ -416,7 +502,12 @@ func (z *DB) Msgsize() (s int) {
 	if z.Scripts != nil {
 		for za0005, za0006 := range z.Scripts {
 			_ = za0006
-			s += msgp.StringPrefixSize + len(za0005) + msgp.BytesPrefixSize + len(za0006)
+			s += msgp.StringPrefixSize + len(za0005)
+			if za0006 == nil {
+				s += msgp.NilSize
+			} else {
+				s += za0006.Msgsize()
+			}
 		}
 	}
 	return

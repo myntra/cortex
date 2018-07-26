@@ -30,7 +30,7 @@ type command struct {
 	RuleID   string             `json:"ruleID,omitempty"`
 	Event    *events.Event      `json:"event,omitempty"`
 	ScriptID string             `json:"script_id,omitempty"`
-	Script   []byte             `json:"script,omitempty"`
+	Script   *js.Script         `json:"script,omitempty"`
 	Record   *executions.Record `json:"record,omitempty"`
 	RecordID string             `json:"record_id,omitempty"`
 }
@@ -50,7 +50,7 @@ func newStore(opt *config.Config) (*defaultStore, error) {
 
 	store := &defaultStore{
 		scriptStorage: &scriptStorage{
-			m: make(map[string][]byte),
+			m: make(map[string]*js.Script),
 		},
 		executionStorage: &executionStorage{
 			m: make(map[string]*executions.Record),
@@ -210,19 +210,17 @@ func (d *defaultStore) updateRule(rule *rules.Rule) error {
 	})
 }
 
-func (d *defaultStore) addScript(id string, script []byte) error {
+func (d *defaultStore) addScript(script *js.Script) error {
 	return d.applyCMD(&command{
-		Op:       "add_script",
-		ScriptID: id,
-		Script:   script,
+		Op:     "add_script",
+		Script: script,
 	})
 }
 
-func (d *defaultStore) updateScript(id string, script []byte) error {
+func (d *defaultStore) updateScript(script *js.Script) error {
 	return d.applyCMD(&command{
-		Op:       "update_script",
-		ScriptID: id,
-		Script:   script,
+		Op:     "update_script",
+		Script: script,
 	})
 }
 
@@ -265,7 +263,7 @@ func (d *defaultStore) getScripts() []string {
 	return d.scriptStorage.getScripts()
 }
 
-func (d *defaultStore) getScript(id string) []byte {
+func (d *defaultStore) getScript(id string) *js.Script {
 	return d.scriptStorage.getScript(id)
 }
 

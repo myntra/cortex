@@ -7,19 +7,19 @@ import (
 )
 
 type fsmSnapShot struct {
-	data *DB
+	msgs *Messages
 }
 
 func (f *fsmSnapShot) Persist(sink raft.SnapshotSink) error {
 	glog.Info("persist =>")
 
-	// Encode data.
-	b, err := f.data.MarshalMsg(nil)
+	// Encode message.
+	b, err := f.msgs.MarshalMsg(nil)
 	if err != nil {
 		return err
 	}
 
-	// Write data to sink.
+	// Write messages to sink.
 	if _, err := sink.Write(b); err != nil {
 		glog.Info("persist => err ", err)
 		sink.Cancel()

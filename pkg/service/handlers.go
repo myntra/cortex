@@ -12,6 +12,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/events/sinks"
+	"github.com/myntra/cortex/pkg/js"
 	"github.com/myntra/cortex/pkg/rules"
 	"github.com/myntra/cortex/pkg/util"
 	uuid "github.com/satori/go.uuid"
@@ -309,7 +310,8 @@ func (s *Service) addScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.node.AddScript(sr.ID, sr.Data)
+	script := &js.Script{ID: sr.ID, Data: sr.Data}
+	err = s.node.AddScript(script)
 	if err != nil {
 		util.ErrStatus(w, r, "error adding script", http.StatusNotAcceptable, err)
 		return
@@ -342,7 +344,8 @@ func (s *Service) updateScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.node.UpdateScript(sr.ID, sr.Data)
+	script := &js.Script{ID: sr.ID, Data: sr.Data}
+	err = s.node.UpdateScript(script)
 	if err != nil {
 		util.ErrStatus(w, r, "error adding script", http.StatusNotAcceptable, err)
 		return
@@ -368,18 +371,13 @@ func (s *Service) removeScriptHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) getScriptHandler(w http.ResponseWriter, r *http.Request) {
 	scriptID := chi.URLParam(r, "id")
-	scriptData := s.node.GetScript(scriptID)
-	if len(scriptData) == 0 {
-		util.ErrStatus(w, r, "no script data", http.StatusNotFound, fmt.Errorf("script data len 0"))
+	script := s.node.GetScript(scriptID)
+	if script == nil || len(script.Data) == 0 {
+		util.ErrStatus(w, r, "script not found", http.StatusNotFound, fmt.Errorf("script data len 0"))
 		return
 	}
 
-	sr := &ScriptRequest{
-		ID:   scriptID,
-		Data: scriptData,
-	}
-
-	b, err := json.Marshal(&sr)
+	b, err := json.Marshal(&script)
 	if err != nil {
 		util.ErrStatus(w, r, "error writing script data ", http.StatusNotFound, err)
 		return

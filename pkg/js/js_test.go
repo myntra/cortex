@@ -12,7 +12,7 @@ func TestSimple(t *testing.T) {
 	let result = 0;
 	export default function() { result++; }`)
 
-	result := Execute(script, 0)
+	result := Execute(&Script{ID: "myscript.js", Data: script}, 0)
 
 	if result == nil {
 		t.Fatal("result is nil")
@@ -27,7 +27,7 @@ func TestSimpleBad(t *testing.T) {
 	let result = 0;
 	export default function() { result++; `)
 
-	result := Execute(script, 0)
+	result := Execute(&Script{ID: "myscript.js", Data: script}, 0)
 
 	if result == nil {
 		t.Fatal("result is nil")
@@ -45,7 +45,7 @@ func TestData(t *testing.T) {
 	let result = 0;
 	export default function(data) { result = result + data.key;}`)
 
-	result := Execute(script, map[string]interface{}{"key": 5})
+	result := Execute(&Script{ID: "myscript.js", Data: script}, map[string]interface{}{"key": 5})
 
 	if result == nil {
 		t.Fatal("result is nil")
@@ -66,7 +66,7 @@ func TestException(t *testing.T) {
 		throw "execption"
 	}`)
 
-	result := Execute(script, nil)
+	result := Execute(&Script{ID: "myscript.js", Data: script}, nil)
 
 	ex, ok := result.(*goja.Exception)
 	err, ok2 := result.(error)
