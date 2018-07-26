@@ -18,8 +18,6 @@ const (
 	RecordType = 2
 )
 
-//go:generate msgp
-
 // Messages store entries to the underlying storage
 type Messages struct {
 	Rules   map[string]*rules.Rule        `json:"rules"`

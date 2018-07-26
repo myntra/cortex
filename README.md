@@ -1,75 +1,41 @@
 
-# experimental
+# WIP
 
-cortex is a HA cloudevents.io aggregator
+Cortex is a fault-tolerant(raft) alerts correlation engine. 
 
+Alerts are accepted as a standard cloudevents.io event. Site 24x7 and Icinga integration converters are also provided.
+
+It aggregates similar events over a time window using a regex matcher and executes a JS(ES6) script. The script contains the correlation logic which can further create incidents or alerts. The JS environment is limited and is achieved by embedding k6.io javascript interpreter(https://docs.k6.io/docs/modules). This is an excellent module built on top of https://github.com/dop251/goja
+
+
+The aggregation of events in a bucket is done by writing a rule: 
 
 ```
 {
-    "cloudEventsVersion" : "0.1",
-    "eventType" : "servicename.subsystem.metric",
-    "source" : "icinga", 
-    "eventID" : "C234-1234-1234",
-    "eventTime" : "2018-04-05T17:31:00Z",
-    "extensions" : {
-      "comExampleExtension" : "value"
-    },
-    "contentType" : "application/json",
-    "data" : {
-        "key" : "val",
-    }
-}
-
-```
-
-## EventType
-
-Event Types are of the format:
-
-```
-<service-name>.<monitoring-system-name>.<metric-name>
-```
-
-## Rule
-
-A rule is an array of related eventypes.
-
-```{
-    rule: ["service1.site24x7.",service2.icinga.metric*.businessname.productname.x, service2.icinga.*.businessname.productname.x]
-    endpoint: "http://localhost:8080/correlate/search/up,
-    waitWindow: 30000,
-    slideWindow: 1000,
-    snoozeWindow: 2000,
-}
-
-
-{
-    rule: ["service1.site24x7.deadui",service1.icinga.*,service2.icing.metric]
-    endpoint: "http://localhost:8080/correlate/service2,
+    Title: ID: test-rule-id-1,
+    EventTypes:[myntra.prod.icinga.check_disk,myntra.prod.site247.cart_down],
+    ScriptID: myscript.js,
+    Dwell:4000,
+    DwellDeadline:3800,
+    MaxDwell:8000,
+    HookEndpoint: http://localhost:3000/testrule,
+    HookRetry: 2,
 }
 ```
 
-## Bucket
+where 
 
-A rulebucket is a collection of related cloudevents.
+*EventTypes* is the pattern of events to put in a bucket(collection of cloudevents) associated with the rule.
 
-```
-[]event{}
-```
+*Dwell* is the wait duration since the first matched event.
 
-This bucket is posted to the remote endpoint on timeout and removed from the aggregator.
+### Event Flow:
 
+Steps: 
 
-## AlertHandlers
-
-An AlertHandler accepts alerts in various formats and stores them as cloudevents.
-
-e.g: site 24x7, icinga etc.
-
-path: /site24x7/alert
+1. **Match** : alert --> (convert from site 24x7/icinga ) --> (match rule) --> **Collect**
+2. **Collect** --> (add to the rule bucket which *dwells* around until the configured time) -->  **Execute**
+3. **Execute** --> (flush after Dwell period) --> (execute configured script) --> *Post*
+4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
 
 
-Notes:
-1. Sliding Time Window.
-2. CorrelationService design: EventRegistry.
-3. RuleCreator 

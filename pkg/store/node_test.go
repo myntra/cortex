@@ -42,6 +42,7 @@ var testRule = rules.Rule{
 	HookEndpoint: "http://localhost:3000/testrule",
 	HookRetry:    2,
 	EventTypes:   []string{"myntra.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
+	ScriptID:     "myscript",
 }
 
 var testRuleUpdated = rules.Rule{
@@ -49,6 +50,7 @@ var testRuleUpdated = rules.Rule{
 	HookEndpoint: "http://localhost:3000/testrule",
 	HookRetry:    2,
 	EventTypes:   []string{"apple.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
+	ScriptID:     "myscript",
 }
 
 func singleNode(t *testing.T, f func(node *Node)) {
@@ -297,6 +299,16 @@ func TestNodeSnapshot(t *testing.T) {
 	// run test
 	time.Sleep(time.Second * 5)
 
+	script := []byte(`
+	let result = 0;
+	export default function() { result++; }`)
+
+	// add script
+	err = node.AddScript(&js.Script{ID: "myscript", Data: script})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	err = node.AddRule(&testRule)
 	if err != nil {
 		t.Fatal(err)
@@ -307,6 +319,13 @@ func TestNodeSnapshot(t *testing.T) {
 		t.Fatal("rule not saved")
 	}
 
+	err = node.Stash(&testevent)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultDwell+5000))
+
 	glog.Infof("take a snapshot")
 
 	err = node.Snapshot()
@@ -314,14 +333,14 @@ func TestNodeSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(time.Second * 1)
-	// close node
+	time.Sleep(time.Second * 2)
+	// close node <===================
 	err = node.Shutdown()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 2)
 
 	raftListener, err = net.Listen("tcp", raftAddr)
 	if err != nil {
@@ -330,7 +349,7 @@ func TestNodeSnapshot(t *testing.T) {
 
 	cfg.RaftListener = raftListener
 
-	// start again
+	// start again ==================>
 	err = node.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -343,6 +362,22 @@ func TestNodeSnapshot(t *testing.T) {
 	rule = node.GetRule(testRule.ID)
 	if testRule.ID != rule.ID {
 		t.Fatal("rule not saved")
+	}
+
+	respScript := node.GetScript("myscript")
+	if respScript == nil {
+		t.Fatal("script not found")
+	}
+	if !bytes.Equal(script, respScript.Data) {
+		t.Fatal("unexpected get script response")
+	}
+
+	records := node.GetRuleExectutions(testRule.ID)
+	if len(records) == 0 {
+		t.Fatal("no record of execution, event was not stashed")
+	}
+	if records[0].Bucket.Rule.ID != testRule.ID {
+		t.Fatalf("unexpected rule id, event was not stashed %v %v", records[0].Bucket.Rule.ID, testRule.ID)
 	}
 
 	// close node

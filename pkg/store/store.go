@@ -44,9 +44,21 @@ type defaultStore struct {
 	executionStorage     *executionStorage
 	executionBucketQueue chan *events.Bucket
 	quitFlusherChan      chan struct{}
+	persisters           []persister
+	restorers            map[MessageType]restorer
 }
 
 func newStore(opt *config.Config) (*defaultStore, error) {
+
+	// register persisters
+	var persisters []persister
+	persisters = append(persisters, persistRules, persistRecords, persistScripts)
+
+	restorers := make(map[MessageType]restorer)
+
+	restorers[RuleType] = restoreRules
+	restorers[RecordType] = restoreRecords
+	restorers[ScriptType] = restoreScripts
 
 	store := &defaultStore{
 		scriptStorage: &scriptStorage{
@@ -66,6 +78,8 @@ func newStore(opt *config.Config) (*defaultStore, error) {
 		opt:                  opt,
 		quitFlusherChan:      make(chan struct{}),
 		executionBucketQueue: make(chan *events.Bucket, 1000),
+		persisters:           persisters,
+		restorers:            restorers,
 	}
 
 	return store, nil

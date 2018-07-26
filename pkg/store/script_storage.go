@@ -82,7 +82,7 @@ func (s *scriptStorage) getScripts() []string {
 func (s *scriptStorage) clone() map[string]*js.Script {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var scripts map[string]*js.Script
+	scripts := make(map[string]*js.Script)
 	for k, v := range s.m {
 		scripts[k] = v
 	}

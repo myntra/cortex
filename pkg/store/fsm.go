@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
@@ -95,42 +94,119 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 
 	rules := f.bucketStorage.rs.clone()
 	scripts := f.scriptStorage.clone()
-	history := f.executionStorage.clone()
+	records := f.executionStorage.clone()
+
 	return &fsmSnapShot{
-		msgs: &Messages{
+		persisters: f.persisters,
+		messages: &Messages{
 			Rules:   rules,
 			Scripts: scripts,
-			Records: history,
+			Records: records,
 		}}, nil
 }
+
+type restorer func(messages *Messages, reader *msgp.Reader) error
 
 func (f *fsm) Restore(rc io.ReadCloser) error {
 	glog.Info("restore <=")
 	defer rc.Close()
-	var msgs Messages
 
-	bts, err := ioutil.ReadAll(rc)
+	// body, _ := ioutil.ReadAll(rc)
+	// glog.Infoln(string(body))
+
+	messages := &Messages{
+		Rules:   make(map[string]*rules.Rule),
+		Scripts: make(map[string]*js.Script),
+		Records: make(map[string]*executions.Record),
+	}
+
+	msgpReader := msgp.NewReader(rc)
+
+	msgType := make([]byte, 1)
+	for {
+		// Read the message type
+		_, err := msgpReader.Read(msgType)
+		if err == io.EOF {
+			glog.Infof("err => %v", err)
+			break
+		} else if err != nil {
+			glog.Error(err)
+			return err
+		}
+
+		// Decode
+		msg := MessageType(msgType[0])
+		glog.Infof("resotre, messageType %+v\n", msg)
+		if fn := f.restorers[msg]; fn != nil {
+			if err := fn(messages, msgpReader); err != nil {
+				glog.Error(err)
+				return err
+			}
+		} else {
+			glog.Error(fmt.Errorf("Unrecognized msg type %d", msg))
+			return fmt.Errorf("Unrecognized msg type %d", msg)
+		}
+
+	}
+
+	f.bucketStorage.rs.restore(messages.Rules)
+	f.scriptStorage.restore(messages.Scripts)
+	f.executionStorage.restore(messages.Records)
+
+	return nil
+}
+
+func restoreRules(messages *Messages, reader *msgp.Reader) error {
+	var rule rules.Rule
+	err := rule.DecodeMsg(reader)
 	if err != nil {
+		glog.Error(err)
 		return err
 	}
 
-	left, err := msgs.UnmarshalMsg(bts)
+	glog.Infof("restoreRules %+v\n", rule)
 
-	if len(left) > 0 {
-		return fmt.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	if &rule == nil {
+		return fmt.Errorf("restored rule nil")
 	}
 
-	left, err = msgp.Skip(bts)
+	messages.Rules[rule.ID] = &rule
+	return nil
+}
+
+func restoreScripts(messages *Messages, reader *msgp.Reader) error {
+	var script js.Script
+	err := script.DecodeMsg(reader)
 	if err != nil {
+		glog.Error(err)
 		return err
 	}
-	if len(left) > 0 {
-		return fmt.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+
+	glog.Infof("restoreScripts %+v\n", script)
+
+	if &script == nil {
+		return fmt.Errorf("restored script nil")
 	}
 
-	f.bucketStorage.rs.restore(msgs.Rules)
-	f.scriptStorage.restore(msgs.Scripts)
-	f.executionStorage.restore(msgs.Records)
+	messages.Scripts[script.ID] = &script
+	return nil
+}
+
+func restoreRecords(messages *Messages, reader *msgp.Reader) error {
+	var record executions.Record
+	err := record.DecodeMsg(reader)
+	if err != nil {
+		glog.Error(err)
+		return err
+	}
+
+	glog.Infof("restoreRecords %+v\n", record)
+
+	if &record == nil {
+		return fmt.Errorf("restored record nil")
+	}
+
+	messages.Records[record.ID] = &record
 
 	return nil
 }
