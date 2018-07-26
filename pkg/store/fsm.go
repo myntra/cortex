@@ -91,13 +91,12 @@ func (f *fsm) applyRemoveRecord(id string) interface{} {
 
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	glog.Info("snapshot =>")
-	buckets := f.bucketStorage.es.clone()
+
 	rules := f.bucketStorage.rs.clone()
 	scripts := f.scriptStorage.clone()
 	history := f.executionStorage.clone()
 	return &fsmSnapShot{
 		data: &DB{
-			Buckets: buckets,
 			Rules:   rules,
 			Scripts: scripts,
 			History: history,
@@ -128,7 +127,6 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 		return fmt.Errorf("%d bytes left over after Skip(): %q", len(left), left)
 	}
 
-	f.bucketStorage.es.restore(data.Buckets)
 	f.bucketStorage.rs.restore(data.Rules)
 	f.scriptStorage.restore(data.Scripts)
 	f.executionStorage.restore(data.History)
