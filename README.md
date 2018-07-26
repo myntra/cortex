@@ -86,7 +86,7 @@ If `result` is set, it will be posted to the hookEndPoint. The `bucket` itself w
 
 A new `bucket` will be created when an event matches the rule again.
 
-## Event Types Pattern Rules
+## Rules
 
 ```
 	{rule pattern, incoming event type, expected match}
