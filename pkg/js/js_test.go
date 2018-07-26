@@ -1,8 +1,9 @@
 package js
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/dop251/goja"
 )
@@ -13,13 +14,9 @@ func TestSimple(t *testing.T) {
 	export default function() { result++; }`)
 
 	result := Execute(&Script{ID: "myscript.js", Data: script}, 0)
+	require.NotNil(t, result)
+	require.Equal(t, int64(1), result.(int64))
 
-	if result == nil {
-		t.Fatal("result is nil")
-	}
-	if result.(int64) != 1 {
-		t.Fatalf("unexpected result %v", result)
-	}
 }
 
 func TestSimpleBad(t *testing.T) {
@@ -28,16 +25,9 @@ func TestSimpleBad(t *testing.T) {
 	export default function() { result++; `)
 
 	result := Execute(&Script{ID: "myscript.js", Data: script}, 0)
-
-	if result == nil {
-		t.Fatal("result is nil")
-	}
-	ex, ok := result.(*goja.Exception)
-	fmt.Println(ex, ok)
-
-	if !ok {
-		t.Fatalf("unexpected result %v", result)
-	}
+	require.NotNil(t, result)
+	_, ok := result.(*goja.Exception)
+	require.Equal(t, true, ok)
 }
 
 func TestData(t *testing.T) {
@@ -46,13 +36,8 @@ func TestData(t *testing.T) {
 	export default function(data) { result = result + data.key;}`)
 
 	result := Execute(&Script{ID: "myscript.js", Data: script}, map[string]interface{}{"key": 5})
-
-	if result == nil {
-		t.Fatal("result is nil")
-	}
-	if result.(int64) != 5 {
-		t.Fatalf("unexpected result %v", result)
-	}
+	require.NotNil(t, result)
+	require.Equal(t, int64(5), result.(int64))
 }
 
 func TestException(t *testing.T) {
@@ -68,7 +53,9 @@ func TestException(t *testing.T) {
 
 	result := Execute(&Script{ID: "myscript.js", Data: script}, nil)
 
-	ex, ok := result.(*goja.Exception)
+	_, ok := result.(*goja.Exception)
+	require.Equal(t, true, ok)
 	err, ok2 := result.(error)
-	fmt.Println(ex, ok, err, ok2)
+	require.Equal(t, true, ok2)
+	require.Error(t, err)
 }

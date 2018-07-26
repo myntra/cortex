@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/golang/glog"
 
 	"github.com/myntra/cortex/pkg/config"
@@ -25,7 +27,7 @@ type exampleData struct {
 func tptr(t time.Time) *time.Time { return nil }
 
 var testevent = events.Event{
-	EventType:          "myntra.prod.icinga.check_disk",
+	EventType:          "acme.prod.icinga.check_disk",
 	EventTypeVersion:   "1.0",
 	CloudEventsVersion: "0.1",
 	Source:             "/sink",
@@ -38,19 +40,19 @@ var testevent = events.Event{
 }
 
 var testRule = rules.Rule{
-	ID:           "test-rule-id-1",
-	HookEndpoint: "http://localhost:3000/testrule",
-	HookRetry:    2,
-	EventTypes:   []string{"myntra.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
-	ScriptID:     "myscript",
+	ID:                "test-rule-id-1",
+	HookEndpoint:      "http://localhost:3000/testrule",
+	HookRetry:         2,
+	EventTypePatterns: []string{"acme.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
+	ScriptID:          "myscript",
 }
 
 var testRuleUpdated = rules.Rule{
-	ID:           "test-rule-id-1",
-	HookEndpoint: "http://localhost:3000/testrule",
-	HookRetry:    2,
-	EventTypes:   []string{"apple.prod.icinga.check_disk", "myntra.prod.site247.cart_down"},
-	ScriptID:     "myscript",
+	ID:                "test-rule-id-1",
+	HookEndpoint:      "http://localhost:3000/testrule",
+	HookRetry:         2,
+	EventTypePatterns: []string{"apple.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
+	ScriptID:          "myscript",
 }
 
 func singleNode(t *testing.T, f func(node *Node)) {
@@ -62,14 +64,10 @@ func singleNode(t *testing.T, f func(node *Node)) {
 	httpAddr := ":5879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	httpListener, err := net.Listen("tcp", httpAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// open store
 	cfg := &config.Config{
@@ -87,14 +85,10 @@ func singleNode(t *testing.T, f func(node *Node)) {
 	}
 
 	node, err := NewNode(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = node.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	glog.Infof("node started. 5s")
 	// run test
@@ -117,9 +111,7 @@ func TestRuleSingleNode(t *testing.T) {
 	singleNode(t, func(node *Node) {
 
 		err := node.AddRule(&testRule)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		rules := node.GetRules()
 		found := false
@@ -134,19 +126,15 @@ func TestRuleSingleNode(t *testing.T) {
 		}
 
 		err = node.UpdateRule(&testRuleUpdated)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		updatedRule := node.GetRule(testRule.ID)
-		if updatedRule.EventTypes[0] != testRuleUpdated.EventTypes[0] {
+		if updatedRule.EventTypePatterns[0] != testRuleUpdated.EventTypePatterns[0] {
 			t.Fatal("rule was not updated")
 		}
 
 		err = node.RemoveRule(testRule.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		rules = node.GetRules()
 		found = false
@@ -171,9 +159,7 @@ func TestScriptSingleNode(t *testing.T) {
 
 		// add script
 		err := node.AddScript(&js.Script{ID: "myscript", Data: script})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// get script
 
@@ -186,10 +172,7 @@ func TestScriptSingleNode(t *testing.T) {
 		// remove script
 
 		err = node.RemoveScript("myscript")
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		require.NoError(t, err)
 		// get script
 
 		respScript = node.GetScript("myscript")
@@ -204,9 +187,7 @@ func TestScriptSingleNode(t *testing.T) {
 func TestOrphanEventSingleNode(t *testing.T) {
 	singleNode(t, func(node *Node) {
 		err := node.Stash(&testevent)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		var rb *events.Bucket
 	loop:
@@ -231,14 +212,9 @@ func TestEventSingleNode(t *testing.T) {
 	singleNode(t, func(node *Node) {
 
 		err := node.AddRule(&testRule)
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		require.NoError(t, err)
 		err = node.Stash(&testevent)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultDwell+3000))
 		records := node.GetRuleExectutions(testRule.ID)
@@ -261,14 +237,9 @@ func TestNodeSnapshot(t *testing.T) {
 	httpAddr := ":5879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	require.NoError(t, err)
 	httpListener, err := net.Listen("tcp", httpAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// open store
 	cfg := &config.Config{
@@ -286,14 +257,10 @@ func TestNodeSnapshot(t *testing.T) {
 	}
 
 	node, err := NewNode(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = node.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	glog.Infof("node started. 5s")
 	// run test
@@ -305,14 +272,9 @@ func TestNodeSnapshot(t *testing.T) {
 
 	// add script
 	err = node.AddScript(&js.Script{ID: "myscript", Data: script})
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	require.NoError(t, err)
 	err = node.AddRule(&testRule)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	rule := node.GetRule(testRule.ID)
 	if testRule.ID != rule.ID {
@@ -320,40 +282,30 @@ func TestNodeSnapshot(t *testing.T) {
 	}
 
 	err = node.Stash(&testevent)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultDwell+5000))
 
 	glog.Infof("take a snapshot")
 
 	err = node.Snapshot()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	time.Sleep(time.Second * 2)
 	// close node <===================
 	err = node.Shutdown()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	time.Sleep(time.Second * 2)
 
 	raftListener, err = net.Listen("tcp", raftAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cfg.RaftListener = raftListener
 
 	// start again ==================>
 	err = node.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	glog.Infof("node started. 5s")
 	// run test
@@ -382,9 +334,7 @@ func TestNodeSnapshot(t *testing.T) {
 
 	// close node
 	err = node.Shutdown()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = httpListener.Close()
 

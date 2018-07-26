@@ -24,7 +24,7 @@ The collection of events in a bucket is done by writing a rule:
 {
 	"title": "a test rule",
 	"id": "test-rule-id-1",
-	"eventTypes": ["acme.prod.icinga.check_disk", "acme.prod.site247.*"],
+	"eventTypePatterns": ["acme.prod.icinga.check_disk", "acme.prod.site247.*"],
 	"scriptID": "myscript.js",
 	"dwell": 4000,
 	"dwellDeadline": 3800,
@@ -37,12 +37,12 @@ The collection of events in a bucket is done by writing a rule:
 
 where:
 
-*EventTypes* is the pattern of events to put in a bucket(collection of cloudevents) associated with the rule.
+*EventTypePatterns* is the pattern of events to put in a bucket(collection of cloudevents) associated with the rule.
 
 *Dwell* is the wait duration since the first matched event.
 
 
-For this rule, incoming events with `eventType` matching one of `eventTypes` will be put in the same bucket:
+For this rule, incoming events with `eventType` matching one of `eventTypePatterns` will be put in the same bucket:
 
 ```json
 {
@@ -85,6 +85,27 @@ export default function(bucket) {
 If `result` is set, it will be posted to the hookEndPoint. The `bucket` itself will be reset and evicted from the `collect` loop. The execution `record` will then be stored and can be fetched later.
 
 A new `bucket` will be created when an event matches the rule again.
+
+## Event Types Pattern Rules
+
+```
+	{rule pattern, incoming event type, expected match}
+
+    {"acme*", "acme", false},
+	{"acme*", "acme.prod", true},
+	{"acme.prod*", "acme.prod.search", true},
+	{"acme.prod*.checkout", "acme.prod.search", false},
+	{"acme.prod*.*", "acme.prod.search", false},
+	{"acme.prod*.*", "acme.prod-1.search", true},
+	{"acme.prod.*.*.*", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.*.*.check_disk", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.*.*.check_loadavg", "acme.prod.search.node1.check_disk", false},
+	{"*.prod.*.*.check_loadavg", "acme.prod.search.node1.check_loadavg", true},
+	{"acme.prod.*", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.search.node*.check_disk", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.search.node*.*", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.search.dc1-node*.*", "acme.prod.search.node1.check_disk", false},
+```
 
 
 

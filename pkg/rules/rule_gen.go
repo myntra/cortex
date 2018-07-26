@@ -47,19 +47,19 @@ func (z *Rule) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
-		case "EventTypes":
+		case "EventTypePatterns":
 			var zb0002 uint32
 			zb0002, err = dc.ReadArrayHeader()
 			if err != nil {
 				return
 			}
-			if cap(z.EventTypes) >= int(zb0002) {
-				z.EventTypes = (z.EventTypes)[:zb0002]
+			if cap(z.EventTypePatterns) >= int(zb0002) {
+				z.EventTypePatterns = (z.EventTypePatterns)[:zb0002]
 			} else {
-				z.EventTypes = make([]string, zb0002)
+				z.EventTypePatterns = make([]string, zb0002)
 			}
-			for za0001 := range z.EventTypes {
-				z.EventTypes[za0001], err = dc.ReadString()
+			for za0001 := range z.EventTypePatterns {
+				z.EventTypePatterns[za0001], err = dc.ReadString()
 				if err != nil {
 					return
 				}
@@ -79,6 +79,23 @@ func (z *Rule) DecodeMsg(dc *msgp.Reader) (err error) {
 			if err != nil {
 				return
 			}
+		case "Regexes":
+			var zb0003 uint32
+			zb0003, err = dc.ReadArrayHeader()
+			if err != nil {
+				return
+			}
+			if cap(z.Regexes) >= int(zb0003) {
+				z.Regexes = (z.Regexes)[:zb0003]
+			} else {
+				z.Regexes = make([]string, zb0003)
+			}
+			for za0002 := range z.Regexes {
+				z.Regexes[za0002], err = dc.ReadString()
+				if err != nil {
+					return
+				}
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -91,9 +108,9 @@ func (z *Rule) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *Rule) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 9
+	// map header, size 10
 	// write "Title"
-	err = en.Append(0x89, 0xa5, 0x54, 0x69, 0x74, 0x6c, 0x65)
+	err = en.Append(0x8a, 0xa5, 0x54, 0x69, 0x74, 0x6c, 0x65)
 	if err != nil {
 		return
 	}
@@ -137,17 +154,17 @@ func (z *Rule) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	// write "EventTypes"
-	err = en.Append(0xaa, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x73)
+	// write "EventTypePatterns"
+	err = en.Append(0xb1, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x50, 0x61, 0x74, 0x74, 0x65, 0x72, 0x6e, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteArrayHeader(uint32(len(z.EventTypes)))
+	err = en.WriteArrayHeader(uint32(len(z.EventTypePatterns)))
 	if err != nil {
 		return
 	}
-	for za0001 := range z.EventTypes {
-		err = en.WriteString(z.EventTypes[za0001])
+	for za0001 := range z.EventTypePatterns {
+		err = en.WriteString(z.EventTypePatterns[za0001])
 		if err != nil {
 			return
 		}
@@ -179,15 +196,30 @@ func (z *Rule) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
+	// write "Regexes"
+	err = en.Append(0xa7, 0x52, 0x65, 0x67, 0x65, 0x78, 0x65, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteArrayHeader(uint32(len(z.Regexes)))
+	if err != nil {
+		return
+	}
+	for za0002 := range z.Regexes {
+		err = en.WriteString(z.Regexes[za0002])
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *Rule) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 9
+	// map header, size 10
 	// string "Title"
-	o = append(o, 0x89, 0xa5, 0x54, 0x69, 0x74, 0x6c, 0x65)
+	o = append(o, 0x8a, 0xa5, 0x54, 0x69, 0x74, 0x6c, 0x65)
 	o = msgp.AppendString(o, z.Title)
 	// string "ID"
 	o = append(o, 0xa2, 0x49, 0x44)
@@ -201,11 +233,11 @@ func (z *Rule) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "HookRetry"
 	o = append(o, 0xa9, 0x48, 0x6f, 0x6f, 0x6b, 0x52, 0x65, 0x74, 0x72, 0x79)
 	o = msgp.AppendInt(o, z.HookRetry)
-	// string "EventTypes"
-	o = append(o, 0xaa, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x73)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.EventTypes)))
-	for za0001 := range z.EventTypes {
-		o = msgp.AppendString(o, z.EventTypes[za0001])
+	// string "EventTypePatterns"
+	o = append(o, 0xb1, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x50, 0x61, 0x74, 0x74, 0x65, 0x72, 0x6e, 0x73)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.EventTypePatterns)))
+	for za0001 := range z.EventTypePatterns {
+		o = msgp.AppendString(o, z.EventTypePatterns[za0001])
 	}
 	// string "Dwell"
 	o = append(o, 0xa5, 0x44, 0x77, 0x65, 0x6c, 0x6c)
@@ -216,6 +248,12 @@ func (z *Rule) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "MaxDwell"
 	o = append(o, 0xa8, 0x4d, 0x61, 0x78, 0x44, 0x77, 0x65, 0x6c, 0x6c)
 	o = msgp.AppendUint64(o, z.MaxDwell)
+	// string "Regexes"
+	o = append(o, 0xa7, 0x52, 0x65, 0x67, 0x65, 0x78, 0x65, 0x73)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.Regexes)))
+	for za0002 := range z.Regexes {
+		o = msgp.AppendString(o, z.Regexes[za0002])
+	}
 	return
 }
 
@@ -260,19 +298,19 @@ func (z *Rule) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "EventTypes":
+		case "EventTypePatterns":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				return
 			}
-			if cap(z.EventTypes) >= int(zb0002) {
-				z.EventTypes = (z.EventTypes)[:zb0002]
+			if cap(z.EventTypePatterns) >= int(zb0002) {
+				z.EventTypePatterns = (z.EventTypePatterns)[:zb0002]
 			} else {
-				z.EventTypes = make([]string, zb0002)
+				z.EventTypePatterns = make([]string, zb0002)
 			}
-			for za0001 := range z.EventTypes {
-				z.EventTypes[za0001], bts, err = msgp.ReadStringBytes(bts)
+			for za0001 := range z.EventTypePatterns {
+				z.EventTypePatterns[za0001], bts, err = msgp.ReadStringBytes(bts)
 				if err != nil {
 					return
 				}
@@ -292,6 +330,23 @@ func (z *Rule) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			if err != nil {
 				return
 			}
+		case "Regexes":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				return
+			}
+			if cap(z.Regexes) >= int(zb0003) {
+				z.Regexes = (z.Regexes)[:zb0003]
+			} else {
+				z.Regexes = make([]string, zb0003)
+			}
+			for za0002 := range z.Regexes {
+				z.Regexes[za0002], bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					return
+				}
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -305,10 +360,13 @@ func (z *Rule) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *Rule) Msgsize() (s int) {
-	s = 1 + 6 + msgp.StringPrefixSize + len(z.Title) + 3 + msgp.StringPrefixSize + len(z.ID) + 9 + msgp.StringPrefixSize + len(z.ScriptID) + 13 + msgp.StringPrefixSize + len(z.HookEndpoint) + 10 + msgp.IntSize + 11 + msgp.ArrayHeaderSize
-	for za0001 := range z.EventTypes {
-		s += msgp.StringPrefixSize + len(z.EventTypes[za0001])
+	s = 1 + 6 + msgp.StringPrefixSize + len(z.Title) + 3 + msgp.StringPrefixSize + len(z.ID) + 9 + msgp.StringPrefixSize + len(z.ScriptID) + 13 + msgp.StringPrefixSize + len(z.HookEndpoint) + 10 + msgp.IntSize + 18 + msgp.ArrayHeaderSize
+	for za0001 := range z.EventTypePatterns {
+		s += msgp.StringPrefixSize + len(z.EventTypePatterns[za0001])
 	}
-	s += 6 + msgp.Uint64Size + 14 + msgp.Uint64Size + 9 + msgp.Uint64Size
+	s += 6 + msgp.Uint64Size + 14 + msgp.Uint64Size + 9 + msgp.Uint64Size + 8 + msgp.ArrayHeaderSize
+	for za0002 := range z.Regexes {
+		s += msgp.StringPrefixSize + len(z.Regexes[za0002])
+	}
 	return
 }

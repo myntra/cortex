@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/golang/glog"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/executions"
@@ -61,19 +63,19 @@ var testevent = &events.Event{
 }
 
 var testRule = rules.Rule{
-	ID:            "123",
-	ScriptID:      "myscript",
-	HookEndpoint:  "http://localhost:3000/testrule",
-	HookRetry:     2,
-	EventTypes:    []string{"acme.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
-	Dwell:         1000,
-	DwellDeadline: 800,
-	MaxDwell:      2000,
+	ID:                "123",
+	ScriptID:          "myscript",
+	HookEndpoint:      "http://localhost:3000/testrule",
+	HookRetry:         2,
+	EventTypePatterns: []string{"acme.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
+	Dwell:             1000,
+	DwellDeadline:     800,
+	MaxDwell:          2000,
 }
 
 var testRuleUpdated = rules.Rule{
-	ID:         "123",
-	EventTypes: []string{"apple.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
+	ID:                "123",
+	EventTypePatterns: []string{"apple.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
 }
 
 var scriptRequest = ScriptRequest{
@@ -121,9 +123,7 @@ func startService(t *testing.T, cfg *config.Config, svc *Service) {
 func stopService(t *testing.T, svc *Service) {
 	// close svc
 	err := svc.Shutdown(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 }
 
@@ -136,14 +136,10 @@ func singleService(t *testing.T, f func(url string)) {
 	httpAddr := ":6879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	httpListener, err := net.Listen("tcp", httpAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cfg := &config.Config{
 		NodeID:               "service0",
@@ -160,9 +156,7 @@ func singleService(t *testing.T, f func(url string)) {
 	}
 
 	svc, err := New(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	startService(t, cfg, svc)
 	defer stopService(t, svc)
@@ -183,14 +177,10 @@ func multiService(t *testing.T, f func(urls []string)) {
 	httpAddr := ":7879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	httpListener, err := net.Listen("tcp", httpAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// open store 1
 	cfg1 := &config.Config{
@@ -208,9 +198,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 	}
 
 	svc1, err := New(cfg1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	startService(t, cfg1, svc1)
 
@@ -221,14 +209,10 @@ func multiService(t *testing.T, f func(urls []string)) {
 	httpAddr1 := ":8879"
 
 	raftListener1, err := net.Listen("tcp", raftAddr1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	httpListener1, err := net.Listen("tcp", httpAddr1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// open store 2
 	cfg2 := &config.Config{
@@ -247,9 +231,7 @@ func multiService(t *testing.T, f func(urls []string)) {
 	}
 
 	svc2, err := New(cfg2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	startService(t, cfg2, svc2)
 
@@ -260,14 +242,10 @@ func multiService(t *testing.T, f func(urls []string)) {
 	httpAddr2 := ":9979"
 
 	raftListener2, err := net.Listen("tcp", raftAddr2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	httpListener2, err := net.Listen("tcp", httpAddr2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// open store 2
 	cfg3 := &config.Config{
@@ -286,9 +264,8 @@ func multiService(t *testing.T, f func(urls []string)) {
 	}
 
 	svc3, err := New(cfg3)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	startService(t, cfg3, svc3)
 
 	url1 := "http://localhost" + cfg1.HTTPAddr
@@ -320,7 +297,7 @@ func ruletest(t *testing.T, url string) {
 	if err := mergo.Merge(&cloneTestRule, testRule); err != nil {
 		t.Fatal(err)
 	}
-	cloneTestRule.EventTypes = testRuleUpdated.EventTypes
+	cloneTestRule.EventTypePatterns = testRuleUpdated.EventTypePatterns
 	e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(cloneTestRule)
 
 	//remove
@@ -352,7 +329,7 @@ func TestRuleMultiService(t *testing.T) {
 		if err := mergo.Merge(&cloneTestRule, testRule); err != nil {
 			t.Fatal(err)
 		}
-		cloneTestRule.EventTypes = testRuleUpdated.EventTypes
+		cloneTestRule.EventTypePatterns = testRuleUpdated.EventTypePatterns
 		// verifiy from node 1
 		e = httpexpect.New(t, urls[0])
 		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(cloneTestRule)
@@ -451,21 +428,16 @@ func TestSingleEventSingleService(t *testing.T) {
 
 		// fetch rule executions
 		resp, err := http.Get(url + "/rules/" + testRule.ID + "/executions")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		defer resp.Body.Close()
 
 		var ruleExecutions []*executions.Record
 		err = json.Unmarshal(body, &ruleExecutions)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if len(ruleExecutions) == 0 {
 			glog.Info("no executions found")
@@ -513,21 +485,16 @@ func TestSingleEventMultipleService(t *testing.T) {
 
 		// fetch rule executions from node 1
 		resp, err := http.Get(urls[0] + "/rules/" + testRule.ID + "/executions")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		defer resp.Body.Close()
 
 		var ruleExecutions []*executions.Record
 		err = json.Unmarshal(body, &ruleExecutions)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if len(ruleExecutions) == 0 {
 			glog.Info("no executions found")
@@ -554,36 +521,26 @@ func TestSite247Handler(t *testing.T) {
 
 		// fetch rule executions
 		s, err := json.Marshal(testalertsite247)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		resp, err := http.Post(url+"/event/sink/site247", "application/json", bytes.NewReader(s))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
+
 		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		defer resp.Body.Close()
 
 		var eventBody events.Event
 		err = json.Unmarshal(body, &eventBody)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		byteData, err := json.Marshal(eventBody.Data)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		var eventData sinks.Site247Alert
 		err = json.Unmarshal(byteData, &eventData)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		if eventData != *testalertsite247 {
 			t.Fatal("unexpected eventbody data")

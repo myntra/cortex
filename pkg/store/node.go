@@ -99,11 +99,17 @@ func (n *Node) LeaderAddr() string {
 
 // AddRule adds a rule to the store
 func (n *Node) AddRule(rule *rules.Rule) error {
+	if err := rule.Validate(); err != nil {
+		return err
+	}
 	return n.store.addRule(rule)
 }
 
 // UpdateRule updates a rule to the store
 func (n *Node) UpdateRule(rule *rules.Rule) error {
+	if err := rule.Validate(); err != nil {
+		return err
+	}
 	return n.store.updateRule(rule)
 }
 

@@ -72,17 +72,17 @@ const schema = {
   scriptID: "",
   hook_endpoint: "",
   hook_retry: "",
-  event_types: "",
+  event_type_patterns: "",
   dwell: "",
   dwell_deadline: "",
   max_dwell: "",
-  required: ["title", "event_types"],
+  required: ["title", "event_type_patterns"],
   properties: {
     title: { type: "string", title: "Title", default: "A new rule" },
     scriptID: { type: "string", title: "Script", default: "default.js" },
     hook_endpoint: { type: "string", title: "Hook Endpoint", default: "http://localhost:4000" },
     hook_retry: { type: "string", title: "Hook Retry", default: "2" },
-    event_types: { type: "string", title: "Match Event Types", default: "com.acme.node1.cpu,com.apple.node2.cpu" },
+    event_type_patterns: { type: "string", title: "Match Event Types", default: "com.acme.node1.cpu,com.apple.node2.cpu" },
     dwell: { type: "string", title: "Wait Window(seconds)", default: "120" },
     dwell_deadline: { type: "string", title: "Wait Window Threshold(seconds)", default: "100" },
     max_dwell: { type: "string", title: "Maximum Wait Window(seconds)", default: "240" },
@@ -91,7 +91,7 @@ const schema = {
 };
 
 const uiSchema = {
-  event_types: {
+  event_type_patterns: {
     "ui:widget": "textarea"
   }
 };

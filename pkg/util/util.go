@@ -82,14 +82,3 @@ func RetryPost(val interface{}, url string, retry int) int {
 
 	return resp.StatusCode
 }
-
-// PatternMatch checks if the input is a match to a field of the patterns array
-func PatternMatch(in string, patterns []string) bool {
-	for _, pattern := range patterns {
-		if in == pattern {
-			return true
-		}
-	}
-
-	return false
-}

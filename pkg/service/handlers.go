@@ -75,7 +75,7 @@ func (s *Service) addRuleHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	var rule rules.Rule
+	var rule rules.PublicRule
 	err = json.Unmarshal(reqBody, &rule)
 	if err != nil {
 		util.ErrStatus(w, r, "rule parsing failed", http.StatusNotAcceptable, err)
@@ -91,7 +91,7 @@ func (s *Service) addRuleHandler(w http.ResponseWriter, r *http.Request) {
 		rule.ID = uid.String()
 	}
 
-	err = s.node.AddRule(&rule)
+	err = s.node.AddRule(rules.NewFromPublic(&rule))
 	if err != nil {
 		util.ErrStatus(w, r, "adding rule failed", http.StatusNotAcceptable, err)
 		return
@@ -117,7 +117,7 @@ func (s *Service) updateRuleHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	var rule rules.Rule
+	var rule rules.PublicRule
 	err = json.Unmarshal(reqBody, &rule)
 	if err != nil {
 		util.ErrStatus(w, r, "rule parsing failed", http.StatusNotAcceptable, err)
@@ -129,12 +129,14 @@ func (s *Service) updateRuleHandler(w http.ResponseWriter, r *http.Request) {
 		util.ErrStatus(w, r, "update rule failed, rule not found", http.StatusNotFound, fmt.Errorf("rule is nil"))
 	}
 
-	if err := mergo.Merge(&rule, existingRule); err != nil {
+	existingPublicRule := rules.NewFromPrivate(existingRule)
+
+	if err := mergo.Merge(&rule, existingPublicRule); err != nil {
 		util.ErrStatus(w, r, "updating rule failed", http.StatusInternalServerError, err)
 		return
 	}
 
-	err = s.node.UpdateRule(&rule)
+	err = s.node.UpdateRule(rules.NewFromPublic(&rule))
 	if err != nil {
 		util.ErrStatus(w, r, "updating rule failed", http.StatusNotAcceptable, err)
 		return
@@ -167,9 +169,10 @@ func (s *Service) getRuleHandler(w http.ResponseWriter, r *http.Request) {
 	rule := s.node.GetRule(ruleID)
 	if rule == nil {
 		util.ErrStatus(w, r, "rule not found", http.StatusNotFound, fmt.Errorf("rule is nil"))
+		return
 	}
 
-	b, err := json.Marshal(rule)
+	b, err := json.Marshal(rules.NewFromPrivate(rule))
 	if err != nil {
 		util.ErrStatus(w, r, "rules parsing failed", http.StatusNotFound, err)
 		return
@@ -182,9 +185,15 @@ func (s *Service) getRuleHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) {
-	rules := s.node.GetRules()
+	privateRules := s.node.GetRules()
 
-	b, err := json.Marshal(&rules)
+	var publicRules []*rules.PublicRule
+
+	for _, privateRule := range privateRules {
+		publicRules = append(publicRules, rules.NewFromPrivate(privateRule))
+	}
+
+	b, err := json.Marshal(&publicRules)
 	if err != nil {
 		util.ErrStatus(w, r, "rules parsing failed", http.StatusNotFound, err)
 		return

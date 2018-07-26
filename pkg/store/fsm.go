@@ -170,7 +170,13 @@ func restoreRules(messages *Messages, reader *msgp.Reader) error {
 		return fmt.Errorf("restored rule nil")
 	}
 
-	messages.Rules[rule.ID] = &rule
+	rulePtr := &rule
+	err = rulePtr.Validate()
+	if err != nil {
+		return err
+	}
+
+	messages.Rules[rule.ID] = rulePtr
 	return nil
 }
 

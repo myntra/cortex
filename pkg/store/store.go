@@ -188,10 +188,11 @@ func (d *defaultStore) matchAndStash(event *events.Event) error {
 
 func (d *defaultStore) match(rule *rules.Rule, event *events.Event) error {
 	glog.Info("match event ==>  ", event)
-	if util.PatternMatch(event.EventType, rule.EventTypes) {
+	if rule.HasMatching(event.EventType) {
 		go d.stash(rule.ID, event)
 	}
 	return nil
+
 }
 
 func (d *defaultStore) stash(ruleID string, event *events.Event) error {
