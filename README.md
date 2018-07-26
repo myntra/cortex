@@ -1,7 +1,7 @@
 
 # WIP
 
-**Cortex** is a fault-tolerant(raft) alerts correlation engine. 
+**Cortex** is a fault-tolerant alerts correlation engine. 
 
 Alerts are accepted as a standard cloudevents.io event(https://github.com/cloudevents/spec/blob/master/json-format.md). Site 24x7 and Icinga integration converters are also provided.
 
