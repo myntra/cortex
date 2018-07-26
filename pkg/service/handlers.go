@@ -11,6 +11,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/imdario/mergo"
 	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/events/sinks"
 	"github.com/myntra/cortex/pkg/rules"
 	"github.com/myntra/cortex/pkg/util"
 	uuid "github.com/satori/go.uuid"
@@ -396,6 +397,41 @@ func (s *Service) getScriptListHandler(w http.ResponseWriter, r *http.Request) {
 	b, err := json.Marshal(&scriptIds)
 	if err != nil {
 		util.ErrStatus(w, r, "scripts list parsing failed", http.StatusNotFound, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
+}
+
+func (s *Service) site247AlertHandler(w http.ResponseWriter, r *http.Request) {
+
+	alertData, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	defer r.Body.Close()
+	alert := &sinks.Site247Alert{}
+	err = json.Unmarshal(alertData, alert)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	event := sinks.EventFromSite247(*alert)
+
+	err = s.node.Stash(event)
+	if err != nil {
+		util.ErrStatus(w, r, "error stashing event", http.StatusInternalServerError, err)
+		return
+	}
+
+	b, err := json.Marshal(event)
+	if err != nil {
+		util.ErrStatus(w, r, "error writing event data", http.StatusNotAcceptable, err)
 		return
 	}
 
