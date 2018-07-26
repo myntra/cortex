@@ -6,6 +6,8 @@ import (
 	"github.com/myntra/cortex/pkg/events"
 )
 
+//go:generate msgp
+
 // Record stores a rules execution state and result
 type Record struct {
 	ID             string        `json:"id"`

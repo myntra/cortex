@@ -6,6 +6,8 @@ import (
 	"github.com/cnf/structhash"
 )
 
+//go:generate msgp
+
 // Event wraps cloudevent.CloudEvent
 type Event struct {
 	// Type of occurrence which has happened. Often this property is
