@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 
+	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/executions"
 	"github.com/myntra/cortex/pkg/rules"
+	"github.com/tinylib/msgp/msgp"
 )
 
 type fsm defaultStore
@@ -87,31 +90,48 @@ func (f *fsm) applyRemoveRecord(id string) interface{} {
 }
 
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
+	glog.Info("snapshot =>")
 	buckets := f.bucketStorage.es.clone()
 	rules := f.bucketStorage.rs.clone()
 	scripts := f.scriptStorage.clone()
 	history := f.executionStorage.clone()
 	return &fsmSnapShot{
-		data: &db{
-			buckets: buckets,
-			rules:   rules,
-			scripts: scripts,
-			history: history,
+		data: &DB{
+			Buckets: buckets,
+			Rules:   rules,
+			Scripts: scripts,
+			History: history,
 		}}, nil
 }
 
 func (f *fsm) Restore(rc io.ReadCloser) error {
+	glog.Info("restore <=")
 	defer rc.Close()
-	var data db
+	var data DB
 
-	if err := json.NewDecoder(rc).Decode(&data); err != nil {
+	bts, err := ioutil.ReadAll(rc)
+	if err != nil {
 		return err
 	}
 
-	f.bucketStorage.es.restore(data.buckets)
-	f.bucketStorage.rs.restore(data.rules)
-	f.scriptStorage.restore(data.scripts)
-	f.executionStorage.restore(data.history)
+	left, err := data.UnmarshalMsg(bts)
+
+	if len(left) > 0 {
+		return fmt.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(bts)
+	if err != nil {
+		return err
+	}
+	if len(left) > 0 {
+		return fmt.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+	}
+
+	f.bucketStorage.es.restore(data.Buckets)
+	f.bucketStorage.rs.restore(data.Rules)
+	f.scriptStorage.restore(data.Scripts)
+	f.executionStorage.restore(data.History)
 
 	return nil
 }

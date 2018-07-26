@@ -22,6 +22,8 @@ func NewBucket(rule rules.Rule) *Bucket {
 	}
 }
 
+//go:generate msgp
+
 // Bucket contains the rule for a collection of events and the events
 type Bucket struct {
 	Rule      rules.Rule `json:"rule"`

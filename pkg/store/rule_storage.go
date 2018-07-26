@@ -8,7 +8,7 @@ import (
 )
 
 type ruleStorage struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 	m  map[string]*rules.Rule // [ruleID]
 }
 

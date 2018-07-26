@@ -20,7 +20,7 @@ type JoinRequest struct {
 	Addr   string `json:"addr"`
 }
 
-// Validate validates the requet
+// Validate validates the request
 func (j *JoinRequest) Validate() error {
 
 	if j.NodeID == "" {

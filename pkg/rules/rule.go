@@ -1,5 +1,7 @@
 package rules
 
+//go:generate msgp
+
 // Rule is the array of related service events
 type Rule struct {
 	Title         string   `json:"title"`

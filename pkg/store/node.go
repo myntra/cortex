@@ -27,7 +27,7 @@ type Node struct {
 
 // NewNode returns a new raft node
 func NewNode(cfg *config.Config) (*Node, error) {
-
+	glog.Infof("NewNode %v\n", cfg)
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %v", err)
 	}
@@ -37,20 +37,17 @@ func NewNode(cfg *config.Config) (*Node, error) {
 		return nil, err
 	}
 
-	// join a remote node
-	if cfg.JoinAddr != "" {
-		err := httpRaftJoin(cfg.JoinAddr, cfg.NodeID, cfg.GetBindAddr())
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	node := &Node{store: store}
 
 	return node, nil
 }
 
-// Shutdown store
+// Start the node
+func (n *Node) Start() error {
+	return n.store.open()
+}
+
+// Shutdown the node
 func (n *Node) Shutdown() error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -86,7 +83,7 @@ func (n *Node) LeaderAddr() string {
 		return ""
 	}
 
-	tcpPort := raftPort - 1
+	tcpPort := raftPort + 1
 	tcpURL := fields[0]
 	if tcpURL == "" {
 		tcpURL = "0.0.0.0"
@@ -168,6 +165,11 @@ func (n *Node) Join(nodeID, addr string) error {
 // Leave a remote node
 func (n *Node) Leave(nodeID string) error {
 	return n.store.acceptLeave(nodeID)
+}
+
+// Snapshot takes a snapshot of the store
+func (n *Node) Snapshot() error {
+	return n.store.snapshot()
 }
 
 func httpRaftJoin(joinAddr, nodeID, bindAddr string) error {

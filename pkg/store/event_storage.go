@@ -11,7 +11,7 @@ import (
 )
 
 type eventStorage struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 	m  map[string]*events.Bucket // [ruleID]
 }
 

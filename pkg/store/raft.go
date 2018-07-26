@@ -1,10 +1,14 @@
 package store
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -13,29 +17,57 @@ import (
 )
 
 func (d *defaultStore) open() error {
+
+	id := d.opt.NodeID
+
+	if id == "" {
+		data, err := ioutil.ReadFile(filepath.Join(d.opt.Dir, "node.id"))
+		id = strings.TrimSpace(string(data))
+		if os.IsNotExist(err) || id == "" {
+			var data [4]byte
+			if _, err := rand.Read(data[:]); err != nil {
+				panic("random error: " + err.Error())
+			}
+			id = hex.EncodeToString(data[:])[:7]
+			err = ioutil.WriteFile(filepath.Join(d.opt.Dir, "node.id"), []byte(id+"\n"), 0600)
+			if err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+	}
+
+	glog.Info("opening raft store \n")
 	config := raft.DefaultConfig()
-	config.LocalID = raft.ServerID(d.opt.NodeID)
+	config.LocalID = raft.ServerID(id)
 
 	// Setup Raft communication.
-	addr, err := net.ResolveTCPAddr("tcp", d.opt.GetBindAddr())
-	if err != nil {
-		return err
-	}
-	transport, err := raft.NewTCPTransport(d.opt.GetBindAddr(), addr, 3, 10*time.Second, os.Stderr)
+	addr, err := net.ResolveTCPAddr("tcp", d.opt.RaftAddr)
 	if err != nil {
 		return err
 	}
 
+	//raft.NewTCPTransportWithConfig
+	transport, err := NewTCPTransport(d.opt.RaftListener, addr, 3, 10*time.Second, os.Stderr)
+	if err != nil {
+		return err
+	}
+
+	glog.Info("created raft transport \n")
 	// Create the snapshot store. This allows the Raft to truncate the log.
 	snapshots, err := raft.NewFileSnapshotStore(d.opt.Dir, retainSnapshotCount, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("file snapshot store: %s", err)
 	}
 
+	glog.Info("created snapshot store \n")
+
 	// Create the log store and stable store.
 	var logStore raft.LogStore
 	var stableStore raft.StableStore
 
+	glog.Info("raft.db => ", filepath.Join(d.opt.Dir, "raft.db"))
 	boltDB, err := raftboltdb.NewBoltStore(filepath.Join(d.opt.Dir, "raft.db"))
 	if err != nil {
 		return fmt.Errorf("new bolt store: %s", err)
@@ -43,12 +75,16 @@ func (d *defaultStore) open() error {
 	logStore = boltDB
 	stableStore = boltDB
 
+	glog.Info("created boltdb store \n")
 	// Instantiate the Raft systemd.
 	ra, err := raft.NewRaft(config, (*fsm)(d), logStore, stableStore, snapshots, transport)
 	if err != nil {
 		return fmt.Errorf("new raft: %s", err)
 	}
 	d.raft = ra
+	d.boltDB = boltDB
+
+	glog.Info("created raft systemd \n")
 
 	// bootstrap single node configuration
 	if d.opt.JoinAddr == "" {
@@ -61,10 +97,7 @@ func (d *defaultStore) open() error {
 				},
 			},
 		}
-		f := ra.BootstrapCluster(configuration)
-		if f.Error() != nil {
-			return f.Error()
-		}
+		ra.BootstrapCluster(configuration)
 
 		// since in bootstrap mode, block until leadership is attained.
 	loop:
@@ -77,9 +110,23 @@ func (d *defaultStore) open() error {
 				}
 			}
 		}
+	} else {
+		// join a remote node
+		glog.Infof("join a remote node %v\n", d.opt.JoinAddr)
+		err := httpRaftJoin(d.opt.JoinAddr, d.opt.NodeID, d.opt.RaftAddr)
+		if err != nil {
+			return err
+		}
 	}
 
+	go d.flusher()
+
 	return nil
+}
+
+func (d *defaultStore) snapshot() error {
+	f := d.raft.Snapshot()
+	return f.Error()
 }
 
 func (d *defaultStore) close() error {
@@ -88,6 +135,12 @@ func (d *defaultStore) close() error {
 	if f.Error() != nil {
 		return f.Error()
 	}
+
+	// close the raft database
+	if d.boltDB != nil {
+		d.boltDB.Close()
+	}
+
 	glog.Info("raft shut down")
 	glog.Flush()
 	return nil

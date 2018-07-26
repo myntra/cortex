@@ -1,49 +1,36 @@
 package store
 
 import (
-	"encoding/json"
-
-	"github.com/myntra/cortex/pkg/executions"
-
-	"github.com/myntra/cortex/pkg/rules"
+	"github.com/golang/glog"
 
 	"github.com/hashicorp/raft"
-	"github.com/myntra/cortex/pkg/events"
 )
 
-type db struct {
-	buckets map[string]*events.Bucket
-	rules   map[string]*rules.Rule
-	history map[string]*executions.Record
-	scripts map[string][]byte
-}
-
 type fsmSnapShot struct {
-	data *db
+	data *DB
 }
 
 func (f *fsmSnapShot) Persist(sink raft.SnapshotSink) error {
-	err := func() error {
-		// Encode data.
-		b, err := json.Marshal(f.data)
-		if err != nil {
-			return err
-		}
+	glog.Info("persist =>")
 
-		// Write data to sink.
-		if _, err := sink.Write(b); err != nil {
-			return err
-		}
-
-		// Close the sink.
-		return sink.Close()
-	}()
-
+	// Encode data.
+	b, err := f.data.MarshalMsg(nil)
 	if err != nil {
-		sink.Cancel()
+		return err
 	}
 
-	return err
+	// Write data to sink.
+	if _, err := sink.Write(b); err != nil {
+		glog.Info("persist => err ", err)
+		sink.Cancel()
+		return err
+	}
+
+	glog.Infof("persisted len => %v", len(b))
+
+	return nil
 }
 
-func (f *fsmSnapShot) Release() {}
+func (f *fsmSnapShot) Release() {
+	glog.Info("release =>")
+}
