@@ -24,8 +24,6 @@ archive:
   replacements:
     linux: Linux
     amd64: x86_64
-  files:
-    - checksums.txt
 checksum:
   name_template: 'checksums.txt'
 snapshot:
