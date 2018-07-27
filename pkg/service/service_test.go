@@ -4,13 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 
 	"github.com/myntra/cortex/pkg/events"
@@ -107,6 +110,34 @@ var testBucketScript = ScriptRequest{
 	}`),
 }
 
+func newTestEvent(id, key string) events.Event {
+	return events.Event{
+		EventType:          key + "acme.prod.icinga.check_disk",
+		EventTypeVersion:   "1.0",
+		CloudEventsVersion: "0.1",
+		Source:             "/sink",
+		EventID:            id + "42",
+		EventTime:          time.Now(),
+		SchemaURL:          "http://www.json.org",
+		ContentType:        "application/json",
+		Data:               map[string]interface{}{id + "Alpha": "julie", "Beta": 42},
+		Extensions:         map[string]string{"ext1": "value"},
+	}
+}
+
+func newTestRule(key string) rules.Rule {
+	return rules.Rule{
+		ID:                key + "test-rule-id-1",
+		HookEndpoint:      "http://localhost:3000/testrule",
+		HookRetry:         2,
+		EventTypePatterns: []string{key + "acme.prod.icinga.check_disk", key + "acme.prod.site247.cart_down"},
+		ScriptID:          "myscript",
+		Dwell:             30 * 1000,
+		DwellDeadline:     25 * 1000,
+		MaxDwell:          120 * 1000,
+	}
+}
+
 func startService(t *testing.T, cfg *config.Config, svc *Service) {
 
 	go func() {
@@ -143,9 +174,9 @@ func singleService(t *testing.T, f func(url string)) {
 	cfg := &config.Config{
 		NodeID:               "service0",
 		Dir:                  tmpDir,
-		DefaultDwell:         4000, // 3 minutes
-		DefaultMaxDwell:      8000, // 6 minutes
-		DefaultDwellDeadline: 3800, // 2.5 minutes
+		DefaultDwell:         4000,
+		DefaultMaxDwell:      8000,
+		DefaultDwellDeadline: 3800,
 		MaxHistory:           1000,
 		FlushInterval:        1000,
 		HTTPAddr:             httpAddr,
@@ -185,9 +216,9 @@ func multiService(t *testing.T, f func(urls []string)) {
 	cfg1 := &config.Config{
 		NodeID:               "node0",
 		Dir:                  tmpDir1,
-		DefaultDwell:         4000, // 3 minutes
-		DefaultMaxDwell:      8000, // 6 minutes
-		DefaultDwellDeadline: 3800, // 2.5 minutes
+		DefaultDwell:         4000,
+		DefaultMaxDwell:      8000,
+		DefaultDwellDeadline: 3800,
 		MaxHistory:           1000,
 		FlushInterval:        1000,
 		HTTPAddr:             httpAddr,
@@ -218,9 +249,9 @@ func multiService(t *testing.T, f func(urls []string)) {
 		NodeID:               "node1",
 		JoinAddr:             "0.0.0.0" + cfg1.HTTPAddr,
 		Dir:                  tmpDir2,
-		DefaultDwell:         4000, // 3 minutes
-		DefaultMaxDwell:      8000, // 6 minutes
-		DefaultDwellDeadline: 3800, // 2.5 minutes
+		DefaultDwell:         4000,
+		DefaultMaxDwell:      8000,
+		DefaultDwellDeadline: 3800,
 		MaxHistory:           1000,
 		FlushInterval:        1000,
 		HTTPAddr:             httpAddr1,
@@ -251,9 +282,9 @@ func multiService(t *testing.T, f func(urls []string)) {
 		NodeID:               "node2",
 		JoinAddr:             "0.0.0.0" + cfg1.HTTPAddr,
 		Dir:                  tmpDir3,
-		DefaultDwell:         4000, // 3 minutes
-		DefaultMaxDwell:      8000, // 6 minutes
-		DefaultDwellDeadline: 3800, // 2.5 minutes
+		DefaultDwell:         4000,
+		DefaultMaxDwell:      8000,
+		DefaultDwellDeadline: 3800,
 		MaxHistory:           1000,
 		FlushInterval:        1000,
 		HTTPAddr:             httpAddr2,
@@ -472,6 +503,62 @@ func TestSingleEventMultipleService(t *testing.T) {
 		require.True(t, testRule.ID == ruleExecutions[0].Bucket.Rule.ID)
 		require.True(t, testevent.EventID == ruleExecutions[0].Bucket.Events[0].EventID)
 
+	})
+}
+
+func TestMultiEventMultiService(t *testing.T) {
+	multiService(t, func(urls []string) {
+
+		t.Run("Test stash multiple events before dwell time", func(t *testing.T) {
+			key := "my"
+			myTestRule := newTestRule("my")
+			n := 5
+
+			s := rand.NewSource(time.Now().UnixNano())
+			r := rand.New(s)
+			intervals := make(map[int]events.Event)
+
+			for i := 0; i < n; i++ {
+				interval := r.Intn(int(myTestRule.DwellDeadline - 100))
+				intervals[interval] = newTestEvent(strconv.Itoa(i), key)
+			}
+
+			// post rule to node 2
+			e := httpexpect.New(t, urls[1])
+			e.POST("/rules").WithJSON(myTestRule).Expect().Status(http.StatusOK)
+			// verify rule from node 1
+			e = httpexpect.New(t, urls[0])
+			e.GET("/rules/" + myTestRule.ID).Expect().JSON().Equal(myTestRule)
+
+			for interval, te := range intervals {
+				go func(interval int, te events.Event) {
+					time.Sleep(time.Millisecond * time.Duration(interval))
+					// post event to a random node
+					e = httpexpect.New(t, urls[r.Intn(3)])
+					e.POST("/event").WithJSON(te).Expect().Status(http.StatusOK)
+
+				}(interval, te)
+			}
+
+			glog.Info("sleeping ...")
+			time.Sleep(time.Millisecond * time.Duration(myTestRule.Dwell+5000))
+			glog.Info("sleeping done")
+
+			// fetch rule executions from node 1
+			resp, err := http.Get(urls[0] + "/rules/" + myTestRule.ID + "/executions")
+			require.NoError(t, err)
+
+			body, err := ioutil.ReadAll(resp.Body)
+			require.NoError(t, err)
+
+			defer resp.Body.Close()
+
+			var ruleExecutions []*executions.Record
+			err = json.Unmarshal(body, &ruleExecutions)
+			require.NoError(t, err)
+			require.True(t, len(ruleExecutions) == 1)
+			require.True(t, myTestRule.ID == ruleExecutions[0].Bucket.Rule.ID)
+		})
 	})
 }
 
