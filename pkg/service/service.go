@@ -10,6 +10,11 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/golang/glog"
 
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/store"
 )
@@ -56,6 +61,23 @@ func (s *Service) Start() error {
 	return nil
 }
 
+// FileServer starts the file server and return the file
+func FileServer(r chi.Router, path string, root http.FileSystem) {
+	if strings.ContainsAny(path, "{}*") {
+		panic("FileServer does not permit URL parameters.")
+	}
+
+	fs := http.StripPrefix(path, http.FileServer(root))
+
+	fmt.Println("Starting the file server at", root)
+
+	path += "*"
+
+	r.Get(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fs.ServeHTTP(w, r)
+	}))
+}
+
 // New returns the http service wrapper for the store.
 func New(cfg *config.Config) (*Service, error) {
 
@@ -70,6 +92,13 @@ func New(cfg *config.Config) (*Service, error) {
 
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
+
+	workDir, err := os.Getwd()
+	if err != nil {
+		glog.Fatal("Error in fetching the current working directory")
+	}
+	filesDir := filepath.Join(workDir, "build")
+	FileServer(router, "/ui", http.Dir(filesDir))
 
 	router.Post("/event", svc.leaderProxy(svc.eventHandler))
 	router.Post("/event/sink/site247", svc.site247AlertHandler)
@@ -89,6 +118,10 @@ func New(cfg *config.Config) (*Service, error) {
 
 	router.Get("/leave/{id}", svc.leaveHandler)
 	router.Post("/join", svc.joinHandler)
+
+	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/ui/"+r.URL.String(), 302)
+	})
 
 	srv := &http.Server{
 		ReadTimeout:  10 * time.Second,

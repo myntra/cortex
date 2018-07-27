@@ -12,6 +12,7 @@ import (
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend/flags"
 
+	"github.com/GeertJohan/go.rice"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/service"
 )
@@ -63,8 +64,14 @@ func main() {
 	flagRaft := lb.Listener("raft", "tcp", ":4444", "-raft :4444")
 	flagHTTP := lb.Listener("http", "tcp", ":4445", "-http :4445")
 
+	box, err := rice.FindBox("build")
+	if err != nil {
+		glog.Fatal(err)
+	}
+	fmt.Printf("Boxing the build folder - %s", box.Name())
+
 	loader := confita.NewLoader(flags.NewBackend())
-	err := loader.Load(context.Background(), cfg)
+	err = loader.Load(context.Background(), cfg)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		usage()
