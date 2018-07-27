@@ -1,4 +1,6 @@
 cover.out
+data
+cmd/cortex
 cmd/cmd
 .idea/
 cmd/data

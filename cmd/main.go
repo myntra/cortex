@@ -64,20 +64,18 @@ func main() {
 	flagRaft := lb.Listener("raft", "tcp", ":4444", "-raft :4444")
 	flagHTTP := lb.Listener("http", "tcp", ":4445", "-http :4445")
 
-	box, err := rice.FindBox("build")
-	if err != nil {
-		glog.Fatal(err)
-	}
-	fmt.Printf("Boxing the build folder - %s", box.Name())
+	box := rice.MustFindBox("build")
+
+	glog.Infof("Boxing the build folder - %s", box.Name())
 
 	loader := confita.NewLoader(flags.NewBackend())
-	err = loader.Load(context.Background(), cfg)
+	err := loader.Load(context.Background(), cfg)
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		glog.Infof("%v\n", err)
 		usage()
 	}
 
-	fmt.Printf("raft addr %v, http addr %v\n", flagRaft.String(), flagHTTP.String())
+	glog.Infof("raft addr %v, http addr %v\n", flagRaft.String(), flagHTTP.String())
 
 	lb.Run(func(ctx context.Context) {
 		run(context.Background(), flagRaft, flagHTTP)
@@ -92,6 +90,7 @@ func run(ctx context.Context, flagRaft, flagHTTP *littleboss.ListenerFlag) {
 	cfg.RaftAddr = flagRaft.String()
 	cfg.HTTPListener = flagHTTP.Listener()
 	cfg.RaftListener = flagRaft.Listener()
+	cfg.EnableFileServer = true
 
 	svc, err := service.New(cfg)
 	if err != nil {
