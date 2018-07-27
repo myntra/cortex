@@ -1,18 +1,15 @@
 const fakescripts = [
     {   
-        "id": "1",
-        "title": "Revenue Down Script",
-        "text": "console.log('revenue_down')",
+        "id": "revenue.js",
+        "Data": [99, 111, 110, 115, 111, 108, 101, 46, 108, 111, 103, 40, 39, 114, 101, 118, 101, 110, 117, 101, 95, 100, 111, 119, 110, 39, 41]
     },
     {   
-        "id": "2",
-        "title": "Cart Down Script",
-        "text": "console.log('cart_down')",
+        "id": "cart.js",
+        "Data": [99, 111, 110, 115, 111, 108, 101, 46, 108, 111, 103, 40, 39, 99, 97, 114, 116, 95, 100, 111, 119, 110, 39, 41]
     },
     {   
-        "id": "3",
-        "title": "Style Down Script",
-        "text": "console.log('style_down')",
+        "id": "style.js",
+        "Data": [99, 111, 110, 115, 111, 108, 101, 46, 108, 111, 103, 40, 39, 115, 116, 121, 108, 101, 95, 100, 111, 119, 110, 39, 41]
     }
 ]
     
