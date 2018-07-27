@@ -2,8 +2,6 @@ project_name: cortex
 before:
   hooks:
   - dep ensure -v
-  - go get github.com/GeertJohan/go.rice
-  - go get github.com/GeertJohan/go.rice/rice
   - cd ui && npm run build
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/dop251/goja
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/spf13/afero
