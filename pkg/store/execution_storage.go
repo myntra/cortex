@@ -3,6 +3,8 @@ package store
 import (
 	"sync"
 
+	"github.com/golang/glog"
+
 	"github.com/myntra/cortex/pkg/executions"
 )
 
@@ -30,6 +32,8 @@ func (e *executionStorage) remove(id string) error {
 func (e *executionStorage) getRecords(ruleID string) []*executions.Record {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+
+	glog.Infof("getRecords %v", ruleID)
 
 	var exs []*executions.Record
 	for _, record := range e.m {

@@ -117,6 +117,10 @@ loop:
 	for {
 		select {
 		case <-ticker.C:
+			if d.raft.State() != raft.Leader {
+				glog.Info("node is not leader, skipping flush")
+				continue
+			}
 			for ruleID, bucket := range d.bucketStorage.es.clone() {
 				glog.Infof("rule flusher ==> %v with size %v canflush ? %v, can flush in %v",
 					ruleID, len(bucket.Events), bucket.CanFlush(), bucket.CanFlushIn())
@@ -145,6 +149,10 @@ func (d *defaultStore) expirer() {
 	for {
 		select {
 		case <-ticker.C:
+			if d.raft.State() != raft.Leader {
+				glog.Info("node is not leader, skipping expire")
+				continue
+			}
 			if d.executionStorage.getTotalRecordsCount() > d.opt.MaxHistory {
 				// TODO, remove oldest records
 			}
@@ -157,11 +165,6 @@ func (d *defaultStore) applyCMD(cmd Command) error {
 	if d.raft.State() != raft.Leader {
 		return fmt.Errorf("not leader")
 	}
-
-	// b, err := json.Marshal(cmd)
-	// if err != nil {
-	// 	return err
-	// }
 
 	glog.Infof("apply cmd %v\n marshalling", cmd)
 

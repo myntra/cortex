@@ -264,11 +264,13 @@ func TestMultipleEventSingleRule(t *testing.T) {
 			r := rand.New(s)
 			intervals := make(map[int]events.Event)
 
+			// before dwell deadline
 			for i := 0; i < n; i++ {
 				interval := int(myTestRule.DwellDeadline) + 1000*i
 				intervals[interval] = newTestEvent(strconv.Itoa(i), key)
 			}
 
+			// after dwell deadline
 			for i := 5; i < 10; i++ {
 				interval := r.Intn(int(myTestRule.Dwell - myTestRule.DwellDeadline))
 				intervals[interval] = newTestEvent(strconv.Itoa(i), key)

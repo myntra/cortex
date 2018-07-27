@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -558,6 +559,101 @@ func TestMultiEventMultiService(t *testing.T) {
 			require.True(t, len(ruleExecutions) == 1)
 			require.True(t, myTestRule.ID == ruleExecutions[0].Bucket.Rule.ID)
 		})
+	})
+}
+
+var mlTestData = []struct {
+	ruleKey              string
+	eventsBeforeDeadline int
+	eventsAfterDeadline  int
+	eventsDup            int
+}{
+	{"mad", 5, 5, 5},
+	{"rad", 5, 5, 5},
+	{"fad", 5, 5, 5},
+}
+
+// the motherlode test
+func TestConcurrentMultiEventMultiRuleMultiService(t *testing.T) {
+	multiService(t, func(urls []string) {
+		var wg sync.WaitGroup
+		for _, tc := range mlTestData {
+			wg.Add(1)
+			go func(ruleKey string, eventsBeforeDeadline, eventsAfterDeadline, eventsDup int, wg *sync.WaitGroup) {
+				defer wg.Done()
+				myTestRule := newTestRule(ruleKey)
+
+				s := rand.NewSource(time.Now().UnixNano())
+				r := rand.New(s)
+				intervals := make(map[int]events.Event)
+
+				// before dwell deadline
+				for i := 0; i < eventsBeforeDeadline; i++ {
+					interval := int(myTestRule.DwellDeadline) + 1000*i
+					intervals[interval] = newTestEvent(strconv.Itoa(i), ruleKey)
+				}
+
+				// after dwell deadline
+				for i := eventsBeforeDeadline; i < eventsAfterDeadline; i++ {
+					interval := r.Intn(int(myTestRule.Dwell - myTestRule.DwellDeadline))
+					intervals[interval] = newTestEvent(strconv.Itoa(i), ruleKey)
+				}
+
+				// 5 events will be deduped since their id and data are same
+				for i := eventsBeforeDeadline; i < eventsDup; i++ {
+					interval := r.Intn(int(myTestRule.Dwell - myTestRule.DwellDeadline))
+					intervals[interval] = newTestEvent(strconv.Itoa(i), ruleKey)
+				}
+
+				for k := range intervals {
+					glog.Infof("intervals %v\n", k)
+				}
+
+				// post rule to node 2
+				e := httpexpect.New(t, urls[1])
+				e.POST("/rules").WithJSON(myTestRule).Expect().Status(http.StatusOK)
+				// verify rule from node 1
+				e = httpexpect.New(t, urls[0])
+				e.GET("/rules/" + myTestRule.ID).Expect().JSON().Equal(myTestRule)
+
+				for interval, te := range intervals {
+					go func(interval int, te events.Event) {
+						time.Sleep(time.Millisecond * time.Duration(interval))
+						// post event to a random node
+						e = httpexpect.New(t, urls[r.Intn(3)])
+						e.POST("/event").WithJSON(te).Expect().Status(http.StatusOK)
+
+					}(interval, te)
+				}
+
+				glog.Info("sleeping ...")
+				time.Sleep(time.Millisecond * time.Duration(myTestRule.MaxDwell))
+				glog.Infof("sleeping done %v", ruleKey)
+
+				// fetch rule executions from node 1
+				resp, err := http.Get(urls[0] + "/rules/" + myTestRule.ID + "/executions")
+				require.NoError(t, err)
+
+				glog.Infof("fetched executions %v", ruleKey)
+
+				body, err := ioutil.ReadAll(resp.Body)
+				require.NoError(t, err)
+
+				defer resp.Body.Close()
+
+				var ruleExecutions []*executions.Record
+				err = json.Unmarshal(body, &ruleExecutions)
+				glog.Infof("parsed executions %v %v %v", ruleKey, err, len(ruleExecutions))
+				require.NoError(t, err)
+				require.True(t, len(ruleExecutions) > 0)
+				//require.True(t, myTestRule.ID == ruleExecutions[0].Bucket.Rule.ID)
+
+				glog.Infof("wait done %v", ruleKey)
+
+			}(tc.ruleKey, tc.eventsBeforeDeadline, tc.eventsAfterDeadline, tc.eventsDup, &wg)
+		}
+
+		wg.Wait()
 	})
 }
 
