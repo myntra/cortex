@@ -68,16 +68,16 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	fmt.Printf("Boxing the build folder - %s", box.Name())
+	glog.Infof("Boxing the build folder - %s", box.Name())
 
 	loader := confita.NewLoader(flags.NewBackend())
 	err = loader.Load(context.Background(), cfg)
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		glog.Infof("%v\n", err)
 		usage()
 	}
 
-	fmt.Printf("raft addr %v, http addr %v\n", flagRaft.String(), flagHTTP.String())
+	glog.Infof("raft addr %v, http addr %v\n", flagRaft.String(), flagHTTP.String())
 
 	lb.Run(func(ctx context.Context) {
 		run(context.Background(), flagRaft, flagHTTP)
