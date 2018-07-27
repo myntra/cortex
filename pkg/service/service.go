@@ -89,7 +89,9 @@ func New(cfg *config.Config) (*Service, error) {
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
 
-	FileServer(router, "/ui")
+	if cfg.EnableFileServer {
+		FileServer(router, "/ui")
+	}
 
 	router.Post("/event", svc.leaderProxy(svc.eventHandler))
 	router.Post("/event/sink/site247", svc.site247AlertHandler)

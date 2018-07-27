@@ -90,6 +90,7 @@ func run(ctx context.Context, flagRaft, flagHTTP *littleboss.ListenerFlag) {
 	cfg.RaftAddr = flagRaft.String()
 	cfg.HTTPListener = flagHTTP.Listener()
 	cfg.RaftListener = flagRaft.Listener()
+	cfg.EnableFileServer = true
 
 	svc, err := service.New(cfg)
 	if err != nil {

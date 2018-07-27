@@ -24,6 +24,7 @@ type Config struct {
 	Version              string `config:"version"`
 	Commit               string `config:"commit"`
 	Date                 string `config:"date"`
+	EnableFileServer     bool
 
 	RaftAddr     string
 	HTTPAddr     string
