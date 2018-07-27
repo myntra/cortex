@@ -31,8 +31,7 @@ import TablePaginated from './TablePaginated';
 
 import 'brace/mode/javascript';
 import 'brace/theme/github';
-
-import fakescripts from './fakescripts';
+import Sandbox from './Sandbox';
 
 const styles = theme => ({
   root: {
@@ -87,11 +86,9 @@ const schema = {
 
 const scriptSchema = {
   type: "object",
-  title: "",
   scriptID: "",
-  required: ["title", "scriptID"],
+  required: ["scriptID"],
   properties: {
-    title: { type: "string", title: "Title", default: "" },
     scriptID: { type: "string", title: "Script", default: "" }
   }
 };
@@ -107,10 +104,7 @@ const uiSchemaScript = {
   "ui:help": "Hint: like default.js"
 };
 
-
-
 const log = (type) => console.log.bind(console, type);
-
 
 const RuleCard = (props) => {
   const { classes, rule, handleChangeEvent, handleSubmitEvent, handlePannelExpansion } = props;
@@ -162,13 +156,13 @@ class App extends Component {
     ruleList: [],
     scriptList: [],
     newRule: {},
+    newScript: {},
     expansionFlag: false,
     scriptText: "",
     scriptID: ""
   }
 
   componentDidMount() {
-    console.log("Component Mounted");
     this.fetchRules();
     this.fetchScripts();
   }
@@ -177,22 +171,37 @@ class App extends Component {
     let self = this;
     fetch('/rules')
       .then(function (response) {
-        return response.json();
+        if (response.ok) {
+          return response.json();
+        }
+        else {
+          throw new Error('Something went wrong. Unable to fetch list of rules')
+        }
       })
       .then(function (data) {
-        self.setState({ruleList:data})
-      });
+        self.setState({ ruleList: data })
+      })
+      .catch((error) => {
+        alert(error);
+      })
   }
 
   fetchScripts = () => {
     let self = this;
     fetch('/scripts')
       .then(function (response) {
-        return response.json();
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Something went wrong. Unable to fetch list of scripts');
+        }
       })
       .then(function (data) {
-        self.setState({scriptList:data})
-      });
+        self.setState({ scriptList: data })
+      })
+      .catch((error) => {
+        alert(error);
+      })
   }
 
   getBytesFromString = (str) => {
@@ -260,12 +269,52 @@ class App extends Component {
 
   handleRuleDialogSave = () => {
     console.log('New Rule Save', this.state.newRule);
-    // TODO: API call to add new rule
-    this.setState({ ruleDialogOpen: false })
+    let self = this;
+    const { newRule } = this.state
+    fetch('/rules', {
+      method: "POST",
+      body: JSON.stringify(newRule)
+    })
+      .then(function (response) {
+        self.setState({ ruleDialogOpen: false });
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Something went wrong. Unable to create new rule');
+        }
+      })
+      .then(function (data) {
+        console.log("Updated successfully", data);
+        self.fetchRules()
+      })
+      .catch((error) => {
+        alert(error);
+      });
   }
 
   handleScriptDialogSave = () => {
     console.log('Save script')
+    let self = this;
+    const { newScript } = this.state
+    fetch('/scripts', {
+      method: "POST",
+      body: JSON.stringify(newScript)
+    })
+      .then(function (response) {
+        if (response.ok) {
+          self.setState({ scriptDialogOpen: false });
+          return response.json();
+        } else {
+          throw new Error('Something went wrong. Unable to create new script');
+        }
+      })
+      .then(function (data) {
+        console.log("Updated successfully", data);
+        self.fetchScripts()
+      })
+      .catch((error) => {
+        alert(error);
+      });
   }
 
   handleRuleExpansion = (event, flag, id) => {
@@ -290,39 +339,72 @@ class App extends Component {
   }
 
   handleRuleSubmit = (event, id) => {
-    let obj = {}
-    this.state.ruleList.forEach((item) => {
+    const { ruleList } = this.state
+    let json;
+    ruleList.forEach((item) => {
       if (item.id === id) {
-        obj = item
+        json = item
       }
     })
-    console.log('Submitted data', obj);
-    // TODO: Call API to create new rule
+    if (!json) {
+      console.log("JSON udefined", id, ruleList)
+      alert("Found no data to update rule")
+      return;
+    }
+    console.log("Rule Update", json)
+    fetch('/rules', {
+      method: "PUT",
+      body: JSON.stringify(json)
+    })
+    .then(function (response) {
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw new Error('Something went wrong. Unable to update rule content');
+      }
+    })
+    .then(function (data) {
+      console.log("Updated successfully", data);
+    })
+    .catch((error) => {
+      alert(error);
+    });
   }
 
   handleRuleDelete = () => {
     console.log('rulesChecked', this.state.rulesChecked)
-    // TODO: API Call to delete
-  }
-
-  addNewRule = (event) => {
-    let obj = {}
-    for (let x in event.formData) {
-      obj[x] = event.formData[x]
+    let self = this;
+    const { rulesChecked } = this.state
+    if (rulesChecked.length < 1) {
+      alert("No rule selected for deletion");
     }
-    console.log('New Rule', obj)
-    this.setState({ newRule: obj })
-  }
-
-  addNewScript = (event) => {
-    console.log("Changes", event.formData)
+    rulesChecked.forEach((item) => {
+      let url = "/rules/" + item
+      fetch(url, {
+        method: "DELETE"
+      })
+      .then(function (response) {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Something went wrong. Unable to delete rule ' + item);
+        }
+      })
+      .then(function (data) {
+        console.log("Updated successfully", data);
+        self.fetchRules()
+      })
+      .catch((error) => {
+        alert(error);
+      })
+    })
   }
 
   handleScriptChange = (text, event) => {
     var self = this;
     let scriptItems = this.state.scriptList.map((item, i) => {
       if (item.id === self.state.scriptID) {
-        item.text = text;
+        item.Data = self.getBytesFromString(text);
       }
       return item
     })
@@ -347,15 +429,64 @@ class App extends Component {
   }
 
   handleScriptDelete = () => {
-    console.log("Script Deletion", this.state.scriptsChecked)
-    // TODO: API call to delete script
+    let self = this;
+    const { scriptsChecked } = this.state
+    if (scriptsChecked.length < 1) {
+      alert("No script selected for deletion");
+    }
+    scriptsChecked.forEach((item) => {
+      let url = "/scripts/" + item
+      fetch(url, {
+        method: "DELETE"
+      })
+      .then(function (response) {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Something went wrong. Unable to delete script ' + item);
+        }
+      })
+      .then(function (data) {
+        console.log("Updated successfully", data);
+        self.fetchScripts()
+      })
+      .catch((error) => {
+        alert(error);
+      })
+    })
   }
 
   handleScriptUpdate = () => {
-    console.log("Script Update", this.state.scriptsChecked)
-    // TODO: API call to update script data
+    const { scriptID, scriptList } = this.state
+    let json;
+    scriptList.forEach((item) => {
+      if (item.id === scriptID) {
+        json = item
+      }
+    })
+    if (!json) {
+      console.log("JSON udefined", scriptID, scriptList)
+      return;
+    }
+    console.log("Script Update", json)
+    fetch('/scripts/revenue.js', {
+      method: "PUT",
+      body: JSON.stringify(json)
+    })
+    .then(function (response) {
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw new Error('Something went wrong. Unable to update script content');
+      }
+    })
+    .then(function (data) {
+      console.log("Updated successfully", data);
+    })
+    .catch((error) => {
+      alert(error);
+    })
   }
-
 
   render() {
     const { classes, theme } = this.props;
@@ -374,7 +505,8 @@ class App extends Component {
             <Form
               uiSchema={uiSchema}
               schema={schema}
-              onChange={this.addNewRule}
+              formData={this.state.newRule}
+              onChange={(event) => this.setState({ newRule: event.formData })}
               onError={log("errors")} >
               <button type="submit" className="hidden">Submit</button>
             </Form>
@@ -400,7 +532,8 @@ class App extends Component {
             <Form
               uiSchema={uiSchemaScript}
               schema={scriptSchema}
-              onChange={this.addNewScript}
+              formData={this.state.newScript}
+              onChange={(event) => this.setState({ newScript: event.formData })}
               onError={log("errors")} >
               <button type="submit" className="hidden">Submit</button>
             </Form>
@@ -428,10 +561,13 @@ class App extends Component {
           indicatorColor="primary"
           textColor="primary"
           onChange={this.handleTabChange}
+          style={{ fontSize: '24px'}}
           centered
         >
           <Tab label="Rules" />
           <Tab label="Scripts" />
+          <Tab label="SandBox" />
+          <Tab label="PlayGround" />
         </Tabs>
         <SwipeableViews
           axis={theme.direction === 'rtl' ? 'x-reverse' : 'x'}
@@ -459,11 +595,11 @@ class App extends Component {
                         <ListItem
                           key={index}
                           role={undefined}
-                          onClick={this.handleRuleCheckToggle(index)}
+                          onClick={this.handleRuleCheckToggle(rule.id)}
                           className={classes.listItem}
                         >
                           <Checkbox
-                            checked={this.state.rulesChecked.indexOf(index) !== -1}
+                            checked={this.state.rulesChecked.indexOf(rule.id) !== -1}
                             tabIndex={-1}
                             disableRipple
                           />
@@ -499,10 +635,12 @@ class App extends Component {
                 Delete
                 <DeleteIcon className={classes.rightIcon} />
               </Button>
-              <Button onClick={this.handleScriptUpdate} variant="contained" color="primary" className={classes.button}>
-                Update
-                <SubmitIcon className={classes.rightIcon} />
-              </Button>
+              {(this.state.scriptID !== "") ?
+                <Button onClick={this.handleScriptUpdate} style={{ marginLeft: 'auto' }} variant="contained" color="primary" className={classes.button}>
+                  Update
+                  <SubmitIcon className={classes.rightIcon} />
+                </Button> : false
+              }
             </Grid>
             <Grid container spacing={24}>
               <Grid item xs={4}>
@@ -513,11 +651,11 @@ class App extends Component {
                         <ListItem
                           key={index}
                           role={undefined}
-                          onClick={() => this.handleScriptCheckToggle(index)}
+                          onClick={() => this.handleScriptCheckToggle(script.id)}
                           className={classes.listItem}
                         >
                           <Checkbox
-                            checked={this.state.scriptsChecked.indexOf(index) !== -1}
+                            checked={this.state.scriptsChecked.indexOf(script.id) !== -1}
                             tabIndex={-1}
                             disableRipple
                           />
@@ -556,6 +694,12 @@ class App extends Component {
                 }
               </Grid>
             </Grid>
+          </TabContainer>
+          <TabContainer dir={theme.direction}>
+            <Sandbox />
+          </TabContainer>
+          <TabContainer dir={theme.direction}>
+            <span style={{fontSize: '14px'}}>PlayGround Coming Soon</span>
           </TabContainer>
         </SwipeableViews>
 
