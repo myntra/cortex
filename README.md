@@ -78,7 +78,7 @@ For the above example rule, incoming events with `eventType` matching one of `ev
 ```json
 {
 	"rule": {},
-	"events": [{ // bucket
+	"events": [{
 		"cloudEventsVersion": "0.1",
 		"eventType": "acme.prod.site247.search_down",
 		"source": "site247",
@@ -118,6 +118,15 @@ export default function(bucket) {
 If `result` is set, it will be posted to the hookEndPoint. The `bucket` itself will be reset and evicted from the `collect` loop. The execution `record` will then be stored and can be fetched later.
 
 A new `bucket` will be created when an event matches the rule again.
+
+## Hooks
+
+Rule results can be posted to a configured http endpoint. The remote endpoint should be able to accept a `POST : application/json` request.
+
+```
+"hookEndpoint": "http://localhost:3000/testrule",
+"hookRetry": 2
+```
 
 ## Steps:
 
