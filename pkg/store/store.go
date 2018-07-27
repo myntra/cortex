@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	raftboltdb "github.com/hashicorp/raft-boltdb"
+	"github.com/hashicorp/raft-boltdb"
 	"github.com/satori/go.uuid"
 
 	"github.com/golang/glog"
@@ -91,7 +91,7 @@ func (d *defaultStore) executor() {
 					statusCode = util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
 				}
 
-				id, _ := uuid.NewV4()
+				id := uuid.NewV4()
 				record := &executions.Record{
 					ID:             id.String(),
 					Bucket:         *rb,

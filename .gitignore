@@ -4,3 +4,5 @@ cmd/cmd
 cmd/data
 cmd/build
 rice-box.go
+vendor/
+dist/
