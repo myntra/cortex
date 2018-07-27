@@ -1,75 +1,115 @@
 
-# experimental
+# WIP
 
-cortex is a HA cloudevents.io aggregator
+**Cortex** is a fault-tolerant alerts correlation engine. 
+
+Alerts are accepted as a standard cloudevents.io event(https://github.com/cloudevents/spec/blob/master/json-format.md). Site 24x7 and Icinga integration converters are also provided.
+
+It collects similar events in a bucket over a time window using a regex matcher and then executes a JS(ES6) script. The script contains the correlation logic which can further create incidents or alerts. The JS environment is limited and is achieved by embedding k6.io javascript interpreter(https://docs.k6.io/docs/modules). This is an excellent library built on top of https://github.com/dop251/goja
 
 
-```
+## Event Flow:
+
+Steps: 
+
+1. **Match** : alert --> (convert from site 24x7/icinga ) --> (match rule) --> **Collect**
+2. **Collect** --> (add to the rule bucket which *dwells* around until the configured time) -->  **Execute**
+3. **Execute** --> (flush after Dwell period) --> (execute configured script) --> *Post*
+4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
+
+
+The collection of events in a bucket is done by writing a rule: 
+
+```json
 {
-    "cloudEventsVersion" : "0.1",
-    "eventType" : "servicename.subsystem.metric",
-    "source" : "icinga", 
-    "eventID" : "C234-1234-1234",
-    "eventTime" : "2018-04-05T17:31:00Z",
-    "extensions" : {
-      "comExampleExtension" : "value"
-    },
-    "contentType" : "application/json",
-    "data" : {
-        "key" : "val",
-    }
+	"title": "a test rule",
+	"id": "test-rule-id-1",
+	"eventTypePatterns": ["acme.prod.icinga.check_disk", "acme.prod.site247.*"],
+	"scriptID": "myscript.js",
+	"dwell": 4000,
+	"dwellDeadline": 3800,
+	"maxDwell": 8000,
+	"hookEndpoint": "http://localhost:3000/testrule",
+	"hookRetry": 2
 }
-
 ```
 
-## EventType
 
-Event Types are of the format:
+where:
 
-```
-<service-name>.<monitoring-system-name>.<metric-name>
-```
+*EventTypePatterns* is the pattern of events to put in a bucket(collection of cloudevents) associated with the rule.
 
-## Rule
-
-A rule is an array of related eventypes.
-
-```{
-    rule: ["service1.site24x7.",service2.icinga.metric*.businessname.productname.x, service2.icinga.*.businessname.productname.x]
-    endpoint: "http://localhost:8080/correlate/search/up,
-    waitWindow: 30000,
-    slideWindow: 1000,
-    snoozeWindow: 2000,
-}
+*Dwell* is the wait duration since the first matched event.
 
 
+For this rule, incoming events with `eventType` matching one of `eventTypePatterns` will be put in the same bucket:
+
+```json
 {
-    rule: ["service1.site24x7.deadui",service1.icinga.*,service2.icing.metric]
-    endpoint: "http://localhost:8080/correlate/service2,
+	"rule": {},
+	"events": [{
+		"cloudEventsVersion": "0.1",
+		"eventType": "acme.prod.site247.search_down",
+		"source": "site247",
+		"eventID": "C234-1234-1234",
+		"eventTime": "2018-04-05T17:31:00Z",
+		"extensions": {
+			"comExampleExtension": "value"
+		},
+		"contentType": "application/json",
+		"data": {
+			"appinfoA": "abc",
+			"appinfoB": 123,
+			"appinfoC": true
+		}
+	}]
 }
 ```
 
-## RuleBucket
+After the `dwell` period, the configured `myscript.js` will be invoked and the bucket will be passed along:
 
-A rulebucket is a collection of related cloudevents.
+```js
+import http from "k6/http";
+// result is a special variable
+let result = null
+// the entry function called by default
+export default function(bucket) {
+    bucket.events.foreach((event) => {
+        // create incident or alert or do nothing
+        http.Post("http://acme.com/incident")
+        // if result is set. it will picked up the engine    and posted to hookEndPoint
+    })
+}`
+```
+
+If `result` is set, it will be posted to the hookEndPoint. The `bucket` itself will be reset and evicted from the `collect` loop. The execution `record` will then be stored and can be fetched later.
+
+A new `bucket` will be created when an event matches the rule again.
+
+## Rules
 
 ```
-[]event{}
+	{rule pattern, incoming event type, expected match}
+
+    {"acme*", "acme", false},
+	{"acme*", "acme.prod", true},
+	{"acme.prod*", "acme.prod.search", true},
+	{"acme.prod*.checkout", "acme.prod.search", false},
+	{"acme.prod*.*", "acme.prod.search", false},
+	{"acme.prod*.*", "acme.prod-1.search", true},
+	{"acme.prod.*.*.*", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.*.*.check_disk", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.*.*.check_loadavg", "acme.prod.search.node1.check_disk", false},
+	{"*.prod.*.*.check_loadavg", "acme.prod.search.node1.check_loadavg", true},
+	{"acme.prod.*", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.search.node*.check_disk", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.search.node*.*", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.search.dc1-node*.*", "acme.prod.search.node1.check_disk", false},
 ```
 
-This bucket is posted to the remote endpoint on timeout and removed from the aggregator.
 
 
-## AlertHandlers
-
-An AlertHandler accepts alerts in various formats and stores them as cloudevents.
-
-e.g: site 24x7, icinga etc.
-
-path: /site24x7/alert
 
 
-Notes:
-1. Sliding Time Window.
-2. CorrelationService design: EventRegistry.
-3. RuleCreator 
+
+

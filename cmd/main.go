@@ -18,13 +18,13 @@ import (
 
 var (
 	//raft
-	bind                       string
-	join                       string
-	dir                        string
-	id                         string
-	defaultWaitWindow          uint64
-	defaultWaitWindowThreshold uint64
-	defaultMaxWaitWindow       uint64
+	bind                 string
+	join                 string
+	dir                  string
+	id                   string
+	defaultDwell         uint64
+	defaultDwellDeadline uint64
+	defaultMaxDwell      uint64
 
 	// build
 	version = "dev"
@@ -45,46 +45,55 @@ func usage() {
 func init() {
 	flag.Usage = usage
 	cfg = &config.Config{
-		NodeID:                     "",
-		RaftBindPort:               8878,
-		Dir:                        "./data",
-		JoinAddr:                   "",
-		DefaultWaitWindow:          3 * 60 * 1000,   // 3 minutes
-		DefaultMaxWaitWindow:       6 * 60 * 1000,   // 6 minutes
-		DefaultWaitWindowThreshold: 2.5 * 60 * 1000, // 2.5 minutes
+		NodeID:               "",
+		Dir:                  "./data",
+		JoinAddr:             "",
+		DefaultDwell:         3 * 60 * 1000,   // 3 minutes
+		DefaultMaxDwell:      6 * 60 * 1000,   // 6 minutes
+		DefaultDwellDeadline: 2.5 * 60 * 1000, // 2.5 minutes
+		MaxHistory:           1000,
+		FlushInterval:        1000,
 	}
 }
 
 func main() {
 
-	loader := confita.NewLoader(flags.NewBackend())
 	lb := littleboss.New("cortex")
-	lb.Command("lb", flag.String("lb", "start", "littleboss start command"))
+	lb.Command("service", flag.String("service", "start", "littleboss start command"))
+	flagRaft := lb.Listener("raft", "tcp", ":4444", "-raft :4444")
+	flagHTTP := lb.Listener("http", "tcp", ":4445", "-http :4445")
 
-	flag.Parse()
-
+	loader := confita.NewLoader(flags.NewBackend())
 	err := loader.Load(context.Background(), cfg)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		usage()
 	}
 
-	svc, err := service.New(cfg)
-	if err != nil {
-		glog.Fatal(err)
-	}
+	fmt.Printf("raft addr %v, http addr %v\n", flagRaft.String(), flagHTTP.String())
 
 	lb.Run(func(ctx context.Context) {
-		run(ctx, svc)
+		run(context.Background(), flagRaft, flagHTTP)
 	})
 
 	glog.Info("cortex exited")
 }
 
-func run(ctx context.Context, svc *service.Service) {
+func run(ctx context.Context, flagRaft, flagHTTP *littleboss.ListenerFlag) {
+
+	cfg.HTTPAddr = flagHTTP.String()
+	cfg.RaftAddr = flagRaft.String()
+	cfg.HTTPListener = flagHTTP.Listener()
+	cfg.RaftListener = flagRaft.Listener()
+
+	svc, err := service.New(cfg)
+	if err != nil {
+		glog.Error(err)
+		os.Exit(1)
+	}
 
 	go func() {
-		if err := svc.HTTP().ListenAndServe(); err != nil {
+		if err := svc.Start(); err != nil {
 			if err == http.ErrServerClosed {
 				return
 			}

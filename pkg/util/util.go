@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"github.com/sethgrid/pester"
 )
 
@@ -19,7 +20,7 @@ type JoinRequest struct {
 	Addr   string `json:"addr"`
 }
 
-// Validate validates the requet
+// Validate validates the request
 func (j *JoinRequest) Validate() error {
 
 	if j.NodeID == "" {
@@ -44,24 +45,24 @@ func ErrStatus(w http.ResponseWriter, r *http.Request, message string, statusCod
 		glog.Error("ioutil.ReadAll failed")
 	}
 
-	glog.Errorf("msg %v, r.Body %v, err: %v", message, string(content), err)
+	glog.Errorf("msg %v, r.Body %v, err: %v", message, string(content), errors.Wrap(err, ""))
 
 	http.Error(w, message, statusCode)
 }
 
 // RetryPost posts the value to a remote endpoint. also retries
-func RetryPost(val interface{}, url string, retry int) {
+func RetryPost(val interface{}, url string, retry int) int {
 
 	b := new(bytes.Buffer)
 	err := json.NewEncoder(b).Encode(val)
 	if err != nil {
-		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
-		return
+		glog.Errorf("http post bucket encoding failed. %v %v", err, url)
+		return http.StatusInternalServerError
 	}
 	req, err := http.NewRequest("POST", url, b)
 	if err != nil {
-		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
-		return
+		glog.Errorf("http post rule bucket newrequest failed. %v %v", err, url)
+		return http.StatusInternalServerError
 	}
 	req.Header.Add("Content-type", "application/json")
 
@@ -69,17 +70,15 @@ func RetryPost(val interface{}, url string, retry int) {
 	client.MaxRetries = retry
 	resp, err := client.Do(req)
 	if err != nil {
-		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
-		return
+		glog.Errorf("http post rule bucket client.Do failed %v %v", err, url)
+		return http.StatusInternalServerError
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 && resp.StatusCode != 202 {
-		glog.Errorf("post rule bucket failed. dropping it!! %v %v %v", err, b.String(), err)
-		return //fmt.Errorf("invalid status code return from %v endpoint", url)
+		glog.Errorf("http post rule bucket unexpected status code %v %v", err, resp.StatusCode)
 	}
 
-	return
-
+	return resp.StatusCode
 }

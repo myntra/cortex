@@ -10,33 +10,45 @@ import (
 	"github.com/spf13/afero"
 )
 
+//go:generate msgp
+
+// Script contains the javascript code
+type Script struct {
+	ID   string `json:"id"`
+	Data []byte `json:"data"`
+}
+
 // Execute js
-func Execute(script []byte, data interface{}) interface{} {
+func Execute(script *Script, data interface{}) interface{} {
+	if script == nil || len(script.ID) == 0 {
+		return nil
+	}
+
 	r, err := js.New(&lib.SourceData{
-		Filename: "correlate.js",
-		Data:     script,
+		Filename: script.ID,
+		Data:     script.Data,
 	}, afero.NewMemMapFs(), lib.RuntimeOptions{})
 
 	if err != nil {
-		glog.Fatal(err)
+		return err
 	}
-
+	glog.Infof("%v", data)
 	r.SetSetupData(data)
 
 	vu, err := r.NewVU(make(chan stats.SampleContainer, 100))
 	if err != nil {
-		glog.Fatal(err)
+		return err
 	}
 
 	vuc, ok := vu.(*js.VU)
 
 	if !ok {
-		glog.Fatal(err)
+		return err
 	}
 
 	err = vu.RunOnce(context.Background())
 	if err != nil {
-		glog.Fatal(err)
+		return err
 	}
 
 	result := vuc.Runtime.Get("result")

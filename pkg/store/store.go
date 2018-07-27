@@ -1,19 +1,19 @@
 package store
 
 import (
-	"encoding/json"
 	"fmt"
-	"net"
-	"os"
-	"path/filepath"
 	"time"
+
+	raftboltdb "github.com/hashicorp/raft-boltdb"
+	"github.com/satori/go.uuid"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/myntra/cortex/pkg/config"
+	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/executions"
+	"github.com/myntra/cortex/pkg/rules"
 
-	"github.com/myntra/cortex/pkg/event"
 	"github.com/myntra/cortex/pkg/js"
 	"github.com/myntra/cortex/pkg/util"
 )
@@ -23,239 +23,252 @@ const (
 	raftTimeout         = 10 * time.Second
 )
 
-type command struct {
-	Op       string       `json:"op"` // stash or evict
-	Rule     *event.Rule  `json:"rule,omitempty"`
-	RuleID   string       `json:"ruleID,omitempty"`
-	Event    *event.Event `json:"event,omitempty"`
-	ScriptID string       `json:"script_id,omitempty"`
-	Script   []byte       `json:"script,omitempty"`
-}
-
 type defaultStore struct {
-	opt *config.Config
-
-	raft            *raft.Raft
-	eventStorage    *eventStorage
-	scriptStorage   *scriptStorage
-	postBucketQueue chan *event.RuleBucket
+	opt                  *config.Config
+	boltDB               *raftboltdb.BoltStore
+	raft                 *raft.Raft
+	scriptStorage        *scriptStorage
+	bucketStorage        *bucketStorage
+	executionStorage     *executionStorage
+	executionBucketQueue chan *events.Bucket
+	quitFlusherChan      chan struct{}
+	persisters           []persister
+	restorers            map[MessageType]restorer
 }
 
 func newStore(opt *config.Config) (*defaultStore, error) {
 
+	// register persisters
+	var persisters []persister
+	persisters = append(persisters, persistRules, persistRecords, persistScripts)
+
+	restorers := make(map[MessageType]restorer)
+
+	restorers[RuleType] = restoreRules
+	restorers[RecordType] = restoreRecords
+	restorers[ScriptType] = restoreScripts
+
 	store := &defaultStore{
-		eventStorage: &eventStorage{
-			m:               make(map[string]*event.RuleBucket),
-			flusherChan:     make(chan string),
-			quitFlusherChan: make(chan struct{}),
-		},
 		scriptStorage: &scriptStorage{
-			m: make(map[string][]byte),
+			m: make(map[string]*js.Script),
 		},
-		opt:             opt,
-		postBucketQueue: make(chan *event.RuleBucket, 100),
+		executionStorage: &executionStorage{
+			m: make(map[string]*executions.Record),
+		},
+		bucketStorage: &bucketStorage{
+			es: &eventStorage{
+				m: make(map[string]*events.Bucket),
+			},
+			rs: &ruleStorage{
+				m: make(map[string]*rules.Rule),
+			},
+		},
+		opt:                  opt,
+		quitFlusherChan:      make(chan struct{}),
+		executionBucketQueue: make(chan *events.Bucket, 1000),
+		persisters:           persisters,
+		restorers:            restorers,
 	}
-	store.open()
+
 	return store, nil
 }
 
-func (d *defaultStore) open() error {
-	config := raft.DefaultConfig()
-	config.LocalID = raft.ServerID(d.opt.NodeID)
-
-	// Setup Raft communication.
-	addr, err := net.ResolveTCPAddr("tcp", d.opt.GetBindAddr())
-	if err != nil {
-		return err
-	}
-	transport, err := raft.NewTCPTransport(d.opt.GetBindAddr(), addr, 3, 10*time.Second, os.Stderr)
-	if err != nil {
-		return err
-	}
-
-	// Create the snapshot store. This allows the Raft to truncate the log.
-	snapshots, err := raft.NewFileSnapshotStore(d.opt.Dir, retainSnapshotCount, os.Stderr)
-	if err != nil {
-		return fmt.Errorf("file snapshot store: %s", err)
-	}
-
-	// Create the log store and stable store.
-	var logStore raft.LogStore
-	var stableStore raft.StableStore
-
-	boltDB, err := raftboltdb.NewBoltStore(filepath.Join(d.opt.Dir, "raft.db"))
-	if err != nil {
-		return fmt.Errorf("new bolt store: %s", err)
-	}
-	logStore = boltDB
-	stableStore = boltDB
-
-	// Instantiate the Raft systemd.
-	ra, err := raft.NewRaft(config, (*fsm)(d), logStore, stableStore, snapshots, transport)
-	if err != nil {
-		return fmt.Errorf("new raft: %s", err)
-	}
-	d.raft = ra
-
-	// bootstrap single node configuration
-	if d.opt.JoinAddr == "" {
-		fmt.Printf("starting %v in a single node cluster \n", d.opt.NodeID)
-		configuration := raft.Configuration{
-			Servers: []raft.Server{
-				{
-					ID:      config.LocalID,
-					Address: transport.LocalAddr(),
-				},
-			},
-		}
-		f := ra.BootstrapCluster(configuration)
-		if f.Error() != nil {
-			return f.Error()
-		}
-
-		// since in bootstrap mode, block until leadership is attained.
-	loop:
-		for {
-			select {
-			case leader := <-d.raft.LeaderCh():
-				glog.Info("isLeader ", leader)
-				if leader {
-					break loop
-				}
-			}
-		}
-	}
-
-	go d.flusher()
-
-	return nil
-}
-
-func (d *defaultStore) close() error {
-	d.eventStorage.quitFlusherChan <- struct{}{}
-	f := d.raft.Shutdown()
-	if f.Error() != nil {
-		return f.Error()
-	}
-	glog.Flush()
-	return nil
-}
-
-func (d *defaultStore) poster() {
+func (d *defaultStore) executor() {
 	for {
 		select {
-		case rb := <-d.postBucketQueue:
+		case rb := <-d.executionBucketQueue:
 			glog.Infof("received bucket %+v", rb)
-			go func(rb *event.RuleBucket) {
-				script := d.getScript(rb.Rule.ScriptID)
-				if len(script) == 0 {
-					util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
-					return
+			go func(rb *events.Bucket) {
+				statusCode := 0
+				var noScriptResult bool
+				result := js.Execute(d.getScript(rb.Rule.ScriptID), rb)
+				if result == nil {
+					noScriptResult = true
+				}
+				if noScriptResult {
+					statusCode = util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+				} else {
+					statusCode = util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
 				}
 
-				result := js.Execute(script, rb)
-				if result == nil {
-					util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
-					return
+				id, _ := uuid.NewV4()
+				record := &executions.Record{
+					ID:             id.String(),
+					Bucket:         *rb,
+					ScriptResult:   result,
+					HookStatusCode: statusCode,
+					CreatedAt:      time.Now(),
 				}
-				util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+
+				glog.Infof("addRecord %v\n", record)
+				glog.Infoln("err ", d.addRecord(record))
+
 			}(rb)
 		}
 	}
 }
 
 func (d *defaultStore) flusher() {
-	if !d.opt.DisablePostHook {
-		go d.poster()
-	}
 
+	go d.executor()
+
+	ticker := time.NewTicker(time.Millisecond * time.Duration(d.opt.FlushInterval))
 loop:
 	for {
 		select {
-		case ruleID := <-d.eventStorage.flusherChan:
-			rb := d.eventStorage.getRuleBucket(ruleID)
-			if rb == nil {
-				glog.Errorf("unexpected err ruleID %v not found", ruleID)
-				return
-			}
+		case <-ticker.C:
+			for ruleID, bucket := range d.bucketStorage.es.clone() {
+				glog.Infof("rule flusher ==> %v with size %v canflush ? %v, can flush in %v",
+					ruleID, len(bucket.Events), bucket.CanFlush(), bucket.CanFlushIn())
+				if bucket.CanFlush() {
+					go func() {
+						glog.Infof("post bucket to execution %+v ", bucket)
+						d.executionBucketQueue <- bucket
 
-			go func() {
-
-				if d.opt.DisablePostHook {
-					glog.Infof("post bucket to hook %v ", rb)
+						err := d.flushBucket(ruleID)
+						if err != nil {
+							glog.Errorf("error flushing bucket %v %v", ruleID, err)
+						}
+					}()
 				}
-
-				d.postBucketQueue <- rb
-
-			}()
-
-			err := d.flushRule(ruleID)
-			if err != nil {
-				glog.Errorf("error flushing %v", err)
 			}
-
-		case <-d.eventStorage.quitFlusherChan:
+		case <-d.quitFlusherChan:
 			break loop
+		}
+	}
+
+}
+
+func (d *defaultStore) expirer() {
+	ticker := time.NewTicker(time.Hour)
+
+	for {
+		select {
+		case <-ticker.C:
+			if d.executionStorage.getTotalRecordsCount() > d.opt.MaxHistory {
+				// TODO, remove oldest records
+			}
 		}
 
 	}
 }
 
-func (d *defaultStore) applyCMD(cmd *command) error {
+func (d *defaultStore) applyCMD(cmd Command) error {
 	if d.raft.State() != raft.Leader {
 		return fmt.Errorf("not leader")
 	}
 
-	b, err := json.Marshal(cmd)
+	// b, err := json.Marshal(cmd)
+	// if err != nil {
+	// 	return err
+	// }
+
+	glog.Infof("apply cmd %v\n marshalling", cmd)
+
+	b, err := cmd.MarshalMsg(nil)
 	if err != nil {
+		glog.Errorf("stash %v err %v\n", cmd, err)
 		return err
 	}
 
+	glog.Infof("==> apply %+v\n", cmd)
 	f := d.raft.Apply(b, raftTimeout)
 	return f.Error()
 }
 
-func (d *defaultStore) stash(event *event.Event) error {
-	return d.applyCMD(&command{
-		Op:    "stash",
-		Event: event,
+func (d *defaultStore) matchAndStash(event *events.Event) error {
+	glog.Info("match and stash event ==>  ", event)
+	for _, rule := range d.getRules() {
+		go d.match(rule, event)
+	}
+	return nil
+}
+
+func (d *defaultStore) match(rule *rules.Rule, event *events.Event) error {
+	glog.Info("match event ==>  ", event)
+	if rule.HasMatching(event.EventType) {
+		go d.stash(rule.ID, event)
+	}
+	return nil
+
+}
+
+func (d *defaultStore) stash(ruleID string, event *events.Event) error {
+	glog.Info("apply stash event ==>  ", event)
+	return d.applyCMD(Command{
+		Op:     "stash",
+		RuleID: ruleID,
+		Event:  event,
 	})
 }
 
-func (d *defaultStore) addRule(rule *event.Rule) error {
+func (d *defaultStore) addRule(rule *rules.Rule) error {
 
-	if rule.WaitWindow == 0 || rule.WaitWindowThreshold == 0 || rule.MaxWaitWindow == 0 {
-		rule.WaitWindow = d.opt.DefaultWaitWindow
-		rule.WaitWindowThreshold = d.opt.DefaultWaitWindowThreshold
-		rule.MaxWaitWindow = d.opt.DefaultMaxWaitWindow
+	if rule.Dwell == 0 || rule.DwellDeadline == 0 || rule.MaxDwell == 0 {
+		rule.Dwell = d.opt.DefaultDwell
+		rule.DwellDeadline = d.opt.DefaultDwellDeadline
+		rule.MaxDwell = d.opt.DefaultMaxDwell
 	}
 
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:   "add_rule",
 		Rule: rule,
 	})
 }
 
-func (d *defaultStore) addScript(id string, script []byte) error {
-	return d.applyCMD(&command{
-		Op:       "add_script",
-		ScriptID: id,
-		Script:   script,
+func (d *defaultStore) updateRule(rule *rules.Rule) error {
+	return d.applyCMD(Command{
+		Op:   "update_rule",
+		Rule: rule,
 	})
 }
 
-func (d *defaultStore) updateScript(id string, script []byte) error {
-	return d.applyCMD(&command{
-		Op:       "update_script",
-		ScriptID: id,
-		Script:   script,
+func (d *defaultStore) addScript(script *js.Script) error {
+	return d.applyCMD(Command{
+		Op:     "add_script",
+		Script: script,
+	})
+}
+
+func (d *defaultStore) updateScript(script *js.Script) error {
+	return d.applyCMD(Command{
+		Op:     "update_script",
+		Script: script,
 	})
 }
 
 func (d *defaultStore) removeScript(id string) error {
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:       "remove_script",
 		ScriptID: id,
+	})
+}
+
+func (d *defaultStore) removeRule(ruleID string) error {
+	return d.applyCMD(Command{
+		Op:     "remove_rule",
+		RuleID: ruleID,
+	})
+}
+
+func (d *defaultStore) flushBucket(ruleID string) error {
+	return d.applyCMD(Command{
+		Op:     "flush_bucket",
+		RuleID: ruleID,
+	})
+}
+
+func (d *defaultStore) addRecord(r *executions.Record) error {
+	return d.applyCMD(Command{
+		Op:     "add_record",
+		Record: r,
+	})
+}
+
+func (d *defaultStore) removeRecord(id string) error {
+	return d.applyCMD(Command{
+		Op:       "remove_record",
+		RecordID: id,
 	})
 }
 
@@ -263,94 +276,22 @@ func (d *defaultStore) getScripts() []string {
 	return d.scriptStorage.getScripts()
 }
 
-func (d *defaultStore) getScript(id string) []byte {
+func (d *defaultStore) getScript(id string) *js.Script {
 	return d.scriptStorage.getScript(id)
 }
 
-func (d *defaultStore) removeRule(ruleID string) error {
-	return d.applyCMD(&command{
-		Op:     "remove_rule",
-		RuleID: ruleID,
-	})
+func (d *defaultStore) getRules() []*rules.Rule {
+	return d.bucketStorage.rs.getRules()
 }
 
-func (d *defaultStore) flushRule(ruleID string) error {
-	return d.applyCMD(&command{
-		Op:     "flush_rule",
-		RuleID: ruleID,
-	})
+func (d *defaultStore) getRule(ruleID string) *rules.Rule {
+	return d.bucketStorage.rs.getRule(ruleID)
 }
 
-func (d *defaultStore) getRules() []*event.Rule {
-	return d.eventStorage.getRules()
+func (d *defaultStore) getRecords(ruleID string) []*executions.Record {
+	return d.executionStorage.getRecords(ruleID)
 }
 
-func (d *defaultStore) getRule(ruleID string) *event.Rule {
-	return d.eventStorage.getRule(ruleID)
-}
-
-func (d *defaultStore) acceptJoin(nodeID, addr string) error {
-	glog.Infof("received join request for remote node %s at %s", nodeID, addr)
-
-	configFuture := d.raft.GetConfiguration()
-	if err := configFuture.Error(); err != nil {
-		glog.Infof("failed to get raft configuration: %v", err)
-		return err
-	}
-
-	for _, srv := range configFuture.Configuration().Servers {
-		// If a node already exists with either the joining node's ID or address,
-		// that node may need to be removed from the config first.
-		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(addr) {
-			// However if *both* the ID and the address are the same, then nothing -- not even
-			// a join operation -- is needed.
-			if srv.Address == raft.ServerAddress(addr) && srv.ID == raft.ServerID(nodeID) {
-				glog.Infof("node %s at %s already member of cluster, ignoring join request", nodeID, addr)
-				return nil
-			}
-
-			future := d.raft.RemoveServer(srv.ID, 0, 0)
-			if err := future.Error(); err != nil {
-				return fmt.Errorf("error removing existing node %s at %s: %s", nodeID, addr, err)
-			}
-		}
-	}
-
-	f := d.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
-	if f.Error() != nil {
-		return f.Error()
-	}
-	glog.Infof("node %s at %s joined successfully", nodeID, addr)
-	return nil
-
-}
-
-func (d *defaultStore) acceptLeave(nodeID string) error {
-
-	glog.Infof("received leave request for remote node %s", nodeID)
-
-	cf := d.raft.GetConfiguration()
-
-	if err := cf.Error(); err != nil {
-		glog.Infof("failed to get raft configuration")
-		return err
-	}
-
-	for _, server := range cf.Configuration().Servers {
-		if server.ID == raft.ServerID(nodeID) {
-			f := d.raft.RemoveServer(server.ID, 0, 0)
-			if err := f.Error(); err != nil {
-				glog.Infof("failed to remove server %s", nodeID)
-				return err
-			}
-
-			glog.Infof("node %s left successfully", nodeID)
-			return nil
-		}
-	}
-
-	glog.Infof("node %s not exists in raft group", nodeID)
-
-	return nil
-
+func (d *defaultStore) getRecordsCount(ruleID string) int {
+	return d.executionStorage.getRecordsCount(ruleID)
 }

@@ -3,37 +3,39 @@ package store
 import (
 	"fmt"
 	"sync"
+
+	"github.com/myntra/cortex/pkg/js"
 )
 
 type scriptStorage struct {
-	mu sync.Mutex
-	m  map[string][]byte
+	mu sync.RWMutex
+	m  map[string]*js.Script
 }
 
-func (s *scriptStorage) addScript(id string, script []byte) error {
+func (s *scriptStorage) addScript(script *js.Script) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.m[id]; ok {
+	if _, ok := s.m[script.ID]; ok {
 		return fmt.Errorf("script name already exists. script name must be unique")
 	}
 
-	s.m[id] = script
+	s.m[script.ID] = script
 
 	return nil
 }
 
-func (s *scriptStorage) updateScript(id string, script []byte) error {
+func (s *scriptStorage) updateScript(script *js.Script) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.m[id]; !ok {
+	if _, ok := s.m[script.ID]; !ok {
 		return fmt.Errorf("script name not found. can't update")
 	}
 
-	s.m[id] = script
+	s.m[script.ID] = script
 	return nil
 }
 
@@ -51,17 +53,16 @@ func (s *scriptStorage) removeScript(id string) error {
 	return nil
 }
 
-func (s *scriptStorage) getScript(id string) []byte {
+func (s *scriptStorage) getScript(id string) *js.Script {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var b []byte
 	if _, ok := s.m[id]; !ok {
-		return b
+		return nil
 	}
-	b = s.m[id]
-	return b
+
+	return s.m[id]
 }
 
 func (s *scriptStorage) getScripts() []string {
@@ -78,16 +79,16 @@ func (s *scriptStorage) getScripts() []string {
 	return ids
 }
 
-func (s *scriptStorage) clone() map[string][]byte {
+func (s *scriptStorage) clone() map[string]*js.Script {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	var scripts map[string][]byte
+	scripts := make(map[string]*js.Script)
 	for k, v := range s.m {
 		scripts[k] = v
 	}
 	return scripts
 }
 
-func (s *scriptStorage) restore(m map[string][]byte) {
+func (s *scriptStorage) restore(m map[string]*js.Script) {
 	s.m = m
 }

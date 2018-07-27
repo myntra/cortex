@@ -9,10 +9,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/myntra/cortex/pkg/executions"
+	"github.com/myntra/cortex/pkg/js"
+
 	"github.com/golang/glog"
 	"github.com/hashicorp/raft"
 	"github.com/myntra/cortex/pkg/config"
-	"github.com/myntra/cortex/pkg/event"
+	"github.com/myntra/cortex/pkg/events"
+	"github.com/myntra/cortex/pkg/rules"
 	"github.com/myntra/cortex/pkg/util"
 )
 
@@ -24,23 +28,14 @@ type Node struct {
 
 // NewNode returns a new raft node
 func NewNode(cfg *config.Config) (*Node, error) {
-
+	glog.Infof("NewNode %v\n", cfg)
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %v", err)
 	}
 
 	store, err := newStore(cfg)
-
 	if err != nil {
 		return nil, err
-	}
-
-	// join a remote node
-	if cfg.JoinAddr != "" {
-		err := httpRaftJoin(cfg.JoinAddr, cfg.NodeID, cfg.GetBindAddr())
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	node := &Node{store: store}
@@ -48,7 +43,12 @@ func NewNode(cfg *config.Config) (*Node, error) {
 	return node, nil
 }
 
-// Shutdown store
+// Start the node
+func (n *Node) Start() error {
+	return n.store.open()
+}
+
+// Shutdown the node
 func (n *Node) Shutdown() error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -57,7 +57,7 @@ func (n *Node) Shutdown() error {
 		glog.Errorf("error shutting down node %v", err)
 		return err
 	}
-
+	glog.Info("node shut down")
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (n *Node) LeaderAddr() string {
 		return ""
 	}
 
-	tcpPort := raftPort - 1
+	tcpPort := raftPort + 1
 	tcpURL := fields[0]
 	if tcpURL == "" {
 		tcpURL = "0.0.0.0"
@@ -98,13 +98,24 @@ func (n *Node) LeaderAddr() string {
 }
 
 // AddRule adds a rule to the store
-func (n *Node) AddRule(rule *event.Rule) error {
+func (n *Node) AddRule(rule *rules.Rule) error {
+	if err := rule.Validate(); err != nil {
+		return err
+	}
 	return n.store.addRule(rule)
 }
 
+// UpdateRule updates a rule to the store
+func (n *Node) UpdateRule(rule *rules.Rule) error {
+	if err := rule.Validate(); err != nil {
+		return err
+	}
+	return n.store.updateRule(rule)
+}
+
 // Stash adds a event to the store
-func (n *Node) Stash(event *event.Event) error {
-	return n.store.stash(event)
+func (n *Node) Stash(event *events.Event) error {
+	return n.store.matchAndStash(event)
 }
 
 // RemoveRule removes a rule from the store
@@ -113,23 +124,28 @@ func (n *Node) RemoveRule(ruleID string) error {
 }
 
 // GetRule returns all the stored rules
-func (n *Node) GetRule(ruleID string) *event.Rule {
+func (n *Node) GetRule(ruleID string) *rules.Rule {
 	return n.store.getRule(ruleID)
 }
 
+// GetRuleExectutions returns the executions for a rule
+func (n *Node) GetRuleExectutions(ruleID string) []*executions.Record {
+	return n.store.getRecords(ruleID)
+}
+
 // GetRules returns all the stored rules
-func (n *Node) GetRules() []*event.Rule {
+func (n *Node) GetRules() []*rules.Rule {
 	return n.store.getRules()
 }
 
 // AddScript adds a script to the db
-func (n *Node) AddScript(id string, script []byte) error {
-	return n.store.addScript(id, script)
+func (n *Node) AddScript(script *js.Script) error {
+	return n.store.addScript(script)
 }
 
 // UpdateScript updates an already added script
-func (n *Node) UpdateScript(id string, script []byte) error {
-	return n.store.updateScript(id, script)
+func (n *Node) UpdateScript(script *js.Script) error {
+	return n.store.updateScript(script)
 }
 
 // RemoveScript remove a script from the db
@@ -143,7 +159,7 @@ func (n *Node) GetScripts() []string {
 }
 
 // GetScript returns the script data
-func (n *Node) GetScript(id string) []byte {
+func (n *Node) GetScript(id string) *js.Script {
 	return n.store.getScript(id)
 }
 
@@ -155,6 +171,11 @@ func (n *Node) Join(nodeID, addr string) error {
 // Leave a remote node
 func (n *Node) Leave(nodeID string) error {
 	return n.store.acceptLeave(nodeID)
+}
+
+// Snapshot takes a snapshot of the store
+func (n *Node) Snapshot() error {
+	return n.store.snapshot()
 }
 
 func httpRaftJoin(joinAddr, nodeID, bindAddr string) error {
