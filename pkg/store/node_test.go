@@ -73,8 +73,8 @@ func newTestRule(key string) rules.Rule {
 		EventTypePatterns: []string{key + "acme.prod.icinga.check_disk", key + "acme.prod.site247.cart_down"},
 		ScriptID:          "myscript",
 		Dwell:             30 * 1000,
-		DwellDeadline:     25 * 1000,
-		MaxDwell:          120 * 1000,
+		DwellDeadline:     20 * 1000,
+		MaxDwell:          90 * 1000,
 	}
 }
 
@@ -247,11 +247,61 @@ func TestMultipleEventSingleRule(t *testing.T) {
 			}
 
 			glog.Info("sleeping ...")
-			time.Sleep(time.Millisecond * time.Duration(myTestRule.Dwell+5000))
+			time.Sleep(time.Millisecond * time.Duration(myTestRule.Dwell+10000))
 			glog.Info("sleeping done")
 
 			records := node.GetRuleExectutions(myTestRule.ID)
 			require.True(t, len(records) == 1, fmt.Sprintf("len is %v", len(records)))
+			require.True(t, len(records[0].Bucket.Events) == n, fmt.Sprintf("len is %v", len(records[0].Bucket.Events)))
+		})
+
+		t.Run("Test stash multiple events after dwell time", func(t *testing.T) {
+			key := "hi"
+			myTestRule := newTestRule("hi")
+			n := 5
+
+			s := rand.NewSource(time.Now().UnixNano())
+			r := rand.New(s)
+			intervals := make(map[int]events.Event)
+
+			for i := 0; i < n; i++ {
+				interval := int(myTestRule.DwellDeadline) + 1000*i
+				intervals[interval] = newTestEvent(strconv.Itoa(i), key)
+			}
+
+			for i := 5; i < 10; i++ {
+				interval := r.Intn(int(myTestRule.Dwell - myTestRule.DwellDeadline))
+				intervals[interval] = newTestEvent(strconv.Itoa(i), key)
+			}
+
+			// 5 events will be deduped
+			for i := 5; i < 10; i++ {
+				interval := r.Intn(int(myTestRule.Dwell - myTestRule.DwellDeadline))
+				intervals[interval] = newTestEvent(strconv.Itoa(i), key)
+			}
+
+			for k := range intervals {
+				glog.Infof("intervals %v\n", k)
+			}
+			err := node.AddRule(&myTestRule)
+			require.NoError(t, err)
+
+			for interval, te := range intervals {
+				go func(interval int, te events.Event) {
+					time.Sleep(time.Millisecond * time.Duration(interval))
+					glog.Info("send event ", time.Millisecond*time.Duration(interval))
+					err = node.Stash(&te)
+					require.NoError(t, err)
+				}(interval, te)
+			}
+
+			glog.Info("sleeping ...")
+			time.Sleep(time.Millisecond * time.Duration(myTestRule.MaxDwell+3000))
+			glog.Info("sleeping done")
+
+			records := node.GetRuleExectutions(myTestRule.ID)
+			require.True(t, len(records) == 1, fmt.Sprintf("len is %v", len(records)))
+			require.True(t, len(records[0].Bucket.Events) == 10, fmt.Sprintf("len is %v", len(records[0].Bucket.Events)))
 		})
 
 	})

@@ -37,7 +37,7 @@ The collection of events in a bucket is done by writing a rule:
 
 where:
 
-*EventTypePatterns* is the pattern of events to put in a bucket(collection of cloudevents) associated with the rule.
+*EventTypePatterns* is the pattern of events to be collected in a bucket.
 
 *Dwell* is the wait duration since the first matched event.
 
@@ -90,8 +90,7 @@ A new `bucket` will be created when an event matches the rule again.
 
 ```
 	{rule pattern, incoming event type, expected match}
-
-    {"acme*", "acme", false},
+	{"acme*", "acme", false},
 	{"acme*", "acme.prod", true},
 	{"acme.prod*", "acme.prod.search", true},
 	{"acme.prod*.checkout", "acme.prod.search", false},

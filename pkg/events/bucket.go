@@ -15,10 +15,11 @@ import (
 // NewBucket creates a new Bucket
 func NewBucket(rule rules.Rule) *Bucket {
 	return &Bucket{
-		flushWait: rule.Dwell,
-		UpdatedAt: time.Now(),
-		CreatedAt: time.Now(),
-		Rule:      rule,
+		flushWait:    rule.Dwell,
+		dwellResetAt: time.Now(),
+		UpdatedAt:    time.Now(),
+		CreatedAt:    time.Now(),
+		Rule:         rule,
 	}
 }
 
@@ -26,11 +27,12 @@ func NewBucket(rule rules.Rule) *Bucket {
 
 // Bucket contains the rule for a collection of events and the events
 type Bucket struct {
-	Rule      rules.Rule `json:"rule"`
-	Events    []*Event   `json:"events"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	CreatedAt time.Time  `json:"created_at"`
-	flushWait uint64
+	Rule         rules.Rule `json:"rule"`
+	Events       []*Event   `json:"events"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+	dwellResetAt time.Time
+	flushWait    uint64
 }
 
 // AddEvent to the bucket
@@ -98,16 +100,18 @@ func (rb *Bucket) CanFlushIn() time.Duration {
 
 // UpdateDwell updates flush waiting duration
 func (rb *Bucket) updateDwell() {
-	timeSinceCreated := time.Since(rb.CreatedAt)
+	glog.Infof("updateDwell ")
+	timeSinceDwellReset := time.Since(rb.dwellResetAt)
 
-	if timeSinceCreated >= rb.getMaxDwell() {
+	glog.Infof("updateDwell %v %v %v %v", timeSinceDwellReset, rb.getDwellDuration(), rb.getMaxDwell(), rb.getDwellDeadlineDuration())
+	if (timeSinceDwellReset + rb.getDwellDuration()) >= rb.getMaxDwell() {
 		rb.UpdatedAt = time.Now()
 		return
 	}
 
-	timeSinceLastEventAdded := time.Since(rb.UpdatedAt)
-
-	if timeSinceLastEventAdded >= rb.getDwellDeadlineDuration() {
+	if timeSinceDwellReset >= rb.getDwellDeadlineDuration() {
+		glog.Info("updateDwell flushwait + dwell")
+		rb.dwellResetAt = time.Now()
 		rb.flushWait = rb.flushWait + rb.Rule.Dwell
 	}
 

@@ -134,7 +134,7 @@ func newTestRule(key string) rules.Rule {
 		ScriptID:          "myscript",
 		Dwell:             30 * 1000,
 		DwellDeadline:     25 * 1000,
-		MaxDwell:          120 * 1000,
+		MaxDwell:          60 * 1000,
 	}
 }
 
@@ -502,7 +502,6 @@ func TestSingleEventMultipleService(t *testing.T) {
 		require.False(t, len(ruleExecutions) == 0)
 		require.True(t, testRule.ID == ruleExecutions[0].Bucket.Rule.ID)
 		require.True(t, testevent.EventID == ruleExecutions[0].Bucket.Events[0].EventID)
-
 	})
 }
 
@@ -541,7 +540,7 @@ func TestMultiEventMultiService(t *testing.T) {
 			}
 
 			glog.Info("sleeping ...")
-			time.Sleep(time.Millisecond * time.Duration(myTestRule.Dwell+5000))
+			time.Sleep(time.Millisecond * time.Duration(myTestRule.MaxDwell))
 			glog.Info("sleeping done")
 
 			// fetch rule executions from node 1
