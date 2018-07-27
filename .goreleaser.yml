@@ -5,7 +5,7 @@ before:
   - go get ./...
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/dop251/goja
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/spf13/afero
-  - ./build_ui.sh
+  - bash build_ui.sh
   - go test ./...
 builds:
   -
