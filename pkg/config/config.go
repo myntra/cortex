@@ -25,10 +25,12 @@ type Config struct {
 	Commit               string `config:"commit"`
 	Date                 string `config:"date"`
 
-	RaftAddr     string
-	HTTPAddr     string
-	RaftListener net.Listener
-	HTTPListener net.Listener
+	UIAddr         string
+	RaftAddr       string
+	HTTPAddr       string
+	RaftListener   net.Listener
+	HTTPListener   net.Listener
+	UIHTTPListener net.Listener
 }
 
 // Validate the config

@@ -62,6 +62,7 @@ func main() {
 	lb.Command("service", flag.String("service", "start", "littleboss start command"))
 	flagRaft := lb.Listener("raft", "tcp", ":4444", "-raft :4444")
 	flagHTTP := lb.Listener("http", "tcp", ":4445", "-http :4445")
+	flagUI := lb.Listener("ui", "tcp", ":5445", "-ui :5445")
 
 	loader := confita.NewLoader(flags.NewBackend())
 	err := loader.Load(context.Background(), cfg)
@@ -70,19 +71,20 @@ func main() {
 		usage()
 	}
 
-	fmt.Printf("raft addr %v, http addr %v\n", flagRaft.String(), flagHTTP.String())
+	fmt.Printf("raft addr %v, http addr %v ui addr %v\n", flagRaft.String(), flagHTTP.String(), flagUI.String())
 
 	lb.Run(func(ctx context.Context) {
-		run(context.Background(), flagRaft, flagHTTP)
+		run(context.Background(), flagRaft, flagHTTP, flagUI)
 	})
 
 	glog.Info("cortex exited")
 }
 
-func run(ctx context.Context, flagRaft, flagHTTP *littleboss.ListenerFlag) {
+func run(ctx context.Context, flagRaft, flagHTTP, flagUI *littleboss.ListenerFlag) {
 
 	cfg.HTTPAddr = flagHTTP.String()
 	cfg.RaftAddr = flagRaft.String()
+	cfg.UIAddr = flagUI.String()
 	cfg.HTTPListener = flagHTTP.Listener()
 	cfg.RaftListener = flagRaft.Listener()
 
