@@ -3,16 +3,16 @@ before:
   hooks:
   - go get github.com/GeertJohan/go.rice/rice
   - dep ensure -v
-  - cd ui && npm run build
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/dop251/goja
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/spf13/afero
-  - cd ui && npm run build
-  - rice embed-go
+  - cd ui && npm run build && cd ..
+  - $GOBIN/rice embed-go
 builds:
   -
+    main: ./cmd/main.go
     env:
       - CGO_ENABLED=0
-    binary: tiktok
+    binary: cortex
     goos:
       - linux
     goarch:
@@ -23,6 +23,8 @@ archive:
   replacements:
     linux: Linux
     amd64: x86_64
+  files:
+    - checksums.txt
 checksum:
   name_template: 'checksums.txt'
 snapshot:
