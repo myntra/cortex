@@ -1,0 +1,4612 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/myntra/cortex/pkg/config/config.go (42.9%)</option>
+				
+				<option value="file1">github.com/myntra/cortex/pkg/events/bucket.go (0.0%)</option>
+				
+				<option value="file2">github.com/myntra/cortex/pkg/events/bucket_gen.go (55.9%)</option>
+				
+				<option value="file3">github.com/myntra/cortex/pkg/events/event.go (100.0%)</option>
+				
+				<option value="file4">github.com/myntra/cortex/pkg/events/event_gen.go (71.4%)</option>
+				
+				<option value="file5">github.com/myntra/cortex/pkg/events/sinks/site247.go (71.4%)</option>
+				
+				<option value="file6">github.com/myntra/cortex/pkg/executions/execution_gen.go (71.4%)</option>
+				
+				<option value="file7">github.com/myntra/cortex/pkg/js/js.go (80.0%)</option>
+				
+				<option value="file8">github.com/myntra/cortex/pkg/js/js_gen.go (72.7%)</option>
+				
+				<option value="file9">github.com/myntra/cortex/pkg/matcher/match.go (77.8%)</option>
+				
+				<option value="file10">github.com/myntra/cortex/pkg/rules/rule.go (0.0%)</option>
+				
+				<option value="file11">github.com/myntra/cortex/pkg/rules/rule_gen.go (66.5%)</option>
+				
+				<option value="file12">github.com/myntra/cortex/pkg/service/handlers.go (58.7%)</option>
+				
+				<option value="file13">github.com/myntra/cortex/pkg/service/service.go (76.9%)</option>
+				
+				<option value="file14">github.com/myntra/cortex/pkg/store/bucket_storage.go (100.0%)</option>
+				
+				<option value="file15">github.com/myntra/cortex/pkg/store/command_gen.go (67.7%)</option>
+				
+				<option value="file16">github.com/myntra/cortex/pkg/store/event_storage.go (77.5%)</option>
+				
+				<option value="file17">github.com/myntra/cortex/pkg/store/execution_storage.go (52.8%)</option>
+				
+				<option value="file18">github.com/myntra/cortex/pkg/store/fsm.go (74.5%)</option>
+				
+				<option value="file19">github.com/myntra/cortex/pkg/store/fsm_snapshot.go (66.7%)</option>
+				
+				<option value="file20">github.com/myntra/cortex/pkg/store/node.go (33.8%)</option>
+				
+				<option value="file21">github.com/myntra/cortex/pkg/store/raft.go (46.1%)</option>
+				
+				<option value="file22">github.com/myntra/cortex/pkg/store/rule_storage.go (92.1%)</option>
+				
+				<option value="file23">github.com/myntra/cortex/pkg/store/script_storage.go (61.1%)</option>
+				
+				<option value="file24">github.com/myntra/cortex/pkg/store/store.go (80.5%)</option>
+				
+				<option value="file25">github.com/myntra/cortex/pkg/store/transport.go (52.2%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package config
+
+import (
+        "fmt"
+        "net"
+        "os"
+        "strconv"
+        "strings"
+        "time"
+
+        "github.com/golang/glog"
+)
+
+// Config is required for initializing the service
+type Config struct {
+        NodeID               string `config:"id"`
+        Dir                  string `config:"dir"`
+        JoinAddr             string `config:"join"`
+        FlushInterval        uint64 `config:"flush_interval"`
+        DefaultDwell         uint64 `config:"dwell"`
+        DefaultDwellDeadline uint64 `config:"dwell_deadline"`
+        DefaultMaxDwell      uint64 `config:"max_dwell"`
+        MaxHistory           int    `config:"max_history"`
+        Version              string `config:"version"`
+        Commit               string `config:"commit"`
+        Date                 string `config:"date"`
+
+        RaftAddr     string
+        HTTPAddr     string
+        RaftListener net.Listener
+        HTTPListener net.Listener
+}
+
+// Validate the config
+func (c *Config) Validate() error <span class="cov8" title="1">{
+
+        glog.Infof("Validating config %v \n", c)
+
+        if c.RaftAddr == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("missing raft address. eg: -raft :8080")
+        }</span>
+
+        <span class="cov8" title="1">if c.HTTPAddr == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("missing http address. eg: -http :8081")
+        }</span>
+
+        <span class="cov8" title="1">rf := strings.SplitAfter(c.RaftAddr, ":")
+        if len(rf) != 2 || rf[0] != ":" </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid raft address. eg: -raft :8080")
+        }</span>
+
+        <span class="cov8" title="1">hf := strings.SplitAfter(c.HTTPAddr, ":")
+        if len(hf) != 2 || hf[0] != ":" </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid http address. eg: -http :8081")
+        }</span>
+
+        <span class="cov8" title="1">raftPort, err := strconv.Atoi(rf[1])
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid raft address. eg: -raft :8080")
+        }</span>
+
+        <span class="cov8" title="1">httpPort, err := strconv.Atoi(hf[1])
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid http address. eg: -http :8081")
+        }</span>
+
+        <span class="cov8" title="1">if httpPort-raftPort != 1 </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid raft http address. eg: -raft : 8080" +
+                        "eg: -http :8081. the http port should be the next port relative to the raft port")
+        }</span>
+
+        <span class="cov8" title="1">if c.RaftListener == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("raft listener is nil")
+        }</span>
+
+        <span class="cov8" title="1">if c.HTTPListener == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("http listener is nil")
+        }</span>
+
+        <span class="cov8" title="1">err = c.validateDir()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if c.FlushInterval == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("flush_interval is not set")
+        }</span>
+
+        <span class="cov8" title="1">if c.DefaultDwell == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("dwell is not set")
+        }</span>
+
+        <span class="cov8" title="1">if c.DefaultDwellDeadline == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("dwell_deadline is not set")
+        }</span>
+
+        <span class="cov8" title="1">if c.DefaultMaxDwell == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("max_dwell is not set")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+
+}
+
+func (c *Config) validateNodeID() bool <span class="cov0" title="0">{
+        return c.NodeID != ""
+}</span>
+
+func (c *Config) validateDir() error <span class="cov8" title="1">{
+        if c.Dir == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("raft dir is not set")
+        }</span>
+
+        <span class="cov8" title="1">if _, err := os.Stat(c.Dir); os.IsNotExist(err) </span><span class="cov0" title="0">{
+                err := os.Mkdir(c.Dir, os.ModePerm)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("raft dir err %v", err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func getAddr(addr string) string <span class="cov0" title="0">{
+        tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
+        if err != nil </span><span class="cov0" title="0">{
+                panic(fmt.Errorf("resolveTCPAddr failed: %v", err))</span>
+
+        }
+        <span class="cov0" title="0">glog.Infof("getAddr: %v", tcpAddr.String())
+        return tcpAddr.String()</span>
+}
+
+func checkAddrFree(addr string) bool <span class="cov0" title="0">{
+        conn, err := net.DialTimeout("tcp", addr, time.Second)
+        if err != nil </span><span class="cov0" title="0">{
+                glog.Errorf("err %v\n", err)
+        }</span>
+        <span class="cov0" title="0">if conn != nil </span><span class="cov0" title="0">{
+                conn.Close()
+                glog.Errorf("addr %v is is not available ", addr)
+                return false
+        }</span>
+        <span class="cov0" title="0">return true</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package events
+
+import (
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "time"
+
+        "github.com/golang/glog"
+        "github.com/myntra/cortex/pkg/rules"
+        "github.com/sethgrid/pester"
+)
+
+// NewBucket creates a new Bucket
+func NewBucket(rule rules.Rule) *Bucket <span class="cov0" title="0">{
+        return &amp;Bucket{
+                flushWait:    rule.Dwell,
+                dwellResetAt: time.Now(),
+                UpdatedAt:    time.Now(),
+                CreatedAt:    time.Now(),
+                Rule:         rule,
+        }
+}</span>
+
+//go:generate msgp
+
+// Bucket contains the rule for a collection of events and the events
+type Bucket struct {
+        Rule         rules.Rule `json:"rule"`
+        Events       []*Event   `json:"events"`
+        UpdatedAt    time.Time  `json:"updated_at"`
+        CreatedAt    time.Time  `json:"created_at"`
+        dwellResetAt time.Time
+        flushWait    uint64
+}
+
+// AddEvent to the bucket
+func (rb *Bucket) AddEvent(event *Event) <span class="cov0" title="0">{
+        glog.Info("add event ==&gt;  ", event)
+        rb.Events = append(rb.Events, event)
+        rb.updateDwell()
+}</span>
+
+// Post posts rulebucket to the configured hook endpoint
+func (rb *Bucket) Post() error <span class="cov0" title="0">{
+
+        b := new(bytes.Buffer)
+        err := json.NewEncoder(b).Encode(rb)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">req, err := http.NewRequest("POST", rb.Rule.HookEndpoint, b)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">req.Header.Add("Content-type", "application/json")
+
+        client := pester.New()
+        client.MaxRetries = rb.Rule.HookRetry
+
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        if resp.StatusCode != 200 &amp;&amp; resp.StatusCode != 202 </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid status code return from %v endpoint", rb.Rule.HookEndpoint)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// GetDwellDuration converts dwell(ms) to time.Duration
+func (rb *Bucket) getDwellDuration() time.Duration <span class="cov0" title="0">{
+        return time.Millisecond * time.Duration(rb.Rule.Dwell)
+}</span>
+
+// getDwellDeadlineDuration converts dwell_deadline(ms) to time.Duration
+func (rb *Bucket) getDwellDeadlineDuration() time.Duration <span class="cov0" title="0">{
+        return time.Millisecond * time.Duration(rb.Rule.DwellDeadline)
+}</span>
+
+// getMaxDwell converts max_dwell(ms) to time.Duration
+func (rb *Bucket) getMaxDwell() time.Duration <span class="cov0" title="0">{
+        return time.Millisecond * time.Duration(rb.Rule.MaxDwell)
+}</span>
+
+// CanFlush returns if the bucket can be evicted from the db
+func (rb *Bucket) CanFlush() bool <span class="cov0" title="0">{
+        return time.Since(rb.CreatedAt) &gt;= time.Millisecond*time.Duration(rb.flushWait)
+}</span>
+
+// CanFlushIn returns time left for flush
+func (rb *Bucket) CanFlushIn() time.Duration <span class="cov0" title="0">{
+        return time.Millisecond*time.Duration(rb.flushWait) - time.Since(rb.CreatedAt)
+}</span>
+
+// UpdateDwell updates flush waiting duration
+func (rb *Bucket) updateDwell() <span class="cov0" title="0">{
+        glog.Infof("updateDwell ")
+        timeSinceDwellReset := time.Since(rb.dwellResetAt)
+
+        glog.Infof("updateDwell %v %v %v %v", timeSinceDwellReset, rb.getDwellDuration(), rb.getMaxDwell(), rb.getDwellDeadlineDuration())
+        if (timeSinceDwellReset + rb.getDwellDuration()) &gt;= rb.getMaxDwell() </span><span class="cov0" title="0">{
+                rb.UpdatedAt = time.Now()
+                return
+        }</span>
+
+        <span class="cov0" title="0">if timeSinceDwellReset &gt;= rb.getDwellDeadlineDuration() </span><span class="cov0" title="0">{
+                glog.Info("updateDwell flushwait + dwell")
+                rb.dwellResetAt = time.Now()
+                rb.flushWait = rb.flushWait + rb.Rule.Dwell
+        }</span>
+
+        <span class="cov0" title="0">rb.UpdatedAt = time.Now()</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package events
+
+// Code generated by github.com/tinylib/msgp DO NOT EDIT.
+
+import (
+        "github.com/tinylib/msgp/msgp"
+)
+
+// DecodeMsg implements msgp.Decodable
+func (z *Bucket) DecodeMsg(dc *msgp.Reader) (err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, err = dc.ReadMapHeader()
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, err = dc.ReadMapKeyPtr()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "Rule":<span class="cov8" title="1">
+                        err = z.Rule.DecodeMsg(dc)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Events":<span class="cov8" title="1">
+                        var zb0002 uint32
+                        zb0002, err = dc.ReadArrayHeader()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                        <span class="cov8" title="1">if cap(z.Events) &gt;= int(zb0002) </span><span class="cov8" title="1">{
+                                z.Events = (z.Events)[:zb0002]
+                        }</span> else<span class="cov0" title="0"> {
+                                z.Events = make([]*Event, zb0002)
+                        }</span>
+                        <span class="cov8" title="1">for za0001 := range z.Events </span><span class="cov0" title="0">{
+                                if dc.IsNil() </span><span class="cov0" title="0">{
+                                        err = dc.ReadNil()
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return
+                                        }</span>
+                                        <span class="cov0" title="0">z.Events[za0001] = nil</span>
+                                } else<span class="cov0" title="0"> {
+                                        if z.Events[za0001] == nil </span><span class="cov0" title="0">{
+                                                z.Events[za0001] = new(Event)
+                                        }</span>
+                                        <span class="cov0" title="0">err = z.Events[za0001].DecodeMsg(dc)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return
+                                        }</span>
+                                }
+                        }
+                case "UpdatedAt":<span class="cov8" title="1">
+                        z.UpdatedAt, err = dc.ReadTime()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "CreatedAt":<span class="cov8" title="1">
+                        z.CreatedAt, err = dc.ReadTime()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        err = dc.Skip()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *Bucket) EncodeMsg(en *msgp.Writer) (err error) <span class="cov8" title="1">{
+        // map header, size 4
+        // write "Rule"
+        err = en.Append(0x84, 0xa4, 0x52, 0x75, 0x6c, 0x65)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = z.Rule.EncodeMsg(en)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Events"
+        <span class="cov8" title="1">err = en.Append(0xa6, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteArrayHeader(uint32(len(z.Events)))
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for za0001 := range z.Events </span><span class="cov0" title="0">{
+                if z.Events[za0001] == nil </span><span class="cov0" title="0">{
+                        err = en.WriteNil()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        err = z.Events[za0001].EncodeMsg(en)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        // write "UpdatedAt"
+        <span class="cov8" title="1">err = en.Append(0xa9, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteTime(z.UpdatedAt)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "CreatedAt"
+        <span class="cov8" title="1">err = en.Append(0xa9, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteTime(z.CreatedAt)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *Bucket) MarshalMsg(b []byte) (o []byte, err error) <span class="cov8" title="1">{
+        o = msgp.Require(b, z.Msgsize())
+        // map header, size 4
+        // string "Rule"
+        o = append(o, 0x84, 0xa4, 0x52, 0x75, 0x6c, 0x65)
+        o, err = z.Rule.MarshalMsg(o)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // string "Events"
+        <span class="cov8" title="1">o = append(o, 0xa6, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73)
+        o = msgp.AppendArrayHeader(o, uint32(len(z.Events)))
+        for za0001 := range z.Events </span><span class="cov0" title="0">{
+                if z.Events[za0001] == nil </span><span class="cov0" title="0">{
+                        o = msgp.AppendNil(o)
+                }</span> else<span class="cov0" title="0"> {
+                        o, err = z.Events[za0001].MarshalMsg(o)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        // string "UpdatedAt"
+        <span class="cov8" title="1">o = append(o, 0xa9, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74)
+        o = msgp.AppendTime(o, z.UpdatedAt)
+        // string "CreatedAt"
+        o = append(o, 0xa9, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74)
+        o = msgp.AppendTime(o, z.CreatedAt)
+        return</span>
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Bucket) UnmarshalMsg(bts []byte) (o []byte, err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, bts, err = msgp.ReadMapKeyZC(bts)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "Rule":<span class="cov8" title="1">
+                        bts, err = z.Rule.UnmarshalMsg(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Events":<span class="cov8" title="1">
+                        var zb0002 uint32
+                        zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                        <span class="cov8" title="1">if cap(z.Events) &gt;= int(zb0002) </span><span class="cov8" title="1">{
+                                z.Events = (z.Events)[:zb0002]
+                        }</span> else<span class="cov0" title="0"> {
+                                z.Events = make([]*Event, zb0002)
+                        }</span>
+                        <span class="cov8" title="1">for za0001 := range z.Events </span><span class="cov0" title="0">{
+                                if msgp.IsNil(bts) </span><span class="cov0" title="0">{
+                                        bts, err = msgp.ReadNilBytes(bts)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return
+                                        }</span>
+                                        <span class="cov0" title="0">z.Events[za0001] = nil</span>
+                                } else<span class="cov0" title="0"> {
+                                        if z.Events[za0001] == nil </span><span class="cov0" title="0">{
+                                                z.Events[za0001] = new(Event)
+                                        }</span>
+                                        <span class="cov0" title="0">bts, err = z.Events[za0001].UnmarshalMsg(bts)
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                return
+                                        }</span>
+                                }
+                        }
+                case "UpdatedAt":<span class="cov8" title="1">
+                        z.UpdatedAt, bts, err = msgp.ReadTimeBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "CreatedAt":<span class="cov8" title="1">
+                        z.CreatedAt, bts, err = msgp.ReadTimeBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        bts, err = msgp.Skip(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">o = bts
+        return</span>
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *Bucket) Msgsize() (s int) <span class="cov8" title="1">{
+        s = 1 + 5 + z.Rule.Msgsize() + 7 + msgp.ArrayHeaderSize
+        for za0001 := range z.Events </span><span class="cov0" title="0">{
+                if z.Events[za0001] == nil </span><span class="cov0" title="0">{
+                        s += msgp.NilSize
+                }</span> else<span class="cov0" title="0"> {
+                        s += z.Events[za0001].Msgsize()
+                }</span>
+        }
+        <span class="cov8" title="1">s += 10 + msgp.TimeSize + 10 + msgp.TimeSize
+        return</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package events
+
+import (
+        "time"
+
+        "github.com/cnf/structhash"
+)
+
+//go:generate msgp
+
+// Event wraps cloudevent.CloudEvent
+type Event struct {
+        // Type of occurrence which has happened. Often this property is
+        // used for routing, observability, policy enforcement, etc.
+        // REQUIRED.
+        EventType string `json:"eventType"`
+
+        // The version of the eventType. This enables the interpretation of
+        // data by eventual consumers, requires the consumer to be knowledgeable
+        // about the producer.
+        // OPTIONAL.
+        EventTypeVersion string `json:"eventTypeVersion,omitempty"`
+
+        // The version of the CloudEvents specification which the event
+        // uses. This enables the interpretation of the context.
+        // REQUIRED.
+        CloudEventsVersion string `json:"cloudEventsVersion"`
+
+        // This describes the event producer. Often this will include information
+        // such as the type of the event source, the organization publishing the
+        // event, and some unique idenfitiers. The exact syntax and semantics behind
+        // the data encoded in the URI is event producer defined.
+        // REQUIRED.
+        Source string `json:"source"`
+
+        // ID of the event. The semantics of this string are explicitly undefined to
+        // ease the implementation of producers. Enables deduplication.
+        // REQUIRED.
+        EventID string `json:"eventID"`
+
+        // Timestamp of when the event happened. RFC3339.
+        // OPTIONAL.
+        EventTime time.Time `json:"eventTime,omitempty"`
+
+        // A link to the schema that the data attribute adheres to. RFC3986.
+        // OPTIONAL.
+        SchemaURL string `json:"schemaURL,omitempty"`
+
+        // Describe the data encoding format. RFC2046.
+        // OPTIONAL.
+        ContentType string `json:"contentType,omitempty"`
+
+        // This is for additional metadata and this does not have a mandated
+        // structure. This enables a place for custom fields a producer or middleware
+        // might want to include and provides a place to test metadata before adding
+        // them to the CloudEvents specification. See the Extensions document for a
+        // list of possible properties.
+        // OPTIONAL. This is a map, but an 'interface{}' for flexibility.
+        Extensions interface{} `json:"extensions,omitempty"`
+
+        // The event payload. The payload depends on the eventType, schemaURL and
+        // eventTypeVersion, the payload is encoded into a media format which is
+        // specified by the contentType attribute (e.g. application/json).
+        //
+        // If the contentType value is "application/json", or any media type with a
+        // structured +json suffix, the implementation MUST translate the data attribute
+        // value into a JSON value, and set the data member of the envelope JSON object
+        // to this JSON value.
+        // OPTIONAL.
+        Data interface{} `json:"data,omitempty"`
+        hash []byte
+}
+
+// Hash returns md5 hash string of the type
+func (e *Event) Hash() []byte <span class="cov8" title="1">{
+        if len(e.hash) == 0 </span><span class="cov8" title="1">{
+                data := new(Event)
+                data.CloudEventsVersion = e.CloudEventsVersion
+                data.ContentType = e.ContentType
+                data.Data = e.Data
+                //data.EventID = e.EventID
+                data.EventType = e.EventType
+                data.EventTypeVersion = e.EventTypeVersion
+                data.Extensions = e.Extensions
+                data.SchemaURL = e.SchemaURL
+                data.Source = e.Source
+
+                e.hash = structhash.Md5(data, 1)
+        }</span>
+
+        <span class="cov8" title="1">return e.hash</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package events
+
+// Code generated by github.com/tinylib/msgp DO NOT EDIT.
+
+import (
+        "github.com/tinylib/msgp/msgp"
+)
+
+// DecodeMsg implements msgp.Decodable
+func (z *Event) DecodeMsg(dc *msgp.Reader) (err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, err = dc.ReadMapHeader()
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, err = dc.ReadMapKeyPtr()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "EventType":<span class="cov8" title="1">
+                        z.EventType, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "EventTypeVersion":<span class="cov8" title="1">
+                        z.EventTypeVersion, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "CloudEventsVersion":<span class="cov8" title="1">
+                        z.CloudEventsVersion, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Source":<span class="cov8" title="1">
+                        z.Source, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "EventID":<span class="cov8" title="1">
+                        z.EventID, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "EventTime":<span class="cov8" title="1">
+                        z.EventTime, err = dc.ReadTime()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "SchemaURL":<span class="cov8" title="1">
+                        z.SchemaURL, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "ContentType":<span class="cov8" title="1">
+                        z.ContentType, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Extensions":<span class="cov8" title="1">
+                        z.Extensions, err = dc.ReadIntf()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Data":<span class="cov8" title="1">
+                        z.Data, err = dc.ReadIntf()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        err = dc.Skip()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *Event) EncodeMsg(en *msgp.Writer) (err error) <span class="cov8" title="1">{
+        // map header, size 10
+        // write "EventType"
+        err = en.Append(0x8a, 0xa9, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.EventType)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "EventTypeVersion"
+        <span class="cov8" title="1">err = en.Append(0xb0, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.EventTypeVersion)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "CloudEventsVersion"
+        <span class="cov8" title="1">err = en.Append(0xb2, 0x43, 0x6c, 0x6f, 0x75, 0x64, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.CloudEventsVersion)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Source"
+        <span class="cov8" title="1">err = en.Append(0xa6, 0x53, 0x6f, 0x75, 0x72, 0x63, 0x65)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.Source)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "EventID"
+        <span class="cov8" title="1">err = en.Append(0xa7, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x49, 0x44)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.EventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "EventTime"
+        <span class="cov8" title="1">err = en.Append(0xa9, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x69, 0x6d, 0x65)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteTime(z.EventTime)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "SchemaURL"
+        <span class="cov8" title="1">err = en.Append(0xa9, 0x53, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x55, 0x52, 0x4c)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.SchemaURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "ContentType"
+        <span class="cov8" title="1">err = en.Append(0xab, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.ContentType)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Extensions"
+        <span class="cov8" title="1">err = en.Append(0xaa, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteIntf(z.Extensions)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Data"
+        <span class="cov8" title="1">err = en.Append(0xa4, 0x44, 0x61, 0x74, 0x61)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteIntf(z.Data)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *Event) MarshalMsg(b []byte) (o []byte, err error) <span class="cov8" title="1">{
+        o = msgp.Require(b, z.Msgsize())
+        // map header, size 10
+        // string "EventType"
+        o = append(o, 0x8a, 0xa9, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65)
+        o = msgp.AppendString(o, z.EventType)
+        // string "EventTypeVersion"
+        o = append(o, 0xb0, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+        o = msgp.AppendString(o, z.EventTypeVersion)
+        // string "CloudEventsVersion"
+        o = append(o, 0xb2, 0x43, 0x6c, 0x6f, 0x75, 0x64, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+        o = msgp.AppendString(o, z.CloudEventsVersion)
+        // string "Source"
+        o = append(o, 0xa6, 0x53, 0x6f, 0x75, 0x72, 0x63, 0x65)
+        o = msgp.AppendString(o, z.Source)
+        // string "EventID"
+        o = append(o, 0xa7, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x49, 0x44)
+        o = msgp.AppendString(o, z.EventID)
+        // string "EventTime"
+        o = append(o, 0xa9, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x69, 0x6d, 0x65)
+        o = msgp.AppendTime(o, z.EventTime)
+        // string "SchemaURL"
+        o = append(o, 0xa9, 0x53, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x55, 0x52, 0x4c)
+        o = msgp.AppendString(o, z.SchemaURL)
+        // string "ContentType"
+        o = append(o, 0xab, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65)
+        o = msgp.AppendString(o, z.ContentType)
+        // string "Extensions"
+        o = append(o, 0xaa, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+        o, err = msgp.AppendIntf(o, z.Extensions)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // string "Data"
+        <span class="cov8" title="1">o = append(o, 0xa4, 0x44, 0x61, 0x74, 0x61)
+        o, err = msgp.AppendIntf(o, z.Data)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Event) UnmarshalMsg(bts []byte) (o []byte, err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, bts, err = msgp.ReadMapKeyZC(bts)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "EventType":<span class="cov8" title="1">
+                        z.EventType, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "EventTypeVersion":<span class="cov8" title="1">
+                        z.EventTypeVersion, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "CloudEventsVersion":<span class="cov8" title="1">
+                        z.CloudEventsVersion, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Source":<span class="cov8" title="1">
+                        z.Source, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "EventID":<span class="cov8" title="1">
+                        z.EventID, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "EventTime":<span class="cov8" title="1">
+                        z.EventTime, bts, err = msgp.ReadTimeBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "SchemaURL":<span class="cov8" title="1">
+                        z.SchemaURL, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "ContentType":<span class="cov8" title="1">
+                        z.ContentType, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Extensions":<span class="cov8" title="1">
+                        z.Extensions, bts, err = msgp.ReadIntfBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Data":<span class="cov8" title="1">
+                        z.Data, bts, err = msgp.ReadIntfBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        bts, err = msgp.Skip(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">o = bts
+        return</span>
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *Event) Msgsize() (s int) <span class="cov8" title="1">{
+        s = 1 + 10 + msgp.StringPrefixSize + len(z.EventType) + 17 + msgp.StringPrefixSize + len(z.EventTypeVersion) + 19 + msgp.StringPrefixSize + len(z.CloudEventsVersion) + 7 + msgp.StringPrefixSize + len(z.Source) + 8 + msgp.StringPrefixSize + len(z.EventID) + 10 + msgp.TimeSize + 10 + msgp.StringPrefixSize + len(z.SchemaURL) + 12 + msgp.StringPrefixSize + len(z.ContentType) + 11 + msgp.GuessSize(z.Extensions) + 5 + msgp.GuessSize(z.Data)
+        return
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package sinks
+
+import (
+        "fmt"
+        "time"
+
+        "github.com/myntra/cortex/pkg/events"
+        "github.com/golang/glog"
+        "github.com/satori/go.uuid"
+)
+
+type Site247Alert struct {
+        MonitorName          string `json:"MONITORNAME,omitempty"`
+        MonitorGroupName     string `json:"MONITOR_GROUPNAME,omitempty"`
+        SearchPollFrequency  int    `json:"SEARCH POLLFREQUENCY,omitempty"`
+        MonitorID            int    `json:"MONITOR_ID,omitempty"`
+        FailedLocations      string `json:"FAILED_LOCATIONS,omitempty"`
+        MonitorURL           string `json:"MONITORURL,omitempty"`
+        IncidentTimeISO      string `json:"INCIDENT_TIME_ISO,omitempty"`
+        MonitorType          string `json:"MONITORTYPE,omitempty"`
+        Status               string `json:"STATUS,omitempty"`
+        Timezone             string `json:"TIMEZONE,omitempty"`
+        IncidentTime         string `json:"INCIDENT_TIME,omitempty"`
+        IncidentReason       string `json:"INCIDENT_REASON,omitempty"`
+        OutageTimeUnixFormat int    `json:"OUTAGE_TIME_UNIX_FORMAT,omitempty"`
+        RCALink              string `json:"RCA_LINK,omitempty"`
+}
+
+
+// EventFromSite247 converts alerts sent from site24x7 into cloud events
+func EventFromSite247(alert Site247Alert) *events.Event <span class="cov8" title="1">{
+        event := events.Event{
+                Source:             "site247",
+                Data:               alert,
+                ContentType:        "application/json",
+                EventTypeVersion:   "1.0",
+                CloudEventsVersion: "0.1",
+                SchemaURL:          "",
+                EventID:            generateUUID().String(),
+                EventTime:          time.Now(),
+                EventType:          fmt.Sprintf("site247.%s.%s", alert.MonitorGroupName, alert.MonitorName),
+        }
+        return &amp;event
+}</span>
+
+func generateUUID() uuid.UUID <span class="cov8" title="1">{
+        uid, err := uuid.NewV4()
+        if err != nil </span><span class="cov0" title="0">{
+                glog.Infof("Error in creating new UUID for event sink")
+                return uuid.UUID{}
+        }</span>
+        <span class="cov8" title="1">return uid</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package executions
+
+// Code generated by github.com/tinylib/msgp DO NOT EDIT.
+
+import (
+        "github.com/tinylib/msgp/msgp"
+)
+
+// DecodeMsg implements msgp.Decodable
+func (z *Record) DecodeMsg(dc *msgp.Reader) (err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, err = dc.ReadMapHeader()
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, err = dc.ReadMapKeyPtr()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "ID":<span class="cov8" title="1">
+                        z.ID, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Bucket":<span class="cov8" title="1">
+                        err = z.Bucket.DecodeMsg(dc)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "ScriptResult":<span class="cov8" title="1">
+                        z.ScriptResult, err = dc.ReadIntf()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "HookStatusCode":<span class="cov8" title="1">
+                        z.HookStatusCode, err = dc.ReadInt()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "CreatedAt":<span class="cov8" title="1">
+                        z.CreatedAt, err = dc.ReadTime()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        err = dc.Skip()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *Record) EncodeMsg(en *msgp.Writer) (err error) <span class="cov8" title="1">{
+        // map header, size 5
+        // write "ID"
+        err = en.Append(0x85, 0xa2, 0x49, 0x44)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Bucket"
+        <span class="cov8" title="1">err = en.Append(0xa6, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = z.Bucket.EncodeMsg(en)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "ScriptResult"
+        <span class="cov8" title="1">err = en.Append(0xac, 0x53, 0x63, 0x72, 0x69, 0x70, 0x74, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteIntf(z.ScriptResult)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "HookStatusCode"
+        <span class="cov8" title="1">err = en.Append(0xae, 0x48, 0x6f, 0x6f, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x43, 0x6f, 0x64, 0x65)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteInt(z.HookStatusCode)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "CreatedAt"
+        <span class="cov8" title="1">err = en.Append(0xa9, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteTime(z.CreatedAt)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *Record) MarshalMsg(b []byte) (o []byte, err error) <span class="cov8" title="1">{
+        o = msgp.Require(b, z.Msgsize())
+        // map header, size 5
+        // string "ID"
+        o = append(o, 0x85, 0xa2, 0x49, 0x44)
+        o = msgp.AppendString(o, z.ID)
+        // string "Bucket"
+        o = append(o, 0xa6, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+        o, err = z.Bucket.MarshalMsg(o)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // string "ScriptResult"
+        <span class="cov8" title="1">o = append(o, 0xac, 0x53, 0x63, 0x72, 0x69, 0x70, 0x74, 0x52, 0x65, 0x73, 0x75, 0x6c, 0x74)
+        o, err = msgp.AppendIntf(o, z.ScriptResult)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // string "HookStatusCode"
+        <span class="cov8" title="1">o = append(o, 0xae, 0x48, 0x6f, 0x6f, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x43, 0x6f, 0x64, 0x65)
+        o = msgp.AppendInt(o, z.HookStatusCode)
+        // string "CreatedAt"
+        o = append(o, 0xa9, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74)
+        o = msgp.AppendTime(o, z.CreatedAt)
+        return</span>
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Record) UnmarshalMsg(bts []byte) (o []byte, err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, bts, err = msgp.ReadMapKeyZC(bts)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "ID":<span class="cov8" title="1">
+                        z.ID, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Bucket":<span class="cov8" title="1">
+                        bts, err = z.Bucket.UnmarshalMsg(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "ScriptResult":<span class="cov8" title="1">
+                        z.ScriptResult, bts, err = msgp.ReadIntfBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "HookStatusCode":<span class="cov8" title="1">
+                        z.HookStatusCode, bts, err = msgp.ReadIntBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "CreatedAt":<span class="cov8" title="1">
+                        z.CreatedAt, bts, err = msgp.ReadTimeBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        bts, err = msgp.Skip(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">o = bts
+        return</span>
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *Record) Msgsize() (s int) <span class="cov8" title="1">{
+        s = 1 + 3 + msgp.StringPrefixSize + len(z.ID) + 7 + z.Bucket.Msgsize() + 13 + msgp.GuessSize(z.ScriptResult) + 15 + msgp.IntSize + 10 + msgp.TimeSize
+        return
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package js
+
+import (
+        "context"
+
+        "github.com/golang/glog"
+        "github.com/loadimpact/k6/js"
+        "github.com/loadimpact/k6/lib"
+        "github.com/loadimpact/k6/stats"
+        "github.com/spf13/afero"
+)
+
+//go:generate msgp
+
+// Script contains the javascript code
+type Script struct {
+        ID   string `json:"id"`
+        Data []byte `json:"data"`
+}
+
+// Execute js
+func Execute(script *Script, data interface{}) interface{} <span class="cov8" title="1">{
+        if script == nil || len(script.ID) == 0 </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">r, err := js.New(&amp;lib.SourceData{
+                Filename: script.ID,
+                Data:     script.Data,
+        }, afero.NewMemMapFs(), lib.RuntimeOptions{})
+
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+        <span class="cov8" title="1">glog.Infof("%v", data)
+        r.SetSetupData(data)
+
+        vu, err := r.NewVU(make(chan stats.SampleContainer, 100))
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">vuc, ok := vu.(*js.VU)
+
+        if !ok </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">err = vu.RunOnce(context.Background())
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">result := vuc.Runtime.Get("result")
+
+        if result == nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">return result.Export()</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package js
+
+// Code generated by github.com/tinylib/msgp DO NOT EDIT.
+
+import (
+        "github.com/tinylib/msgp/msgp"
+)
+
+// DecodeMsg implements msgp.Decodable
+func (z *Script) DecodeMsg(dc *msgp.Reader) (err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, err = dc.ReadMapHeader()
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, err = dc.ReadMapKeyPtr()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "ID":<span class="cov8" title="1">
+                        z.ID, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Data":<span class="cov8" title="1">
+                        z.Data, err = dc.ReadBytes(z.Data)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        err = dc.Skip()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *Script) EncodeMsg(en *msgp.Writer) (err error) <span class="cov8" title="1">{
+        // map header, size 2
+        // write "ID"
+        err = en.Append(0x82, 0xa2, 0x49, 0x44)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Data"
+        <span class="cov8" title="1">err = en.Append(0xa4, 0x44, 0x61, 0x74, 0x61)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteBytes(z.Data)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *Script) MarshalMsg(b []byte) (o []byte, err error) <span class="cov8" title="1">{
+        o = msgp.Require(b, z.Msgsize())
+        // map header, size 2
+        // string "ID"
+        o = append(o, 0x82, 0xa2, 0x49, 0x44)
+        o = msgp.AppendString(o, z.ID)
+        // string "Data"
+        o = append(o, 0xa4, 0x44, 0x61, 0x74, 0x61)
+        o = msgp.AppendBytes(o, z.Data)
+        return
+}</span>
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Script) UnmarshalMsg(bts []byte) (o []byte, err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, bts, err = msgp.ReadMapKeyZC(bts)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "ID":<span class="cov8" title="1">
+                        z.ID, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Data":<span class="cov8" title="1">
+                        z.Data, bts, err = msgp.ReadBytesBytes(bts, z.Data)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        bts, err = msgp.Skip(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">o = bts
+        return</span>
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *Script) Msgsize() (s int) <span class="cov8" title="1">{
+        s = 1 + 3 + msgp.StringPrefixSize + len(z.ID) + 5 + msgp.BytesPrefixSize + len(z.Data)
+        return
+}</span>
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package matcher
+
+import (
+        "fmt"
+        "regexp"
+        "strings"
+)
+
+var metricLineRE = regexp.MustCompile(`^(\*\.|[^.]+\.|\.)*(\*|[^.]+)$`)
+
+// Matcher matches a rule.EventTypePatterns patterns with eventTypePatterns
+type Matcher struct {
+        regex *regexp.Regexp
+}
+
+// New accepts a rulePattern
+func New(rulePattern string) (*Matcher, error) <span class="cov8" title="1">{
+        regex, err := getRegexp(rulePattern)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">m := &amp;Matcher{
+                regex: regex,
+        }
+
+        return m, nil</span>
+}
+
+// NewCompile accepts a regex string
+func NewCompile(regexStr string) *Matcher <span class="cov0" title="0">{
+        return &amp;Matcher{
+                regex: regexp.MustCompile(regexStr),
+        }
+}</span>
+
+// GetRegexString returns the compiled regex string
+func (m *Matcher) GetRegexString() string <span class="cov0" title="0">{
+        return m.regex.String()
+}</span>
+
+// HasMatches checks if eventType has matches with the supplied regex
+func (m *Matcher) HasMatches(eventType string) bool <span class="cov8" title="1">{
+        matches := m.regex.FindStringSubmatchIndex(eventType)
+        if len(matches) &gt; 0 </span><span class="cov8" title="1">{
+                return true
+        }</span>
+        <span class="cov8" title="1">return false</span>
+}
+
+// getRegexp returns a *regexp.Regexp for the pattern
+// reference: https://github.com/prometheus/graphite_exporter/blob/master/mapper.go#L65
+func getRegexp(rulePattern string) (*regexp.Regexp, error) <span class="cov8" title="1">{
+        var regex *regexp.Regexp
+
+        if !metricLineRE.MatchString(rulePattern) </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("unexpected pattern %v. must match %v", rulePattern, metricLineRE.String())
+        }</span>
+
+        <span class="cov8" title="1">rulePatternRe := strings.Replace(rulePattern, ".", "\\.", -1)
+        rulePatternRe = strings.Replace(rulePatternRe, "*", "([^*]+)", -1)
+        regex = regexp.MustCompile("^" + rulePatternRe + "$")
+        return regex, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package rules
+
+import (
+        "fmt"
+
+        "github.com/myntra/cortex/pkg/matcher"
+)
+
+//go:generate msgp
+
+// Rule is the array of related service events
+type Rule struct {
+        Title             string   `json:"title"`
+        ID                string   `json:"id"`
+        ScriptID          string   `json:"script_id"`           // javascript script which is called before hookEndPoint is called.
+        HookEndpoint      string   `json:"hook_endpoint"`       // endpoint which accepts a POST json objects
+        HookRetry         int      `json:"hook_retry"`          // number of retries while attempting to post
+        EventTypePatterns []string `json:"event_type_patterns"` // a list of event types to look for. wildcards are allowed.
+        Dwell             uint64   `json:"dwell"`               // dwell duration in milliseconds for events to arrive
+        DwellDeadline     uint64   `json:"dwell_deadline"`      // dwell duration threshold after which arriving events expand the dwell window
+        MaxDwell          uint64   `json:"max_dwell"`           // maximum dwell duration including expansion
+        Regexes           []string `json:"regexes,omitempty"`   // generated regex string array from event types
+}
+
+// Validate rule data
+func (r *Rule) Validate() error <span class="cov0" title="0">{
+
+        for _, pattern := range r.EventTypePatterns </span><span class="cov0" title="0">{
+                m, err := matcher.New(pattern)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("invalid event type pattern %v,  err: %v", pattern, err)
+                }</span>
+
+                <span class="cov0" title="0">r.Regexes = append(r.Regexes, m.GetRegexString())</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// HasMatching checks whether the rule has a matching event type pattern
+func (r *Rule) HasMatching(eventType string) bool <span class="cov0" title="0">{
+        for _, regexStr := range r.Regexes </span><span class="cov0" title="0">{
+                m := matcher.NewCompile(regexStr)
+                if m.HasMatches(eventType) </span><span class="cov0" title="0">{
+                        return true
+                }</span>
+        }
+        <span class="cov0" title="0">return false</span>
+}
+
+// PublicRule is used to create, update a request and is returned as a response
+type PublicRule struct {
+        Title             string   `json:"title"`
+        ID                string   `json:"id"`
+        ScriptID          string   `json:"script_id"`           // javascript script which is called before hookEndPoint is called.
+        HookEndpoint      string   `json:"hook_endpoint"`       // endpoint which accepts a POST json objects
+        HookRetry         int      `json:"hook_retry"`          // number of retries while attempting to post
+        EventTypePatterns []string `json:"event_type_patterns"` // a list of event types to look for. wildcards are allowed.
+        Dwell             uint64   `json:"dwell"`               // dwell duration in milliseconds for events to arrive
+        DwellDeadline     uint64   `json:"dwell_deadline"`      // dwell duration threshold after which arriving events expand the dwell window
+        MaxDwell          uint64   `json:"max_dwell"`           // maximum dwell duration including expansion
+}
+
+// NewFromPublic creates a rule from a public rule
+func NewFromPublic(r *PublicRule) *Rule <span class="cov0" title="0">{
+        return &amp;Rule{
+                Title:             r.Title,
+                ID:                r.ID,
+                ScriptID:          r.ScriptID,
+                HookEndpoint:      r.HookEndpoint,
+                HookRetry:         r.HookRetry,
+                EventTypePatterns: r.EventTypePatterns,
+                Dwell:             r.Dwell,
+                DwellDeadline:     r.DwellDeadline,
+                MaxDwell:          r.MaxDwell,
+        }
+}</span>
+
+// NewFromPrivate creates public rule from a private rule
+func NewFromPrivate(r *Rule) *PublicRule <span class="cov0" title="0">{
+        return &amp;PublicRule{
+                Title:             r.Title,
+                ID:                r.ID,
+                ScriptID:          r.ScriptID,
+                HookEndpoint:      r.HookEndpoint,
+                HookRetry:         r.HookRetry,
+                EventTypePatterns: r.EventTypePatterns,
+                Dwell:             r.Dwell,
+                DwellDeadline:     r.DwellDeadline,
+                MaxDwell:          r.MaxDwell,
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package rules
+
+// Code generated by github.com/tinylib/msgp DO NOT EDIT.
+
+import (
+        "github.com/tinylib/msgp/msgp"
+)
+
+// DecodeMsg implements msgp.Decodable
+func (z *Rule) DecodeMsg(dc *msgp.Reader) (err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, err = dc.ReadMapHeader()
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, err = dc.ReadMapKeyPtr()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "Title":<span class="cov8" title="1">
+                        z.Title, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "ID":<span class="cov8" title="1">
+                        z.ID, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "ScriptID":<span class="cov8" title="1">
+                        z.ScriptID, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "HookEndpoint":<span class="cov8" title="1">
+                        z.HookEndpoint, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "HookRetry":<span class="cov8" title="1">
+                        z.HookRetry, err = dc.ReadInt()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "EventTypePatterns":<span class="cov8" title="1">
+                        var zb0002 uint32
+                        zb0002, err = dc.ReadArrayHeader()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                        <span class="cov8" title="1">if cap(z.EventTypePatterns) &gt;= int(zb0002) </span><span class="cov8" title="1">{
+                                z.EventTypePatterns = (z.EventTypePatterns)[:zb0002]
+                        }</span> else<span class="cov0" title="0"> {
+                                z.EventTypePatterns = make([]string, zb0002)
+                        }</span>
+                        <span class="cov8" title="1">for za0001 := range z.EventTypePatterns </span><span class="cov0" title="0">{
+                                z.EventTypePatterns[za0001], err = dc.ReadString()
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "Dwell":<span class="cov8" title="1">
+                        z.Dwell, err = dc.ReadUint64()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "DwellDeadline":<span class="cov8" title="1">
+                        z.DwellDeadline, err = dc.ReadUint64()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "MaxDwell":<span class="cov8" title="1">
+                        z.MaxDwell, err = dc.ReadUint64()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Regexes":<span class="cov8" title="1">
+                        var zb0003 uint32
+                        zb0003, err = dc.ReadArrayHeader()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                        <span class="cov8" title="1">if cap(z.Regexes) &gt;= int(zb0003) </span><span class="cov8" title="1">{
+                                z.Regexes = (z.Regexes)[:zb0003]
+                        }</span> else<span class="cov0" title="0"> {
+                                z.Regexes = make([]string, zb0003)
+                        }</span>
+                        <span class="cov8" title="1">for za0002 := range z.Regexes </span><span class="cov0" title="0">{
+                                z.Regexes[za0002], err = dc.ReadString()
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                default:<span class="cov0" title="0">
+                        err = dc.Skip()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *Rule) EncodeMsg(en *msgp.Writer) (err error) <span class="cov8" title="1">{
+        // map header, size 10
+        // write "Title"
+        err = en.Append(0x8a, 0xa5, 0x54, 0x69, 0x74, 0x6c, 0x65)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.Title)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "ID"
+        <span class="cov8" title="1">err = en.Append(0xa2, 0x49, 0x44)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "ScriptID"
+        <span class="cov8" title="1">err = en.Append(0xa8, 0x53, 0x63, 0x72, 0x69, 0x70, 0x74, 0x49, 0x44)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.ScriptID)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "HookEndpoint"
+        <span class="cov8" title="1">err = en.Append(0xac, 0x48, 0x6f, 0x6f, 0x6b, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.HookEndpoint)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "HookRetry"
+        <span class="cov8" title="1">err = en.Append(0xa9, 0x48, 0x6f, 0x6f, 0x6b, 0x52, 0x65, 0x74, 0x72, 0x79)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteInt(z.HookRetry)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "EventTypePatterns"
+        <span class="cov8" title="1">err = en.Append(0xb1, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x50, 0x61, 0x74, 0x74, 0x65, 0x72, 0x6e, 0x73)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteArrayHeader(uint32(len(z.EventTypePatterns)))
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for za0001 := range z.EventTypePatterns </span><span class="cov0" title="0">{
+                err = en.WriteString(z.EventTypePatterns[za0001])
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        // write "Dwell"
+        <span class="cov8" title="1">err = en.Append(0xa5, 0x44, 0x77, 0x65, 0x6c, 0x6c)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteUint64(z.Dwell)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "DwellDeadline"
+        <span class="cov8" title="1">err = en.Append(0xad, 0x44, 0x77, 0x65, 0x6c, 0x6c, 0x44, 0x65, 0x61, 0x64, 0x6c, 0x69, 0x6e, 0x65)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteUint64(z.DwellDeadline)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "MaxDwell"
+        <span class="cov8" title="1">err = en.Append(0xa8, 0x4d, 0x61, 0x78, 0x44, 0x77, 0x65, 0x6c, 0x6c)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteUint64(z.MaxDwell)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Regexes"
+        <span class="cov8" title="1">err = en.Append(0xa7, 0x52, 0x65, 0x67, 0x65, 0x78, 0x65, 0x73)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteArrayHeader(uint32(len(z.Regexes)))
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for za0002 := range z.Regexes </span><span class="cov0" title="0">{
+                err = en.WriteString(z.Regexes[za0002])
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *Rule) MarshalMsg(b []byte) (o []byte, err error) <span class="cov8" title="1">{
+        o = msgp.Require(b, z.Msgsize())
+        // map header, size 10
+        // string "Title"
+        o = append(o, 0x8a, 0xa5, 0x54, 0x69, 0x74, 0x6c, 0x65)
+        o = msgp.AppendString(o, z.Title)
+        // string "ID"
+        o = append(o, 0xa2, 0x49, 0x44)
+        o = msgp.AppendString(o, z.ID)
+        // string "ScriptID"
+        o = append(o, 0xa8, 0x53, 0x63, 0x72, 0x69, 0x70, 0x74, 0x49, 0x44)
+        o = msgp.AppendString(o, z.ScriptID)
+        // string "HookEndpoint"
+        o = append(o, 0xac, 0x48, 0x6f, 0x6f, 0x6b, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+        o = msgp.AppendString(o, z.HookEndpoint)
+        // string "HookRetry"
+        o = append(o, 0xa9, 0x48, 0x6f, 0x6f, 0x6b, 0x52, 0x65, 0x74, 0x72, 0x79)
+        o = msgp.AppendInt(o, z.HookRetry)
+        // string "EventTypePatterns"
+        o = append(o, 0xb1, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x50, 0x61, 0x74, 0x74, 0x65, 0x72, 0x6e, 0x73)
+        o = msgp.AppendArrayHeader(o, uint32(len(z.EventTypePatterns)))
+        for za0001 := range z.EventTypePatterns </span><span class="cov0" title="0">{
+                o = msgp.AppendString(o, z.EventTypePatterns[za0001])
+        }</span>
+        // string "Dwell"
+        <span class="cov8" title="1">o = append(o, 0xa5, 0x44, 0x77, 0x65, 0x6c, 0x6c)
+        o = msgp.AppendUint64(o, z.Dwell)
+        // string "DwellDeadline"
+        o = append(o, 0xad, 0x44, 0x77, 0x65, 0x6c, 0x6c, 0x44, 0x65, 0x61, 0x64, 0x6c, 0x69, 0x6e, 0x65)
+        o = msgp.AppendUint64(o, z.DwellDeadline)
+        // string "MaxDwell"
+        o = append(o, 0xa8, 0x4d, 0x61, 0x78, 0x44, 0x77, 0x65, 0x6c, 0x6c)
+        o = msgp.AppendUint64(o, z.MaxDwell)
+        // string "Regexes"
+        o = append(o, 0xa7, 0x52, 0x65, 0x67, 0x65, 0x78, 0x65, 0x73)
+        o = msgp.AppendArrayHeader(o, uint32(len(z.Regexes)))
+        for za0002 := range z.Regexes </span><span class="cov0" title="0">{
+                o = msgp.AppendString(o, z.Regexes[za0002])
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Rule) UnmarshalMsg(bts []byte) (o []byte, err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, bts, err = msgp.ReadMapKeyZC(bts)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "Title":<span class="cov8" title="1">
+                        z.Title, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "ID":<span class="cov8" title="1">
+                        z.ID, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "ScriptID":<span class="cov8" title="1">
+                        z.ScriptID, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "HookEndpoint":<span class="cov8" title="1">
+                        z.HookEndpoint, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "HookRetry":<span class="cov8" title="1">
+                        z.HookRetry, bts, err = msgp.ReadIntBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "EventTypePatterns":<span class="cov8" title="1">
+                        var zb0002 uint32
+                        zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                        <span class="cov8" title="1">if cap(z.EventTypePatterns) &gt;= int(zb0002) </span><span class="cov8" title="1">{
+                                z.EventTypePatterns = (z.EventTypePatterns)[:zb0002]
+                        }</span> else<span class="cov0" title="0"> {
+                                z.EventTypePatterns = make([]string, zb0002)
+                        }</span>
+                        <span class="cov8" title="1">for za0001 := range z.EventTypePatterns </span><span class="cov0" title="0">{
+                                z.EventTypePatterns[za0001], bts, err = msgp.ReadStringBytes(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "Dwell":<span class="cov8" title="1">
+                        z.Dwell, bts, err = msgp.ReadUint64Bytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "DwellDeadline":<span class="cov8" title="1">
+                        z.DwellDeadline, bts, err = msgp.ReadUint64Bytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "MaxDwell":<span class="cov8" title="1">
+                        z.MaxDwell, bts, err = msgp.ReadUint64Bytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Regexes":<span class="cov8" title="1">
+                        var zb0003 uint32
+                        zb0003, bts, err = msgp.ReadArrayHeaderBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                        <span class="cov8" title="1">if cap(z.Regexes) &gt;= int(zb0003) </span><span class="cov8" title="1">{
+                                z.Regexes = (z.Regexes)[:zb0003]
+                        }</span> else<span class="cov0" title="0"> {
+                                z.Regexes = make([]string, zb0003)
+                        }</span>
+                        <span class="cov8" title="1">for za0002 := range z.Regexes </span><span class="cov0" title="0">{
+                                z.Regexes[za0002], bts, err = msgp.ReadStringBytes(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                default:<span class="cov0" title="0">
+                        bts, err = msgp.Skip(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">o = bts
+        return</span>
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *Rule) Msgsize() (s int) <span class="cov8" title="1">{
+        s = 1 + 6 + msgp.StringPrefixSize + len(z.Title) + 3 + msgp.StringPrefixSize + len(z.ID) + 9 + msgp.StringPrefixSize + len(z.ScriptID) + 13 + msgp.StringPrefixSize + len(z.HookEndpoint) + 10 + msgp.IntSize + 18 + msgp.ArrayHeaderSize
+        for za0001 := range z.EventTypePatterns </span><span class="cov0" title="0">{
+                s += msgp.StringPrefixSize + len(z.EventTypePatterns[za0001])
+        }</span>
+        <span class="cov8" title="1">s += 6 + msgp.Uint64Size + 14 + msgp.Uint64Size + 9 + msgp.Uint64Size + 8 + msgp.ArrayHeaderSize
+        for za0002 := range z.Regexes </span><span class="cov0" title="0">{
+                s += msgp.StringPrefixSize + len(z.Regexes[za0002])
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package service
+
+import (
+        "encoding/json"
+        "fmt"
+        "io/ioutil"
+        "net/http"
+        "net/http/httputil"
+
+        "github.com/go-chi/chi"
+        "github.com/golang/glog"
+        "github.com/imdario/mergo"
+        "github.com/myntra/cortex/pkg/events"
+        "github.com/myntra/cortex/pkg/events/sinks"
+        "github.com/myntra/cortex/pkg/js"
+        "github.com/myntra/cortex/pkg/rules"
+        "github.com/myntra/cortex/pkg/util"
+        uuid "github.com/satori/go.uuid"
+)
+
+func (s *Service) leaderProxy(h http.HandlerFunc) http.HandlerFunc <span class="cov8" title="1">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+
+                leaderAddr := s.node.LeaderAddr()
+                if leaderAddr == "" </span><span class="cov8" title="1">{
+                        h.ServeHTTP(w, r)
+                }</span> else<span class="cov8" title="1"> {
+                        glog.Infof("proxying request to leader at %v", leaderAddr)
+                        proxy := httputil.ReverseProxy{Director: func(r *http.Request) </span><span class="cov8" title="1">{
+                                r.URL.Scheme = "http"
+                                r.URL.Host = leaderAddr
+                                r.Host = leaderAddr
+                        }</span>}
+
+                        <span class="cov8" title="1">proxy.ServeHTTP(w, r)</span>
+
+                }
+        })
+}
+
+// eventHandler expects a event in request body and aggregates by type
+func (s *Service) eventHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+
+        body, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body, expected a cloudevents.io event", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">defer r.Body.Close()
+
+        var event events.Event
+        err = json.Unmarshal(body, &amp;event)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "parsing failed, expected a cloudevents.io event", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">err = s.node.Stash(&amp;event)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "error stashing event", http.StatusInternalServerError, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)</span>
+}
+
+func (s *Service) addRuleHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        reqBody, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body, expected a valid rule", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">defer r.Body.Close()
+
+        var rule rules.PublicRule
+        err = json.Unmarshal(reqBody, &amp;rule)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "rule parsing failed", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">if rule.ID == "" </span><span class="cov0" title="0">{
+                uid, err := uuid.NewV4()
+                if err != nil </span><span class="cov0" title="0">{
+                        util.ErrStatus(w, r, "id gen failed", http.StatusNotAcceptable, err)
+                        return
+                }</span>
+                <span class="cov0" title="0">rule.ID = uid.String()</span>
+        }
+
+        <span class="cov8" title="1">err = s.node.AddRule(rules.NewFromPublic(&amp;rule))
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "adding rule failed", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">b, err := json.Marshal(&amp;rule)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "rules parsing failed", http.StatusNotFound, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write(b)</span>
+}
+
+func (s *Service) updateRuleHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        reqBody, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body, expected a valid rule", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">defer r.Body.Close()
+
+        var rule rules.PublicRule
+        err = json.Unmarshal(reqBody, &amp;rule)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "rule parsing failed", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">existingRule := s.node.GetRule(rule.ID)
+        if existingRule == nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "update rule failed, rule not found", http.StatusNotFound, fmt.Errorf("rule is nil"))
+        }</span>
+
+        <span class="cov8" title="1">existingPublicRule := rules.NewFromPrivate(existingRule)
+
+        if err := mergo.Merge(&amp;rule, existingPublicRule); err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "updating rule failed", http.StatusInternalServerError, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">err = s.node.UpdateRule(rules.NewFromPublic(&amp;rule))
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "updating rule failed", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">b, err := json.Marshal(&amp;rule)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "updating rule failed. rules parsing failed", http.StatusNotFound, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write(b)</span>
+}
+
+func (s *Service) removeRuleHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        ruleID := chi.URLParam(r, "id")
+        err := s.node.RemoveRule(ruleID)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "could not remove rule", http.StatusNotFound, err)
+                return
+        }</span>
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)</span>
+}
+
+func (s *Service) getRuleHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        ruleID := chi.URLParam(r, "id")
+
+        rule := s.node.GetRule(ruleID)
+        if rule == nil </span><span class="cov8" title="1">{
+                util.ErrStatus(w, r, "rule not found", http.StatusNotFound, fmt.Errorf("rule is nil"))
+                return
+        }</span>
+
+        <span class="cov8" title="1">b, err := json.Marshal(rules.NewFromPrivate(rule))
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "rules parsing failed", http.StatusNotFound, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write(b)</span>
+
+}
+
+func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        privateRules := s.node.GetRules()
+
+        var publicRules []*rules.PublicRule
+
+        for _, privateRule := range privateRules </span><span class="cov0" title="0">{
+                publicRules = append(publicRules, rules.NewFromPrivate(privateRule))
+        }</span>
+
+        <span class="cov0" title="0">b, err := json.Marshal(&amp;publicRules)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "rules parsing failed", http.StatusNotFound, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write(b)</span>
+
+}
+
+func (s *Service) getRulesExecutions(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        ruleID := chi.URLParam(r, "id")
+
+        records := s.node.GetRuleExectutions(ruleID)
+
+        b, err := json.Marshal(records)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "records marshalling failed", http.StatusNotFound, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write(b)</span>
+
+}
+
+func (s *Service) leaveHandler(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        id := chi.URLParam(r, "id")
+        err := s.node.Leave(id)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "could not leave node ", http.StatusNotFound, err)
+                return
+        }</span>
+        <span class="cov0" title="0">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)</span>
+}
+
+func (s *Service) joinHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+
+        reqBody, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body, expected a valid joinRequest", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">defer r.Body.Close()
+
+        joinRequest := &amp;util.JoinRequest{}
+        err = json.Unmarshal(reqBody, joinRequest)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "joinRequest parsing failed", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">err = joinRequest.Validate()
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "joinRequest validation failed", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">err = s.node.Join(joinRequest.NodeID, joinRequest.Addr)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "joinining failed", http.StatusNotAcceptable, err)
+                return
+        }</span>
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)</span>
+
+}
+
+// ScriptRequest is the container for add/update script
+type ScriptRequest struct {
+        ID   string `json:"id"`
+        Data []byte `json:"data"`
+}
+
+// Validate validates the scriptrequst
+func (s *ScriptRequest) Validate() error <span class="cov8" title="1">{
+        if s.ID == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("no id provided")
+        }</span>
+
+        <span class="cov8" title="1">if len(s.Data) == 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("script data len 0")
+        }</span>
+
+        // validationBucket := events.Bucket{
+        //         Events: []*events.Event{
+        //                 &amp;events.Event{},
+        //         },
+        // }
+
+        // // result := js.Execute(s.Data, validationBucket)
+        // // ex, ok := result.(*goja.Exception)
+        // // if ok {
+        // //         return fmt.Errorf("error executing script %v", ex)
+        // // }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (s *Service) addScriptHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+
+        scriptData, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">defer r.Body.Close()
+        sr := &amp;ScriptRequest{}
+        err = json.Unmarshal(scriptData, sr)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">err = sr.Validate()
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">script := &amp;js.Script{ID: sr.ID, Data: sr.Data}
+        err = s.node.AddScript(script)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "error adding script", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)</span>
+
+}
+
+func (s *Service) updateScriptHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+
+        scriptData, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">defer r.Body.Close()
+        sr := &amp;ScriptRequest{}
+        err = json.Unmarshal(scriptData, sr)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">err = sr.Validate()
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">script := &amp;js.Script{ID: sr.ID, Data: sr.Data}
+        err = s.node.UpdateScript(script)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "error adding script", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)</span>
+
+}
+
+func (s *Service) removeScriptHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        scriptID := chi.URLParam(r, "id")
+        err := s.node.RemoveScript(scriptID)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "could not remove script", http.StatusNotFound, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)</span>
+
+}
+
+func (s *Service) getScriptHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        scriptID := chi.URLParam(r, "id")
+        script := s.node.GetScript(scriptID)
+        if script == nil || len(script.Data) == 0 </span><span class="cov8" title="1">{
+                util.ErrStatus(w, r, "script not found", http.StatusNotFound, fmt.Errorf("script data len 0"))
+                return
+        }</span>
+
+        <span class="cov8" title="1">b, err := json.Marshal(&amp;script)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "error writing script data ", http.StatusNotFound, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write(b)</span>
+
+}
+
+func (s *Service) getScriptListHandler(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        scriptIds := s.node.GetScripts()
+
+        b, err := json.Marshal(&amp;scriptIds)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "scripts list parsing failed", http.StatusNotFound, err)
+                return
+        }</span>
+
+        <span class="cov0" title="0">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write(b)</span>
+}
+
+func (s *Service) site247AlertHandler(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+
+        alertData, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">defer r.Body.Close()
+        alert := &amp;sinks.Site247Alert{}
+        err = json.Unmarshal(alertData, alert)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">event := sinks.EventFromSite247(*alert)
+
+        err = s.node.Stash(event)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "error stashing event", http.StatusInternalServerError, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">b, err := json.Marshal(event)
+        if err != nil </span><span class="cov0" title="0">{
+                util.ErrStatus(w, r, "error writing event data", http.StatusNotAcceptable, err)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write(b)</span>
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package service
+
+import (
+        "context"
+        "net"
+        "net/http"
+        "time"
+
+        "github.com/go-chi/chi"
+        "github.com/go-chi/chi/middleware"
+        "github.com/golang/glog"
+
+        "github.com/myntra/cortex/pkg/config"
+        "github.com/myntra/cortex/pkg/store"
+)
+
+// Service encapsulates the http server and the raft store
+type Service struct {
+        srv      *http.Server
+        node     *store.Node
+        listener net.Listener
+}
+
+// Shutdown the service
+func (s *Service) Shutdown(ctx context.Context) error <span class="cov8" title="1">{
+        s.srv.Shutdown(ctx)
+        if err := s.node.Shutdown(); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Start the service
+func (s *Service) Start() error <span class="cov8" title="1">{
+
+        // start the raft node
+        if err := s.node.Start(); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        // start the http service
+        <span class="cov8" title="1">if err := s.srv.Serve(s.listener); err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">go func() </span><span class="cov0" title="0">{
+                ticker := time.NewTicker(time.Minute * 1)
+                for </span><span class="cov0" title="0">{
+                        select </span>{
+                        case &lt;-ticker.C:<span class="cov0" title="0">
+                                glog.Infof("take snapshot =&gt; %v", s.node.Snapshot())</span>
+                        }
+                }
+        }()
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// New returns the http service wrapper for the store.
+func New(cfg *config.Config) (*Service, error) <span class="cov8" title="1">{
+
+        node, err := store.NewNode(cfg)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">svc := &amp;Service{
+                node: node,
+        }
+
+        router := chi.NewRouter()
+        router.Use(middleware.Recoverer)
+
+        router.Post("/event", svc.leaderProxy(svc.eventHandler))
+        router.Post("/event/sink/site247", svc.site247AlertHandler)
+
+        router.Get("/rules", svc.getRulesHandler)
+        router.Get("/rules/{id}", svc.getRuleHandler)
+        router.Get("/rules/{id}/executions", svc.getRulesExecutions)
+        router.Post("/rules", svc.leaderProxy(svc.addRuleHandler))
+        router.Put("/rules", svc.leaderProxy(svc.updateRuleHandler))
+        router.Delete("/rules/{id}", svc.leaderProxy(svc.removeRuleHandler))
+
+        router.Get("/scripts", svc.getScriptListHandler)
+        router.Get("/scripts/{id}", svc.getScriptHandler)
+        router.Post("/scripts", svc.leaderProxy(svc.addScriptHandler))
+        router.Put("/scripts", svc.leaderProxy(svc.updateScriptHandler))
+        router.Delete("/scripts/{id}", svc.leaderProxy(svc.removeScriptHandler))
+
+        router.Get("/leave/{id}", svc.leaveHandler)
+        router.Post("/join", svc.joinHandler)
+
+        srv := &amp;http.Server{
+                ReadTimeout:  10 * time.Second,
+                WriteTimeout: 10 * time.Second,
+                IdleTimeout:  60 * time.Second,
+                Handler:      router,
+        }
+
+        svc.srv = srv
+        svc.listener = cfg.HTTPListener
+
+        return svc, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">package store
+
+import (
+        "github.com/golang/glog"
+        "github.com/myntra/cortex/pkg/events"
+        "github.com/myntra/cortex/pkg/rules"
+)
+
+type bucketStorage struct {
+        es *eventStorage
+        rs *ruleStorage
+}
+
+func (b *bucketStorage) stash(ruleID string, event *events.Event) error <span class="cov8" title="1">{
+        glog.Info("stash event ==&gt;  ", event)
+        if b.es.bucketExists(ruleID) </span><span class="cov8" title="1">{
+                return b.es.stash(rules.Rule{ID: ruleID}, event)
+        }</span>
+
+        <span class="cov8" title="1">rule := b.rs.getRule(ruleID)
+        return b.es.stash(*rule, event)</span>
+}
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">package store
+
+// Code generated by github.com/tinylib/msgp DO NOT EDIT.
+
+import (
+        "github.com/myntra/cortex/pkg/events"
+        "github.com/myntra/cortex/pkg/executions"
+        "github.com/myntra/cortex/pkg/js"
+        "github.com/myntra/cortex/pkg/rules"
+        "github.com/tinylib/msgp/msgp"
+)
+
+// DecodeMsg implements msgp.Decodable
+func (z *Command) DecodeMsg(dc *msgp.Reader) (err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, err = dc.ReadMapHeader()
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, err = dc.ReadMapKeyPtr()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "Op":<span class="cov8" title="1">
+                        z.Op, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Rule":<span class="cov8" title="1">
+                        if dc.IsNil() </span><span class="cov8" title="1">{
+                                err = dc.ReadNil()
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                <span class="cov8" title="1">z.Rule = nil</span>
+                        } else<span class="cov0" title="0"> {
+                                if z.Rule == nil </span><span class="cov0" title="0">{
+                                        z.Rule = new(rules.Rule)
+                                }</span>
+                                <span class="cov0" title="0">err = z.Rule.DecodeMsg(dc)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "RuleID":<span class="cov8" title="1">
+                        z.RuleID, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Event":<span class="cov8" title="1">
+                        if dc.IsNil() </span><span class="cov8" title="1">{
+                                err = dc.ReadNil()
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                <span class="cov8" title="1">z.Event = nil</span>
+                        } else<span class="cov0" title="0"> {
+                                if z.Event == nil </span><span class="cov0" title="0">{
+                                        z.Event = new(events.Event)
+                                }</span>
+                                <span class="cov0" title="0">err = z.Event.DecodeMsg(dc)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "ScriptID":<span class="cov8" title="1">
+                        z.ScriptID, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Script":<span class="cov8" title="1">
+                        if dc.IsNil() </span><span class="cov8" title="1">{
+                                err = dc.ReadNil()
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                <span class="cov8" title="1">z.Script = nil</span>
+                        } else<span class="cov0" title="0"> {
+                                if z.Script == nil </span><span class="cov0" title="0">{
+                                        z.Script = new(js.Script)
+                                }</span>
+                                <span class="cov0" title="0">err = z.Script.DecodeMsg(dc)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "Record":<span class="cov8" title="1">
+                        if dc.IsNil() </span><span class="cov8" title="1">{
+                                err = dc.ReadNil()
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                <span class="cov8" title="1">z.Record = nil</span>
+                        } else<span class="cov0" title="0"> {
+                                if z.Record == nil </span><span class="cov0" title="0">{
+                                        z.Record = new(executions.Record)
+                                }</span>
+                                <span class="cov0" title="0">err = z.Record.DecodeMsg(dc)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "RecordID":<span class="cov8" title="1">
+                        z.RecordID, err = dc.ReadString()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        err = dc.Skip()
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *Command) EncodeMsg(en *msgp.Writer) (err error) <span class="cov8" title="1">{
+        // map header, size 8
+        // write "Op"
+        err = en.Append(0x88, 0xa2, 0x4f, 0x70)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.Op)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Rule"
+        <span class="cov8" title="1">err = en.Append(0xa4, 0x52, 0x75, 0x6c, 0x65)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">if z.Rule == nil </span><span class="cov8" title="1">{
+                err = en.WriteNil()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        } else<span class="cov0" title="0"> {
+                err = z.Rule.EncodeMsg(en)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        // write "RuleID"
+        <span class="cov8" title="1">err = en.Append(0xa6, 0x52, 0x75, 0x6c, 0x65, 0x49, 0x44)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.RuleID)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Event"
+        <span class="cov8" title="1">err = en.Append(0xa5, 0x45, 0x76, 0x65, 0x6e, 0x74)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">if z.Event == nil </span><span class="cov8" title="1">{
+                err = en.WriteNil()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        } else<span class="cov0" title="0"> {
+                err = z.Event.EncodeMsg(en)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        // write "ScriptID"
+        <span class="cov8" title="1">err = en.Append(0xa8, 0x53, 0x63, 0x72, 0x69, 0x70, 0x74, 0x49, 0x44)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.ScriptID)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        // write "Script"
+        <span class="cov8" title="1">err = en.Append(0xa6, 0x53, 0x63, 0x72, 0x69, 0x70, 0x74)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">if z.Script == nil </span><span class="cov8" title="1">{
+                err = en.WriteNil()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        } else<span class="cov0" title="0"> {
+                err = z.Script.EncodeMsg(en)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        // write "Record"
+        <span class="cov8" title="1">err = en.Append(0xa6, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">if z.Record == nil </span><span class="cov8" title="1">{
+                err = en.WriteNil()
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        } else<span class="cov0" title="0"> {
+                err = z.Record.EncodeMsg(en)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        // write "RecordID"
+        <span class="cov8" title="1">err = en.Append(0xa8, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x49, 0x44)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">err = en.WriteString(z.RecordID)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *Command) MarshalMsg(b []byte) (o []byte, err error) <span class="cov8" title="1">{
+        o = msgp.Require(b, z.Msgsize())
+        // map header, size 8
+        // string "Op"
+        o = append(o, 0x88, 0xa2, 0x4f, 0x70)
+        o = msgp.AppendString(o, z.Op)
+        // string "Rule"
+        o = append(o, 0xa4, 0x52, 0x75, 0x6c, 0x65)
+        if z.Rule == nil </span><span class="cov8" title="1">{
+                o = msgp.AppendNil(o)
+        }</span> else<span class="cov8" title="1"> {
+                o, err = z.Rule.MarshalMsg(o)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        // string "RuleID"
+        <span class="cov8" title="1">o = append(o, 0xa6, 0x52, 0x75, 0x6c, 0x65, 0x49, 0x44)
+        o = msgp.AppendString(o, z.RuleID)
+        // string "Event"
+        o = append(o, 0xa5, 0x45, 0x76, 0x65, 0x6e, 0x74)
+        if z.Event == nil </span><span class="cov8" title="1">{
+                o = msgp.AppendNil(o)
+        }</span> else<span class="cov8" title="1"> {
+                o, err = z.Event.MarshalMsg(o)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        // string "ScriptID"
+        <span class="cov8" title="1">o = append(o, 0xa8, 0x53, 0x63, 0x72, 0x69, 0x70, 0x74, 0x49, 0x44)
+        o = msgp.AppendString(o, z.ScriptID)
+        // string "Script"
+        o = append(o, 0xa6, 0x53, 0x63, 0x72, 0x69, 0x70, 0x74)
+        if z.Script == nil </span><span class="cov8" title="1">{
+                o = msgp.AppendNil(o)
+        }</span> else<span class="cov8" title="1"> {
+                o, err = z.Script.MarshalMsg(o)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        // string "Record"
+        <span class="cov8" title="1">o = append(o, 0xa6, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64)
+        if z.Record == nil </span><span class="cov8" title="1">{
+                o = msgp.AppendNil(o)
+        }</span> else<span class="cov8" title="1"> {
+                o, err = z.Record.MarshalMsg(o)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+        }
+        // string "RecordID"
+        <span class="cov8" title="1">o = append(o, 0xa8, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x49, 0x44)
+        o = msgp.AppendString(o, z.RecordID)
+        return</span>
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Command) UnmarshalMsg(bts []byte) (o []byte, err error) <span class="cov8" title="1">{
+        var field []byte
+        _ = field
+        var zb0001 uint32
+        zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">for zb0001 &gt; 0 </span><span class="cov8" title="1">{
+                zb0001--
+                field, bts, err = msgp.ReadMapKeyZC(bts)
+                if err != nil </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">switch msgp.UnsafeString(field) </span>{
+                case "Op":<span class="cov8" title="1">
+                        z.Op, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Rule":<span class="cov8" title="1">
+                        if msgp.IsNil(bts) </span><span class="cov8" title="1">{
+                                bts, err = msgp.ReadNilBytes(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                <span class="cov8" title="1">z.Rule = nil</span>
+                        } else<span class="cov8" title="1"> {
+                                if z.Rule == nil </span><span class="cov8" title="1">{
+                                        z.Rule = new(rules.Rule)
+                                }</span>
+                                <span class="cov8" title="1">bts, err = z.Rule.UnmarshalMsg(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "RuleID":<span class="cov8" title="1">
+                        z.RuleID, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Event":<span class="cov8" title="1">
+                        if msgp.IsNil(bts) </span><span class="cov8" title="1">{
+                                bts, err = msgp.ReadNilBytes(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                <span class="cov8" title="1">z.Event = nil</span>
+                        } else<span class="cov8" title="1"> {
+                                if z.Event == nil </span><span class="cov8" title="1">{
+                                        z.Event = new(events.Event)
+                                }</span>
+                                <span class="cov8" title="1">bts, err = z.Event.UnmarshalMsg(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "ScriptID":<span class="cov8" title="1">
+                        z.ScriptID, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                case "Script":<span class="cov8" title="1">
+                        if msgp.IsNil(bts) </span><span class="cov8" title="1">{
+                                bts, err = msgp.ReadNilBytes(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                <span class="cov8" title="1">z.Script = nil</span>
+                        } else<span class="cov8" title="1"> {
+                                if z.Script == nil </span><span class="cov8" title="1">{
+                                        z.Script = new(js.Script)
+                                }</span>
+                                <span class="cov8" title="1">bts, err = z.Script.UnmarshalMsg(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "Record":<span class="cov8" title="1">
+                        if msgp.IsNil(bts) </span><span class="cov8" title="1">{
+                                bts, err = msgp.ReadNilBytes(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                <span class="cov8" title="1">z.Record = nil</span>
+                        } else<span class="cov8" title="1"> {
+                                if z.Record == nil </span><span class="cov8" title="1">{
+                                        z.Record = new(executions.Record)
+                                }</span>
+                                <span class="cov8" title="1">bts, err = z.Record.UnmarshalMsg(bts)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                        }
+                case "RecordID":<span class="cov8" title="1">
+                        z.RecordID, bts, err = msgp.ReadStringBytes(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                default:<span class="cov0" title="0">
+                        bts, err = msgp.Skip(bts)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">o = bts
+        return</span>
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *Command) Msgsize() (s int) <span class="cov8" title="1">{
+        s = 1 + 3 + msgp.StringPrefixSize + len(z.Op) + 5
+        if z.Rule == nil </span><span class="cov8" title="1">{
+                s += msgp.NilSize
+        }</span> else<span class="cov8" title="1"> {
+                s += z.Rule.Msgsize()
+        }</span>
+        <span class="cov8" title="1">s += 7 + msgp.StringPrefixSize + len(z.RuleID) + 6
+        if z.Event == nil </span><span class="cov8" title="1">{
+                s += msgp.NilSize
+        }</span> else<span class="cov8" title="1"> {
+                s += z.Event.Msgsize()
+        }</span>
+        <span class="cov8" title="1">s += 9 + msgp.StringPrefixSize + len(z.ScriptID) + 7
+        if z.Script == nil </span><span class="cov8" title="1">{
+                s += msgp.NilSize
+        }</span> else<span class="cov8" title="1"> {
+                s += z.Script.Msgsize()
+        }</span>
+        <span class="cov8" title="1">s += 7
+        if z.Record == nil </span><span class="cov8" title="1">{
+                s += msgp.NilSize
+        }</span> else<span class="cov8" title="1"> {
+                s += z.Record.Msgsize()
+        }</span>
+        <span class="cov8" title="1">s += 9 + msgp.StringPrefixSize + len(z.RecordID)
+        return</span>
+}
+</pre>
+		
+		<pre class="file" id="file16" style="display: none">package store
+
+import (
+        "bytes"
+        "fmt"
+        "sync"
+
+        "github.com/golang/glog"
+        "github.com/myntra/cortex/pkg/events"
+        "github.com/myntra/cortex/pkg/rules"
+)
+
+type eventStorage struct {
+        mu sync.RWMutex
+        m  map[string]*events.Bucket // [ruleID]
+}
+
+func (e *eventStorage) stash(rule rules.Rule, event *events.Event) error <span class="cov8" title="1">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+        glog.Info("stash event ==&gt;  ", event)
+        ruleID := rule.ID
+        if _, ok := e.m[ruleID]; !ok </span><span class="cov8" title="1">{
+                bucket := events.NewBucket(rule)
+                bucket.Events = append(bucket.Events, event)
+                e.m[ruleID] = bucket
+                return nil
+        }</span>
+
+        // dedup, reschedule flusher(sliding wait window), frequency count
+        <span class="cov8" title="1">dup := false
+        for _, existingEvent := range e.m[ruleID].Events </span><span class="cov8" title="1">{
+                // check if source is equal
+                if existingEvent.Source == event.Source </span><span class="cov8" title="1">{
+                        // check if equal hash
+                        if bytes.Equal(existingEvent.Hash(), event.Hash()) </span><span class="cov8" title="1">{
+                                dup = true
+                        }</span>
+                }
+        }
+        // is a duplicate event, skip appending event to bucket
+        <span class="cov8" title="1">if dup </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        // update event
+        <span class="cov8" title="1">e.m[ruleID].AddEvent(event)
+
+        return nil</span>
+}
+
+func (e *eventStorage) flushBucket(ruleID string) error <span class="cov8" title="1">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+
+        if _, ok := e.m[ruleID]; !ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("bucket with id %v not found", ruleID)
+        }</span>
+
+        <span class="cov8" title="1">delete(e.m, ruleID)
+        return nil</span>
+}
+
+func (e *eventStorage) bucketExists(ruleID string) bool <span class="cov8" title="1">{
+        _, ok := e.m[ruleID]
+        return ok
+}</span>
+
+func (e *eventStorage) getBucket(ruleID string) *events.Bucket <span class="cov0" title="0">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+        var rb *events.Bucket
+        var ok bool
+        if rb, ok = e.m[ruleID]; !ok </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+        <span class="cov0" title="0">return rb</span>
+}
+
+func (e *eventStorage) clone() map[string]*events.Bucket <span class="cov8" title="1">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+        clone := make(map[string]*events.Bucket)
+        for k, v := range e.m </span><span class="cov8" title="1">{
+                clone[k] = v
+        }</span>
+        <span class="cov8" title="1">return clone</span>
+}
+
+func (e *eventStorage) restore(m map[string]*events.Bucket) <span class="cov0" title="0">{
+        e.m = m
+}</span>
+</pre>
+		
+		<pre class="file" id="file17" style="display: none">package store
+
+import (
+        "sync"
+
+        "github.com/golang/glog"
+
+        "github.com/myntra/cortex/pkg/executions"
+)
+
+type executionStorage struct {
+        mu sync.RWMutex
+        m  map[string]*executions.Record
+}
+
+func (e *executionStorage) add(r *executions.Record) error <span class="cov8" title="1">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+
+        e.m[r.ID] = r
+        return nil
+}</span>
+
+func (e *executionStorage) remove(id string) error <span class="cov0" title="0">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+
+        delete(e.m, id)
+        return nil
+}</span>
+
+func (e *executionStorage) getRecords(ruleID string) []*executions.Record <span class="cov8" title="1">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+
+        glog.Infof("getRecords %v", ruleID)
+
+        var exs []*executions.Record
+        for _, record := range e.m </span><span class="cov8" title="1">{
+                if record.Bucket.Rule.ID == ruleID </span><span class="cov8" title="1">{
+                        exs = append(exs, record)
+                }</span>
+        }
+        <span class="cov8" title="1">return exs</span>
+}
+
+func (e *executionStorage) getRecordsCount(ruleID string) int <span class="cov0" title="0">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+        count := 0
+        for _, record := range e.m </span><span class="cov0" title="0">{
+                if record.Bucket.Rule.ID == ruleID </span><span class="cov0" title="0">{
+                        count++
+                }</span>
+        }
+
+        <span class="cov0" title="0">return count</span>
+}
+
+func (e *executionStorage) getTotalRecordsCount() int <span class="cov0" title="0">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+        return len(e.m)
+}</span>
+
+func (e *executionStorage) flush(id string) <span class="cov0" title="0">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+
+        delete(e.m, id)
+}</span>
+
+func (e *executionStorage) clone() map[string]*executions.Record <span class="cov8" title="1">{
+        e.mu.Lock()
+        defer e.mu.Unlock()
+        clone := make(map[string]*executions.Record)
+        for k, v := range e.m </span><span class="cov8" title="1">{
+                clone[k] = v
+        }</span>
+        <span class="cov8" title="1">return clone</span>
+}
+
+func (e *executionStorage) restore(m map[string]*executions.Record) <span class="cov8" title="1">{
+        e.m = m
+}</span>
+</pre>
+		
+		<pre class="file" id="file18" style="display: none">package store
+
+import (
+        "fmt"
+        "io"
+
+        "github.com/golang/glog"
+        "github.com/hashicorp/raft"
+        "github.com/myntra/cortex/pkg/events"
+        "github.com/myntra/cortex/pkg/executions"
+        "github.com/myntra/cortex/pkg/js"
+        "github.com/myntra/cortex/pkg/rules"
+        "github.com/tinylib/msgp/msgp"
+)
+
+type fsm defaultStore
+
+func (f *fsm) Apply(l *raft.Log) interface{} <span class="cov8" title="1">{
+        c := Command{}
+
+        left, err := c.UnmarshalMsg(l.Data)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if len(left) &gt; 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+        }</span>
+
+        <span class="cov8" title="1">left, err = msgp.Skip(l.Data)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">if len(left) &gt; 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+
+        }</span>
+
+        <span class="cov8" title="1">glog.Infof("fsm apply ==&gt; %+v\n", c)
+        // if err := json.Unmarshal(l.Data, &amp;c); err != nil {
+        //         panic(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
+        // }
+
+        switch c.Op </span>{
+        case "stash":<span class="cov8" title="1">
+                return f.applyStash(c.RuleID, c.Event)</span>
+        case "add_rule":<span class="cov8" title="1">
+                return f.applyAddRule(c.Rule)</span>
+        case "update_rule":<span class="cov8" title="1">
+                return f.applyUpdateRule(c.Rule)</span>
+        case "remove_rule":<span class="cov8" title="1">
+                return f.applyRemoveRule(c.RuleID)</span>
+        case "flush_bucket":<span class="cov8" title="1">
+                return f.applyFlushBucket(c.RuleID)</span>
+        case "add_script":<span class="cov8" title="1">
+                return f.applyAddScript(c.Script)</span>
+        case "update_script":<span class="cov0" title="0">
+                return f.applyUpdateScript(c.Script)</span>
+        case "remove_script":<span class="cov8" title="1">
+                return f.applyRemoveScript(c.ScriptID)</span>
+        case "add_record":<span class="cov8" title="1">
+                return f.applyAddRecord(c.Record)</span>
+        case "remove_record":<span class="cov0" title="0">
+                return f.applyRemoveRecord(c.RecordID)</span>
+        default:<span class="cov0" title="0">
+                panic(fmt.Sprintf("unrecognized command op: %s", c.Op))</span>
+        }
+
+}
+
+func (f *fsm) applyStash(ruleID string, event *events.Event) interface{} <span class="cov8" title="1">{
+        return f.bucketStorage.stash(ruleID, event)
+}</span>
+
+func (f *fsm) applyAddRule(rule *rules.Rule) interface{} <span class="cov8" title="1">{
+        return f.bucketStorage.rs.addRule(rule)
+}</span>
+
+func (f *fsm) applyUpdateRule(rule *rules.Rule) interface{} <span class="cov8" title="1">{
+        return f.bucketStorage.rs.updateRule(rule)
+}</span>
+
+func (f *fsm) applyRemoveRule(ruleID string) interface{} <span class="cov8" title="1">{
+        return f.bucketStorage.rs.removeRule(ruleID)
+}</span>
+
+func (f *fsm) applyFlushBucket(ruleID string) interface{} <span class="cov8" title="1">{
+        return f.bucketStorage.es.flushBucket(ruleID)
+}</span>
+
+func (f *fsm) applyAddScript(script *js.Script) interface{} <span class="cov8" title="1">{
+        return f.scriptStorage.addScript(script)
+}</span>
+
+func (f *fsm) applyUpdateScript(script *js.Script) interface{} <span class="cov0" title="0">{
+        return f.scriptStorage.updateScript(script)
+}</span>
+
+func (f *fsm) applyRemoveScript(id string) interface{} <span class="cov8" title="1">{
+        return f.scriptStorage.removeScript(id)
+}</span>
+
+func (f *fsm) applyAddRecord(r *executions.Record) interface{} <span class="cov8" title="1">{
+        return f.executionStorage.add(r)
+}</span>
+
+func (f *fsm) applyRemoveRecord(id string) interface{} <span class="cov0" title="0">{
+        return f.executionStorage.remove(id)
+}</span>
+
+func (f *fsm) Snapshot() (raft.FSMSnapshot, error) <span class="cov8" title="1">{
+        glog.Info("snapshot =&gt;")
+
+        rules := f.bucketStorage.rs.clone()
+        scripts := f.scriptStorage.clone()
+        records := f.executionStorage.clone()
+
+        return &amp;fsmSnapShot{
+                persisters: f.persisters,
+                messages: &amp;Messages{
+                        Rules:   rules,
+                        Scripts: scripts,
+                        Records: records,
+                }}, nil
+}</span>
+
+type restorer func(messages *Messages, reader *msgp.Reader) error
+
+func (f *fsm) Restore(rc io.ReadCloser) error <span class="cov8" title="1">{
+        glog.Info("restore &lt;=")
+        defer rc.Close()
+
+        // body, _ := ioutil.ReadAll(rc)
+        // glog.Infoln(string(body))
+
+        messages := &amp;Messages{
+                Rules:   make(map[string]*rules.Rule),
+                Scripts: make(map[string]*js.Script),
+                Records: make(map[string]*executions.Record),
+        }
+
+        msgpReader := msgp.NewReader(rc)
+
+        msgType := make([]byte, 1)
+        for </span><span class="cov8" title="1">{
+                // Read the message type
+                _, err := msgpReader.Read(msgType)
+                if err == io.EOF </span><span class="cov8" title="1">{
+                        glog.Infof("err =&gt; %v", err)
+                        break</span>
+                } else<span class="cov8" title="1"> if err != nil </span><span class="cov0" title="0">{
+                        glog.Error(err)
+                        return err
+                }</span>
+
+                // Decode
+                <span class="cov8" title="1">msg := MessageType(msgType[0])
+                glog.Infof("resotre, messageType %+v\n", msg)
+                if fn := f.restorers[msg]; fn != nil </span><span class="cov8" title="1">{
+                        if err := fn(messages, msgpReader); err != nil </span><span class="cov0" title="0">{
+                                glog.Error(err)
+                                return err
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        glog.Error(fmt.Errorf("Unrecognized msg type %d", msg))
+                        return fmt.Errorf("Unrecognized msg type %d", msg)
+                }</span>
+
+        }
+
+        <span class="cov8" title="1">f.bucketStorage.rs.restore(messages.Rules)
+        f.scriptStorage.restore(messages.Scripts)
+        f.executionStorage.restore(messages.Records)
+
+        return nil</span>
+}
+
+func restoreRules(messages *Messages, reader *msgp.Reader) error <span class="cov8" title="1">{
+        var rule rules.Rule
+        err := rule.DecodeMsg(reader)
+        if err != nil </span><span class="cov0" title="0">{
+                glog.Error(err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">glog.Infof("restoreRules %+v\n", rule)
+
+        if &amp;rule == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("restored rule nil")
+        }</span>
+
+        <span class="cov8" title="1">rulePtr := &amp;rule
+        err = rulePtr.Validate()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">messages.Rules[rule.ID] = rulePtr
+        return nil</span>
+}
+
+func restoreScripts(messages *Messages, reader *msgp.Reader) error <span class="cov8" title="1">{
+        var script js.Script
+        err := script.DecodeMsg(reader)
+        if err != nil </span><span class="cov0" title="0">{
+                glog.Error(err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">glog.Infof("restoreScripts %+v\n", script)
+
+        if &amp;script == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("restored script nil")
+        }</span>
+
+        <span class="cov8" title="1">messages.Scripts[script.ID] = &amp;script
+        return nil</span>
+}
+
+func restoreRecords(messages *Messages, reader *msgp.Reader) error <span class="cov8" title="1">{
+        var record executions.Record
+        err := record.DecodeMsg(reader)
+        if err != nil </span><span class="cov0" title="0">{
+                glog.Error(err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">glog.Infof("restoreRecords %+v\n", record)
+
+        if &amp;record == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("restored record nil")
+        }</span>
+
+        <span class="cov8" title="1">messages.Records[record.ID] = &amp;record
+
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file19" style="display: none">package store
+
+import (
+        "github.com/golang/glog"
+        "github.com/tinylib/msgp/msgp"
+
+        "github.com/hashicorp/raft"
+)
+
+type persister func(*Messages, *msgp.Writer, raft.SnapshotSink) error
+
+type fsmSnapShot struct {
+        messages   *Messages
+        persisters []persister
+}
+
+func (f *fsmSnapShot) Release() <span class="cov8" title="1">{
+        glog.Info("release =&gt;")
+}</span>
+
+func (f *fsmSnapShot) Persist(sink raft.SnapshotSink) error <span class="cov8" title="1">{
+        glog.Info("persist =&gt;")
+
+        msgpWriter := msgp.NewWriter(sink)
+
+        for _, fn := range f.persisters </span><span class="cov8" title="1">{
+                if err := fn(f.messages, msgpWriter, sink); err != nil </span><span class="cov0" title="0">{
+                        err = sink.Cancel()
+                        glog.Errorf("persist err %v\n", err)
+                        return err
+                }</span>
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func persistRules(messages *Messages, writer *msgp.Writer, sink raft.SnapshotSink) error <span class="cov8" title="1">{
+
+        for _, rule := range messages.Rules </span><span class="cov8" title="1">{
+                if _, err := sink.Write([]byte{byte(RuleType)}); err != nil </span><span class="cov0" title="0">{
+                        glog.Errorf("persistRules %v", err)
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">glog.Info("persist rule msg size ", rule.Msgsize())
+                // Encode message.
+                err := rule.EncodeMsg(writer)
+                if err != nil </span><span class="cov0" title="0">{
+                        glog.Errorf("persistRules %v", err)
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">err = writer.Flush()
+                glog.Infof("persistRules %+v %v\n", rule, err)</span>
+
+        }
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+func persistScripts(messages *Messages, writer *msgp.Writer, sink raft.SnapshotSink) error <span class="cov8" title="1">{
+
+        for _, script := range messages.Scripts </span><span class="cov8" title="1">{
+                if _, err := sink.Write([]byte{byte(ScriptType)}); err != nil </span><span class="cov0" title="0">{
+                        glog.Errorf("persistScripts %v", err)
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">glog.Info("persist script msg size ", script.Msgsize())
+
+                // Encode message.
+                err := script.EncodeMsg(writer)
+                if err != nil </span><span class="cov0" title="0">{
+                        glog.Errorf("persistScripts %v", err)
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">err = writer.Flush()
+                glog.Infof("persistScripts %+v %v \n", script, err)</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+func persistRecords(messages *Messages, writer *msgp.Writer, sink raft.SnapshotSink) error <span class="cov8" title="1">{
+
+        for _, record := range messages.Records </span><span class="cov8" title="1">{
+                if _, err := sink.Write([]byte{byte(RecordType)}); err != nil </span><span class="cov0" title="0">{
+                        glog.Errorf("persistRecords %v", err)
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">glog.Info("persist record msg size ", record.Msgsize())
+                // Encode message.
+                err := record.EncodeMsg(writer)
+                if err != nil </span><span class="cov0" title="0">{
+                        glog.Errorf("persistRecords %v", err)
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">err = writer.Flush()
+                glog.Infof("persistRecords %+v %v \n", record, err)</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file20" style="display: none">package store
+
+import (
+        "bytes"
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "strconv"
+        "strings"
+        "sync"
+
+        "github.com/myntra/cortex/pkg/executions"
+        "github.com/myntra/cortex/pkg/js"
+
+        "github.com/golang/glog"
+        "github.com/hashicorp/raft"
+        "github.com/myntra/cortex/pkg/config"
+        "github.com/myntra/cortex/pkg/events"
+        "github.com/myntra/cortex/pkg/rules"
+        "github.com/myntra/cortex/pkg/util"
+)
+
+// Node represents a raft node
+type Node struct {
+        mu    sync.RWMutex
+        store *defaultStore
+}
+
+// NewNode returns a new raft node
+func NewNode(cfg *config.Config) (*Node, error) <span class="cov8" title="1">{
+        glog.Infof("NewNode %v\n", cfg)
+        if err := cfg.Validate(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("invalid config: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">store, err := newStore(cfg)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">node := &amp;Node{store: store}
+
+        return node, nil</span>
+}
+
+// Start the node
+func (n *Node) Start() error <span class="cov8" title="1">{
+        return n.store.open()
+}</span>
+
+// Shutdown the node
+func (n *Node) Shutdown() error <span class="cov8" title="1">{
+        n.mu.Lock()
+        defer n.mu.Unlock()
+        err := n.store.close()
+        if err != nil </span><span class="cov0" title="0">{
+                glog.Errorf("error shutting down node %v", err)
+                return err
+        }</span>
+        <span class="cov8" title="1">glog.Info("node shut down")
+        return nil</span>
+}
+
+// LeaderAddr returns the http addr of the leader of the cluster. If empty, the current node is the leader
+func (n *Node) LeaderAddr() string <span class="cov0" title="0">{
+
+        if n.store.raft.State() == raft.Leader </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+
+        <span class="cov0" title="0">raftAddress := string(n.store.raft.Leader())
+
+        fields := strings.Split(raftAddress, ":")
+
+        if len(fields) == 0 || len(fields) != 2 </span><span class="cov0" title="0">{
+                glog.Errorf("invalid raftAddress %v", raftAddress)
+                return ""
+        }</span>
+
+        <span class="cov0" title="0">raftPortStr := fields[1]
+        raftPort, err := strconv.Atoi(raftPortStr)
+        if err != nil </span><span class="cov0" title="0">{
+                glog.Errorf("invalid port %v %v", raftAddress, raftPortStr)
+                return ""
+        }</span>
+
+        <span class="cov0" title="0">tcpPort := raftPort + 1
+        tcpURL := fields[0]
+        if tcpURL == "" </span><span class="cov0" title="0">{
+                tcpURL = "0.0.0.0"
+        }</span>
+
+        <span class="cov0" title="0">glog.Info("LeaderAddr ", tcpURL, tcpPort)
+
+        tcpAddr := fmt.Sprintf("%s:%d", tcpURL, tcpPort)
+
+        return tcpAddr</span>
+}
+
+// AddRule adds a rule to the store
+func (n *Node) AddRule(rule *rules.Rule) error <span class="cov8" title="1">{
+        if err := rule.Validate(); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">return n.store.addRule(rule)</span>
+}
+
+// UpdateRule updates a rule to the store
+func (n *Node) UpdateRule(rule *rules.Rule) error <span class="cov8" title="1">{
+        if err := rule.Validate(); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">return n.store.updateRule(rule)</span>
+}
+
+// Stash adds a event to the store
+func (n *Node) Stash(event *events.Event) error <span class="cov8" title="1">{
+        return n.store.matchAndStash(event)
+}</span>
+
+// RemoveRule removes a rule from the store
+func (n *Node) RemoveRule(ruleID string) error <span class="cov8" title="1">{
+        return n.store.removeRule(ruleID)
+}</span>
+
+// GetRule returns all the stored rules
+func (n *Node) GetRule(ruleID string) *rules.Rule <span class="cov8" title="1">{
+        return n.store.getRule(ruleID)
+}</span>
+
+// GetRuleExectutions returns the executions for a rule
+func (n *Node) GetRuleExectutions(ruleID string) []*executions.Record <span class="cov8" title="1">{
+        return n.store.getRecords(ruleID)
+}</span>
+
+// GetRules returns all the stored rules
+func (n *Node) GetRules() []*rules.Rule <span class="cov0" title="0">{
+        return n.store.getRules()
+}</span>
+
+// AddScript adds a script to the db
+func (n *Node) AddScript(script *js.Script) error <span class="cov8" title="1">{
+        return n.store.addScript(script)
+}</span>
+
+// UpdateScript updates an already added script
+func (n *Node) UpdateScript(script *js.Script) error <span class="cov0" title="0">{
+        return n.store.updateScript(script)
+}</span>
+
+// RemoveScript remove a script from the db
+func (n *Node) RemoveScript(id string) error <span class="cov8" title="1">{
+        return n.store.removeScript(id)
+}</span>
+
+// GetScripts returns all  script ids
+func (n *Node) GetScripts() []string <span class="cov0" title="0">{
+        return n.store.getScripts()
+}</span>
+
+// GetScript returns the script data
+func (n *Node) GetScript(id string) *js.Script <span class="cov8" title="1">{
+        return n.store.getScript(id)
+}</span>
+
+// Join a remote node at the addr
+func (n *Node) Join(nodeID, addr string) error <span class="cov0" title="0">{
+        return n.store.acceptJoin(nodeID, addr)
+}</span>
+
+// Leave a remote node
+func (n *Node) Leave(nodeID string) error <span class="cov0" title="0">{
+        return n.store.acceptLeave(nodeID)
+}</span>
+
+// Snapshot takes a snapshot of the store
+func (n *Node) Snapshot() error <span class="cov8" title="1">{
+        return n.store.snapshot()
+}</span>
+
+func httpRaftJoin(joinAddr, nodeID, bindAddr string) error <span class="cov0" title="0">{
+
+        jr := &amp;util.JoinRequest{
+                NodeID: nodeID,
+                Addr:   bindAddr,
+        }
+
+        err := jr.Validate()
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">b := new(bytes.Buffer)
+        err = json.NewEncoder(b).Encode(jr)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">glog.Infof("joinRequest Body %v", b.String())
+
+        req, err := http.NewRequest("POST", "http://"+joinAddr+"/join", b)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">client := &amp;http.Client{}
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if resp.StatusCode != 200 </span><span class="cov0" title="0">{
+                return fmt.Errorf("join failed, unexpected status code %v", resp.StatusCode)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file21" style="display: none">package store
+
+import (
+        "crypto/rand"
+        "encoding/hex"
+        "fmt"
+        "io/ioutil"
+        "net"
+        "os"
+        "path/filepath"
+        "strings"
+        "time"
+
+        "github.com/golang/glog"
+        "github.com/hashicorp/raft"
+        raftboltdb "github.com/hashicorp/raft-boltdb"
+)
+
+func (d *defaultStore) open() error <span class="cov8" title="1">{
+
+        id := d.opt.NodeID
+
+        if id == "" </span><span class="cov0" title="0">{
+                data, err := ioutil.ReadFile(filepath.Join(d.opt.Dir, "node.id"))
+                id = strings.TrimSpace(string(data))
+                if os.IsNotExist(err) || id == "" </span><span class="cov0" title="0">{
+                        var data [4]byte
+                        if _, err := rand.Read(data[:]); err != nil </span><span class="cov0" title="0">{
+                                panic("random error: " + err.Error())</span>
+                        }
+                        <span class="cov0" title="0">id = hex.EncodeToString(data[:])[:7]
+                        err = ioutil.WriteFile(filepath.Join(d.opt.Dir, "node.id"), []byte(id+"\n"), 0600)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return err
+                        }</span>
+                } else<span class="cov0" title="0"> if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov8" title="1">glog.Info("opening raft store \n")
+        config := raft.DefaultConfig()
+        config.LocalID = raft.ServerID(id)
+
+        // Setup Raft communication.
+        addr, err := net.ResolveTCPAddr("tcp", d.opt.RaftAddr)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        //raft.NewTCPTransportWithConfig
+        <span class="cov8" title="1">transport, err := NewTCPTransport(d.opt.RaftListener, addr, 3, 10*time.Second, os.Stderr)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">glog.Info("created raft transport \n")
+        // Create the snapshot store. This allows the Raft to truncate the log.
+        snapshots, err := raft.NewFileSnapshotStore(d.opt.Dir, retainSnapshotCount, os.Stderr)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("file snapshot store: %s", err)
+        }</span>
+
+        <span class="cov8" title="1">glog.Info("created snapshot store \n")
+
+        // Create the log store and stable store.
+        var logStore raft.LogStore
+        var stableStore raft.StableStore
+
+        glog.Info("raft.db =&gt; ", filepath.Join(d.opt.Dir, "raft.db"))
+        boltDB, err := raftboltdb.NewBoltStore(filepath.Join(d.opt.Dir, "raft.db"))
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("new bolt store: %s", err)
+        }</span>
+        <span class="cov8" title="1">logStore = boltDB
+        stableStore = boltDB
+
+        glog.Info("created boltdb store \n")
+        // Instantiate the Raft systemd.
+        ra, err := raft.NewRaft(config, (*fsm)(d), logStore, stableStore, snapshots, transport)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("new raft: %s", err)
+        }</span>
+        <span class="cov8" title="1">d.raft = ra
+        d.boltDB = boltDB
+
+        glog.Info("created raft systemd \n")
+
+        // bootstrap single node configuration
+        if d.opt.JoinAddr == "" </span><span class="cov8" title="1">{
+                glog.Infof("starting %v in a single node cluster \n", d.opt.NodeID)
+                configuration := raft.Configuration{
+                        Servers: []raft.Server{
+                                {
+                                        ID:      config.LocalID,
+                                        Address: transport.LocalAddr(),
+                                },
+                        },
+                }
+                ra.BootstrapCluster(configuration)
+
+                // since in bootstrap mode, block until leadership is attained.
+        loop:
+                for </span><span class="cov8" title="1">{
+                        select </span>{
+                        case leader := &lt;-d.raft.LeaderCh():<span class="cov8" title="1">
+                                glog.Info("isLeader ", leader)
+                                if leader </span><span class="cov8" title="1">{
+                                        break loop</span>
+                                }
+                        }
+                }
+        } else<span class="cov0" title="0"> {
+                // join a remote node
+                glog.Infof("join a remote node %v\n", d.opt.JoinAddr)
+                err := httpRaftJoin(d.opt.JoinAddr, d.opt.NodeID, d.opt.RaftAddr)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+
+        <span class="cov8" title="1">go d.flusher()
+
+        return nil</span>
+}
+
+func (d *defaultStore) snapshot() error <span class="cov8" title="1">{
+        f := d.raft.Snapshot()
+        return f.Error()
+}</span>
+
+func (d *defaultStore) close() error <span class="cov8" title="1">{
+        d.quitFlusherChan &lt;- struct{}{}
+        f := d.raft.Shutdown()
+        if f.Error() != nil </span><span class="cov0" title="0">{
+                return f.Error()
+        }</span>
+
+        // close the raft database
+        <span class="cov8" title="1">if d.boltDB != nil </span><span class="cov8" title="1">{
+                d.boltDB.Close()
+        }</span>
+
+        <span class="cov8" title="1">glog.Info("raft shut down")
+        glog.Flush()
+        return nil</span>
+}
+
+func (d *defaultStore) acceptJoin(nodeID, addr string) error <span class="cov0" title="0">{
+        glog.Infof("received join request for remote node %s at %s", nodeID, addr)
+
+        configFuture := d.raft.GetConfiguration()
+        if err := configFuture.Error(); err != nil </span><span class="cov0" title="0">{
+                glog.Infof("failed to get raft configuration: %v", err)
+                return err
+        }</span>
+
+        <span class="cov0" title="0">for _, srv := range configFuture.Configuration().Servers </span><span class="cov0" title="0">{
+                // If a node already exists with either the joining node's ID or address,
+                // that node may need to be removed from the config first.
+                if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(addr) </span><span class="cov0" title="0">{
+                        // However if *both* the ID and the address are the same, then nothing -- not even
+                        // a join operation -- is needed.
+                        if srv.Address == raft.ServerAddress(addr) &amp;&amp; srv.ID == raft.ServerID(nodeID) </span><span class="cov0" title="0">{
+                                glog.Infof("node %s at %s already member of cluster, ignoring join request", nodeID, addr)
+                                return nil
+                        }</span>
+
+                        <span class="cov0" title="0">future := d.raft.RemoveServer(srv.ID, 0, 0)
+                        if err := future.Error(); err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("error removing existing node %s at %s: %s", nodeID, addr, err)
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">f := d.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
+        if f.Error() != nil </span><span class="cov0" title="0">{
+                return f.Error()
+        }</span>
+        <span class="cov0" title="0">glog.Infof("node %s at %s joined successfully", nodeID, addr)
+        return nil</span>
+
+}
+
+func (d *defaultStore) acceptLeave(nodeID string) error <span class="cov0" title="0">{
+
+        glog.Infof("received leave request for remote node %s", nodeID)
+
+        cf := d.raft.GetConfiguration()
+
+        if err := cf.Error(); err != nil </span><span class="cov0" title="0">{
+                glog.Infof("failed to get raft configuration")
+                return err
+        }</span>
+
+        <span class="cov0" title="0">for _, server := range cf.Configuration().Servers </span><span class="cov0" title="0">{
+                if server.ID == raft.ServerID(nodeID) </span><span class="cov0" title="0">{
+                        f := d.raft.RemoveServer(server.ID, 0, 0)
+                        if err := f.Error(); err != nil </span><span class="cov0" title="0">{
+                                glog.Infof("failed to remove server %s", nodeID)
+                                return err
+                        }</span>
+
+                        <span class="cov0" title="0">glog.Infof("node %s left successfully", nodeID)
+                        return nil</span>
+                }
+        }
+
+        <span class="cov0" title="0">glog.Infof("node %s not exists in raft group", nodeID)
+
+        return nil</span>
+
+}
+</pre>
+		
+		<pre class="file" id="file22" style="display: none">package store
+
+import (
+        "fmt"
+        "sync"
+
+        "github.com/myntra/cortex/pkg/rules"
+)
+
+type ruleStorage struct {
+        mu sync.RWMutex
+        m  map[string]*rules.Rule // [ruleID]
+}
+
+func (r *ruleStorage) getRule(ruleID string) *rules.Rule <span class="cov8" title="1">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+        var rule *rules.Rule
+        var ok bool
+        if rule, ok = r.m[ruleID]; !ok </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+        <span class="cov8" title="1">return rule</span>
+}
+
+func (r *ruleStorage) addRule(rule *rules.Rule) error <span class="cov8" title="1">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+
+        if _, ok := r.m[rule.ID]; ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("rule id already exists")
+        }</span>
+
+        <span class="cov8" title="1">r.m[rule.ID] = rule
+        return nil</span>
+}
+
+func (r *ruleStorage) updateRule(rule *rules.Rule) error <span class="cov8" title="1">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+
+        if _, ok := r.m[rule.ID]; !ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("rule id does not exist")
+        }</span>
+
+        <span class="cov8" title="1">r.m[rule.ID] = rule
+
+        return nil</span>
+}
+
+func (r *ruleStorage) removeRule(ruleID string) error <span class="cov8" title="1">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+
+        if _, ok := r.m[ruleID]; !ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("rule id does not exist")
+        }</span>
+
+        <span class="cov8" title="1">delete(r.m, ruleID)
+
+        return nil</span>
+}
+
+func (r *ruleStorage) getRules() []*rules.Rule <span class="cov8" title="1">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+        var rules []*rules.Rule
+        for _, rule := range r.m </span><span class="cov8" title="1">{
+                rules = append(rules, rule)
+        }</span>
+        <span class="cov8" title="1">return rules</span>
+}
+
+func (r *ruleStorage) clone() map[string]*rules.Rule <span class="cov8" title="1">{
+        r.mu.Lock()
+        defer r.mu.Unlock()
+        clone := make(map[string]*rules.Rule)
+        for k, v := range r.m </span><span class="cov8" title="1">{
+                clone[k] = v
+        }</span>
+        <span class="cov8" title="1">return clone</span>
+}
+
+func (r *ruleStorage) restore(m map[string]*rules.Rule) <span class="cov8" title="1">{
+        r.m = m
+}</span>
+</pre>
+		
+		<pre class="file" id="file23" style="display: none">package store
+
+import (
+        "fmt"
+        "sync"
+
+        "github.com/myntra/cortex/pkg/js"
+)
+
+type scriptStorage struct {
+        mu sync.RWMutex
+        m  map[string]*js.Script
+}
+
+func (s *scriptStorage) addScript(script *js.Script) error <span class="cov8" title="1">{
+
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        if _, ok := s.m[script.ID]; ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("script name already exists. script name must be unique")
+        }</span>
+
+        <span class="cov8" title="1">s.m[script.ID] = script
+
+        return nil</span>
+}
+
+func (s *scriptStorage) updateScript(script *js.Script) error <span class="cov0" title="0">{
+
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        if _, ok := s.m[script.ID]; !ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("script name not found. can't update")
+        }</span>
+
+        <span class="cov0" title="0">s.m[script.ID] = script
+        return nil</span>
+}
+
+func (s *scriptStorage) removeScript(id string) error <span class="cov8" title="1">{
+
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        if _, ok := s.m[id]; !ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("script name not found. can't remove")
+        }</span>
+
+        <span class="cov8" title="1">delete(s.m, id)
+
+        return nil</span>
+}
+
+func (s *scriptStorage) getScript(id string) *js.Script <span class="cov8" title="1">{
+
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        if _, ok := s.m[id]; !ok </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">return s.m[id]</span>
+}
+
+func (s *scriptStorage) getScripts() []string <span class="cov0" title="0">{
+
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        var ids []string
+
+        for k := range s.m </span><span class="cov0" title="0">{
+                ids = append(ids, k)
+        }</span>
+
+        <span class="cov0" title="0">return ids</span>
+}
+
+func (s *scriptStorage) clone() map[string]*js.Script <span class="cov8" title="1">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+        scripts := make(map[string]*js.Script)
+        for k, v := range s.m </span><span class="cov8" title="1">{
+                scripts[k] = v
+        }</span>
+        <span class="cov8" title="1">return scripts</span>
+}
+
+func (s *scriptStorage) restore(m map[string]*js.Script) <span class="cov8" title="1">{
+        s.m = m
+}</span>
+</pre>
+		
+		<pre class="file" id="file24" style="display: none">package store
+
+import (
+        "fmt"
+        "time"
+
+        raftboltdb "github.com/hashicorp/raft-boltdb"
+        "github.com/satori/go.uuid"
+
+        "github.com/golang/glog"
+        "github.com/hashicorp/raft"
+        "github.com/myntra/cortex/pkg/config"
+        "github.com/myntra/cortex/pkg/events"
+        "github.com/myntra/cortex/pkg/executions"
+        "github.com/myntra/cortex/pkg/rules"
+
+        "github.com/myntra/cortex/pkg/js"
+        "github.com/myntra/cortex/pkg/util"
+)
+
+const (
+        retainSnapshotCount = 2
+        raftTimeout         = 10 * time.Second
+)
+
+type defaultStore struct {
+        opt                  *config.Config
+        boltDB               *raftboltdb.BoltStore
+        raft                 *raft.Raft
+        scriptStorage        *scriptStorage
+        bucketStorage        *bucketStorage
+        executionStorage     *executionStorage
+        executionBucketQueue chan *events.Bucket
+        quitFlusherChan      chan struct{}
+        persisters           []persister
+        restorers            map[MessageType]restorer
+}
+
+func newStore(opt *config.Config) (*defaultStore, error) <span class="cov8" title="1">{
+
+        // register persisters
+        var persisters []persister
+        persisters = append(persisters, persistRules, persistRecords, persistScripts)
+
+        restorers := make(map[MessageType]restorer)
+
+        restorers[RuleType] = restoreRules
+        restorers[RecordType] = restoreRecords
+        restorers[ScriptType] = restoreScripts
+
+        store := &amp;defaultStore{
+                scriptStorage: &amp;scriptStorage{
+                        m: make(map[string]*js.Script),
+                },
+                executionStorage: &amp;executionStorage{
+                        m: make(map[string]*executions.Record),
+                },
+                bucketStorage: &amp;bucketStorage{
+                        es: &amp;eventStorage{
+                                m: make(map[string]*events.Bucket),
+                        },
+                        rs: &amp;ruleStorage{
+                                m: make(map[string]*rules.Rule),
+                        },
+                },
+                opt:                  opt,
+                quitFlusherChan:      make(chan struct{}),
+                executionBucketQueue: make(chan *events.Bucket, 1000),
+                persisters:           persisters,
+                restorers:            restorers,
+        }
+
+        return store, nil
+}</span>
+
+func (d *defaultStore) executor() <span class="cov8" title="1">{
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case rb := &lt;-d.executionBucketQueue:<span class="cov8" title="1">
+                        glog.Infof("received bucket %+v", rb)
+                        go func(rb *events.Bucket) </span><span class="cov8" title="1">{
+                                statusCode := 0
+                                var noScriptResult bool
+                                result := js.Execute(d.getScript(rb.Rule.ScriptID), rb)
+                                if result == nil </span><span class="cov8" title="1">{
+                                        noScriptResult = true
+                                }</span>
+                                <span class="cov8" title="1">if noScriptResult </span><span class="cov8" title="1">{
+                                        statusCode = util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+                                }</span> else<span class="cov8" title="1"> {
+                                        statusCode = util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+                                }</span>
+
+                                <span class="cov8" title="1">id, _ := uuid.NewV4()
+                                record := &amp;executions.Record{
+                                        ID:             id.String(),
+                                        Bucket:         *rb,
+                                        ScriptResult:   result,
+                                        HookStatusCode: statusCode,
+                                        CreatedAt:      time.Now(),
+                                }
+
+                                glog.Infof("addRecord %v\n", record)
+                                glog.Infoln("err ", d.addRecord(record))</span>
+
+                        }(rb)
+                }
+        }
+}
+
+func (d *defaultStore) flusher() <span class="cov8" title="1">{
+
+        go d.executor()
+
+        ticker := time.NewTicker(time.Millisecond * time.Duration(d.opt.FlushInterval))
+loop:
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-ticker.C:<span class="cov8" title="1">
+                        if d.raft.State() != raft.Leader </span><span class="cov0" title="0">{
+                                glog.Info("node is not leader, skipping flush")
+                                continue</span>
+                        }
+                        <span class="cov8" title="1">for ruleID, bucket := range d.bucketStorage.es.clone() </span><span class="cov8" title="1">{
+                                glog.Infof("rule flusher ==&gt; %v with size %v canflush ? %v, can flush in %v",
+                                        ruleID, len(bucket.Events), bucket.CanFlush(), bucket.CanFlushIn())
+                                if bucket.CanFlush() </span><span class="cov8" title="1">{
+                                        go func() </span><span class="cov8" title="1">{
+                                                glog.Infof("post bucket to execution %+v ", bucket)
+                                                d.executionBucketQueue &lt;- bucket
+
+                                                err := d.flushBucket(ruleID)
+                                                if err != nil </span><span class="cov0" title="0">{
+                                                        glog.Errorf("error flushing bucket %v %v", ruleID, err)
+                                                }</span>
+                                        }()
+                                }
+                        }
+                case &lt;-d.quitFlusherChan:<span class="cov8" title="1">
+                        break loop</span>
+                }
+        }
+
+}
+
+func (d *defaultStore) expirer() <span class="cov0" title="0">{
+        ticker := time.NewTicker(time.Hour)
+
+        for </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        if d.raft.State() != raft.Leader </span><span class="cov0" title="0">{
+                                glog.Info("node is not leader, skipping expire")
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">if d.executionStorage.getTotalRecordsCount() &gt; d.opt.MaxHistory </span>{<span class="cov0" title="0">
+                                // TODO, remove oldest records
+                        }</span>
+                }
+
+        }
+}
+
+func (d *defaultStore) applyCMD(cmd Command) error <span class="cov8" title="1">{
+        if d.raft.State() != raft.Leader </span><span class="cov0" title="0">{
+                return fmt.Errorf("not leader")
+        }</span>
+
+        <span class="cov8" title="1">glog.Infof("apply cmd %v\n marshalling", cmd)
+
+        b, err := cmd.MarshalMsg(nil)
+        if err != nil </span><span class="cov0" title="0">{
+                glog.Errorf("stash %v err %v\n", cmd, err)
+                return err
+        }</span>
+
+        <span class="cov8" title="1">glog.Infof("==&gt; apply %+v\n", cmd)
+        f := d.raft.Apply(b, raftTimeout)
+        return f.Error()</span>
+}
+
+func (d *defaultStore) matchAndStash(event *events.Event) error <span class="cov8" title="1">{
+        glog.Info("match and stash event ==&gt;  ", event)
+        for _, rule := range d.getRules() </span><span class="cov8" title="1">{
+                go d.match(rule, event)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (d *defaultStore) match(rule *rules.Rule, event *events.Event) error <span class="cov8" title="1">{
+        glog.Info("match event ==&gt;  ", event)
+        if rule.HasMatching(event.EventType) </span><span class="cov8" title="1">{
+                go d.stash(rule.ID, event)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+
+}
+
+func (d *defaultStore) stash(ruleID string, event *events.Event) error <span class="cov8" title="1">{
+        glog.Info("apply stash event ==&gt;  ", event)
+        return d.applyCMD(Command{
+                Op:     "stash",
+                RuleID: ruleID,
+                Event:  event,
+        })
+}</span>
+
+func (d *defaultStore) addRule(rule *rules.Rule) error <span class="cov8" title="1">{
+
+        if rule.Dwell == 0 || rule.DwellDeadline == 0 || rule.MaxDwell == 0 </span><span class="cov8" title="1">{
+                rule.Dwell = d.opt.DefaultDwell
+                rule.DwellDeadline = d.opt.DefaultDwellDeadline
+                rule.MaxDwell = d.opt.DefaultMaxDwell
+        }</span>
+
+        <span class="cov8" title="1">return d.applyCMD(Command{
+                Op:   "add_rule",
+                Rule: rule,
+        })</span>
+}
+
+func (d *defaultStore) updateRule(rule *rules.Rule) error <span class="cov8" title="1">{
+        return d.applyCMD(Command{
+                Op:   "update_rule",
+                Rule: rule,
+        })
+}</span>
+
+func (d *defaultStore) addScript(script *js.Script) error <span class="cov8" title="1">{
+        return d.applyCMD(Command{
+                Op:     "add_script",
+                Script: script,
+        })
+}</span>
+
+func (d *defaultStore) updateScript(script *js.Script) error <span class="cov0" title="0">{
+        return d.applyCMD(Command{
+                Op:     "update_script",
+                Script: script,
+        })
+}</span>
+
+func (d *defaultStore) removeScript(id string) error <span class="cov8" title="1">{
+        return d.applyCMD(Command{
+                Op:       "remove_script",
+                ScriptID: id,
+        })
+}</span>
+
+func (d *defaultStore) removeRule(ruleID string) error <span class="cov8" title="1">{
+        return d.applyCMD(Command{
+                Op:     "remove_rule",
+                RuleID: ruleID,
+        })
+}</span>
+
+func (d *defaultStore) flushBucket(ruleID string) error <span class="cov8" title="1">{
+        return d.applyCMD(Command{
+                Op:     "flush_bucket",
+                RuleID: ruleID,
+        })
+}</span>
+
+func (d *defaultStore) addRecord(r *executions.Record) error <span class="cov8" title="1">{
+        return d.applyCMD(Command{
+                Op:     "add_record",
+                Record: r,
+        })
+}</span>
+
+func (d *defaultStore) removeRecord(id string) error <span class="cov0" title="0">{
+        return d.applyCMD(Command{
+                Op:       "remove_record",
+                RecordID: id,
+        })
+}</span>
+
+func (d *defaultStore) getScripts() []string <span class="cov0" title="0">{
+        return d.scriptStorage.getScripts()
+}</span>
+
+func (d *defaultStore) getScript(id string) *js.Script <span class="cov8" title="1">{
+        return d.scriptStorage.getScript(id)
+}</span>
+
+func (d *defaultStore) getRules() []*rules.Rule <span class="cov8" title="1">{
+        return d.bucketStorage.rs.getRules()
+}</span>
+
+func (d *defaultStore) getRule(ruleID string) *rules.Rule <span class="cov8" title="1">{
+        return d.bucketStorage.rs.getRule(ruleID)
+}</span>
+
+func (d *defaultStore) getRecords(ruleID string) []*executions.Record <span class="cov8" title="1">{
+        return d.executionStorage.getRecords(ruleID)
+}</span>
+
+func (d *defaultStore) getRecordsCount(ruleID string) int <span class="cov0" title="0">{
+        return d.executionStorage.getRecordsCount(ruleID)
+}</span>
+</pre>
+		
+		<pre class="file" id="file25" style="display: none">package store
+
+import (
+        "errors"
+        "io"
+        "log"
+        "net"
+        "time"
+
+        "github.com/hashicorp/raft"
+)
+
+var (
+        errNotAdvertisable = errors.New("local bind address is not advertisable")
+        errNotTCP          = errors.New("local address is not a TCP address")
+)
+
+// TCPStreamLayer implements StreamLayer interface for plain TCP.
+type TCPStreamLayer struct {
+        advertise net.Addr
+        listener  *net.TCPListener
+}
+
+// NewTCPTransport returns a NetworkTransport that is built on top of
+// a TCP streaming transport layer.
+func NewTCPTransport(
+        bindListener net.Listener,
+        advertise net.Addr,
+        maxPool int,
+        timeout time.Duration,
+        logOutput io.Writer,
+) (*raft.NetworkTransport, error) <span class="cov8" title="1">{
+        return newTCPTransport(bindListener, advertise, func(stream raft.StreamLayer) *raft.NetworkTransport </span><span class="cov8" title="1">{
+                return raft.NewNetworkTransport(stream, maxPool, timeout, logOutput)
+        }</span>)
+}
+
+// NewTCPTransportWithLogger returns a NetworkTransport that is built on top of
+// a TCP streaming transport layer, with log output going to the supplied Logger
+func NewTCPTransportWithLogger(
+        bindListener net.Listener,
+        advertise net.Addr,
+        maxPool int,
+        timeout time.Duration,
+        logger *log.Logger,
+) (*raft.NetworkTransport, error) <span class="cov0" title="0">{
+        return newTCPTransport(bindListener, advertise, func(stream raft.StreamLayer) *raft.NetworkTransport </span><span class="cov0" title="0">{
+                return raft.NewNetworkTransportWithLogger(stream, maxPool, timeout, logger)
+        }</span>)
+}
+
+// NewTCPTransportWithConfig returns a NetworkTransport that is built on top of
+// a TCP streaming transport layer, using the given config struct.
+func NewTCPTransportWithConfig(
+        bindListener net.Listener,
+        advertise net.Addr,
+        config *raft.NetworkTransportConfig,
+) (*raft.NetworkTransport, error) <span class="cov0" title="0">{
+        return newTCPTransport(bindListener, advertise, func(stream raft.StreamLayer) *raft.NetworkTransport </span><span class="cov0" title="0">{
+                config.Stream = stream
+                return raft.NewNetworkTransportWithConfig(config)
+        }</span>)
+}
+
+func newTCPTransport(list net.Listener,
+        advertise net.Addr,
+        transportCreator func(stream raft.StreamLayer) *raft.NetworkTransport) (*raft.NetworkTransport, error) <span class="cov8" title="1">{
+
+        // Create stream
+        stream := &amp;TCPStreamLayer{
+                advertise: advertise,
+                listener:  list.(*net.TCPListener),
+        }
+
+        // Verify that we have a usable advertise address
+        addr, ok := stream.Addr().(*net.TCPAddr)
+        if !ok </span><span class="cov0" title="0">{
+                list.Close()
+                return nil, errNotTCP
+        }</span>
+        <span class="cov8" title="1">if addr.IP.IsUnspecified() </span><span class="cov0" title="0">{
+                list.Close()
+                return nil, errNotAdvertisable
+        }</span>
+
+        // Create the network transport
+        <span class="cov8" title="1">trans := transportCreator(stream)
+        return trans, nil</span>
+}
+
+// Dial implements the StreamLayer interface.
+func (t *TCPStreamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (net.Conn, error) <span class="cov0" title="0">{
+        return net.DialTimeout("tcp", string(address), timeout)
+}</span>
+
+// Accept implements the net.Listener interface.
+func (t *TCPStreamLayer) Accept() (c net.Conn, err error) <span class="cov8" title="1">{
+        return t.listener.Accept()
+}</span>
+
+// Close implements the net.Listener interface.
+func (t *TCPStreamLayer) Close() (err error) <span class="cov8" title="1">{
+        return t.listener.Close()
+}</span>
+
+// Addr implements the net.Listener interface.
+func (t *TCPStreamLayer) Addr() net.Addr <span class="cov8" title="1">{
+        // Use an advertise addr if provided
+        if t.advertise != nil </span><span class="cov8" title="1">{
+                return t.advertise
+        }</span>
+        <span class="cov0" title="0">return t.listener.Addr()</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

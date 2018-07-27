@@ -2,9 +2,10 @@ package events
 
 import (
 	"bytes"
-	"log"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 type exampleData struct {
@@ -58,11 +59,7 @@ func TestEventHashMatch(t *testing.T) {
 	hash2 := incomingEventDuplicate.Hash()
 	hash3 := incomingEventUnique.Hash()
 
-	if !bytes.Equal(hash1, hash2) {
-		log.Fatal("matching duplicate events failed")
-	}
+	require.True(t, bytes.Equal(hash1, hash2))
+	require.False(t, bytes.Equal(hash2, hash3))
 
-	if bytes.Equal(hash2, hash3) {
-		log.Fatal("mathed unique events")
-	}
 }

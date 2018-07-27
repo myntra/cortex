@@ -1,0 +1,102 @@
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
+
+
+[[constraint]]
+  branch = "master"
+  name = "crawshaw.io/littleboss"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/GeertJohan/go.rice"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/cnf/structhash"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/dop251/goja"
+
+[[constraint]]
+  name = "github.com/go-chi/chi"
+  version = "3.3.2"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/golang/glog"
+
+[[constraint]]
+  name = "github.com/hashicorp/raft"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/raft-boltdb"
+
+[[constraint]]
+  name = "github.com/heetch/confita"
+  version = "0.5.1"
+
+[[constraint]]
+  name = "github.com/imdario/mergo"
+  version = "0.3.5"
+
+[[constraint]]
+  name = "github.com/loadimpact/k6"
+  version = "0.22.1"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/satori/go.uuid"
+  version = "1.2.0"
+
+[[constraint]]
+  name = "github.com/sethgrid/pester"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/spf13/afero"
+  version = "1.1.1"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.2"
+
+[[constraint]]
+  name = "github.com/tinylib/msgp"
+  version = "1.0.2"
+
+[[constraint]]
+  branch = "v1"
+  name = "gopkg.in/gavv/httpexpect.v1"
+
+[prune]
+  go-tests = true
+  unused-packages = true

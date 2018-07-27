@@ -3,6 +3,8 @@ package config
 import (
 	"net"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfig(t *testing.T) {
@@ -11,14 +13,9 @@ func TestConfig(t *testing.T) {
 	httpAddr := ":8879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	require.NoError(t, err)
 	httpListener, err := net.Listen("tcp", httpAddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cfg := &Config{
 		NodeID:               "node0",
@@ -35,7 +32,7 @@ func TestConfig(t *testing.T) {
 		RaftListener:         raftListener,
 	}
 
-	if err := cfg.Validate(); err != nil {
-		t.Fatal(err)
-	}
+	err = cfg.Validate()
+	require.NoError(t, err)
+
 }

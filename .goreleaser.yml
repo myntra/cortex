@@ -1,0 +1,59 @@
+project_name: cortex
+before:
+  hooks:
+  - go get github.com/GeertJohan/go.rice/rice
+  - dep ensure -v
+  - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/dop251/goja
+  - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/spf13/afero
+  - cd ui && npm run build && cd ..
+  - cd cmd && rice embed-go
+  - go test ./...
+builds:
+  -
+    main: ./cmd/main.go
+    env:
+      - CGO_ENABLED=0
+    binary: cortex
+    goos:
+      - linux
+    goarch:
+      - amd64
+archive:
+  format: tar.gz
+  name_template: "{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  replacements:
+    linux: Linux
+    amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+git:
+  short_hash: true
+release:
+  # You can disable this pipe in order to not upload any artifacts to
+  # GitHub.
+  disable: true
+puts:
+  -
+    # Unique name of your Put instance. Used to identify the instance.
+    name: up
+    # Upload mode. Valid options are `binary` and `archive`.
+    # If mode is `archive`, variables _Os_, _Arch_ and _Arm_ for target name are not supported.
+    # In that case these variables are empty.
+    # Default is `archive`.
+    mode: archive
+    # URL to be used as target of the HTTP PUT request
+    target: http://acme.com/upload
+    # User that will be used for the deployment
+    username: goreleaser
+    # Upload checksums (defaults to false)
+    # checksum: true
+    # Upload signatures (defaults to false)
+    # signature: true

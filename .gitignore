@@ -1,3 +1,8 @@
+cover.out
 cmd/cmd
 .idea/
 cmd/data
+cmd/build
+rice-box.go
+vendor/
+dist/
