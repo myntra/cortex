@@ -12,7 +12,8 @@
     "react-jsonschema-form": "^1.0.3",
     "react-scripts": "1.1.4",
     "react-swipeable-views": "^0.12.15",
-    "typeface-roboto": "^0.0.54"
+    "typeface-roboto": "^0.0.54",
+    "uuid": "^3.3.2"
   },
   "scripts": {
     "start": "react-scripts start",

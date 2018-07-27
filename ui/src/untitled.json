@@ -1,0 +1,131 @@
+{
+  "events":[],
+  "rules": [
+    {
+      "id": "1",
+      "title": "Revenue Down rule",
+      "scriptID": "revenue.js",
+      "hook_endpoint": "http://localhost:4000",
+      "hook_retry": "3",
+      "event_types": "com.acme.order.node1.check_disk,com.acme.checkout.node1.check_cpu",
+      "wait_window": "120",
+      "wait_window_threshold": "100",
+      "max_wait_window": "240"
+    },
+    {
+      "id": "2",
+      "title": "Cart Down rule",
+      "scriptID": "card_down.js",
+      "hook_endpoint": "http://localhost:4000",
+      "hook_retry": "3",
+      "event_types": "com.acme.cart.node1.check_disk",
+      "wait_window": "120",
+      "wait_window_threshold": "100",
+      "max_wait_window": "240"
+    },
+    {
+      "id": "3",
+      "title": "Style Down rule",
+      "scriptID": "style_down.js",
+      "hook_endpoint": "http://localhost:4000",
+      "hook_retry": "3",
+      "event_types": "com.acme.style.node1.check_node",
+      "wait_window": "120",
+      "wait_window_threshold": "100",
+      "max_wait_window": "240"
+    }
+  ],
+  "scripts": [
+    {
+      "id": "revenue.js",
+      "Data": [
+        99,
+        111,
+        110,
+        115,
+        111,
+        108,
+        101,
+        46,
+        108,
+        111,
+        103,
+        40,
+        39,
+        114,
+        101,
+        118,
+        101,
+        110,
+        117,
+        101,
+        95,
+        100,
+        111,
+        119,
+        110,
+        39,
+        41
+      ]
+    },
+    {
+      "id": "cart.js",
+      "Data": [
+        99,
+        111,
+        110,
+        115,
+        111,
+        108,
+        101,
+        46,
+        108,
+        111,
+        103,
+        40,
+        39,
+        99,
+        97,
+        114,
+        116,
+        95,
+        100,
+        111,
+        119,
+        110,
+        39,
+        41
+      ]
+    },
+    {
+      "id": "style.js",
+      "Data": [
+        99,
+        111,
+        110,
+        115,
+        111,
+        108,
+        101,
+        46,
+        108,
+        111,
+        103,
+        40,
+        39,
+        115,
+        116,
+        121,
+        108,
+        101,
+        95,
+        100,
+        111,
+        119,
+        110,
+        39,
+        41
+      ]
+    }
+  ]
+}

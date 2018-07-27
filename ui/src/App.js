@@ -148,7 +148,7 @@ function TabContainer({ children, dir }) {
 class App extends Component {
 
   state = {
-    tabValue: 0,
+    tabValue: 2,
     rulesChecked: [],
     scriptsChecked: [],
     ruleDialogOpen: false,
@@ -268,7 +268,6 @@ class App extends Component {
   }
 
   handleRuleDialogSave = () => {
-    console.log('New Rule Save', this.state.newRule);
     let self = this;
     const { newRule } = this.state
     fetch('/rules', {
@@ -468,7 +467,6 @@ class App extends Component {
       console.log("JSON udefined", scriptID, scriptList)
       return;
     }
-    console.log("Script Update", json)
     fetch('/scripts/revenue.js', {
       method: "PUT",
       body: JSON.stringify(json)
@@ -512,10 +510,14 @@ class App extends Component {
             </Form>
           </DialogContent>
           <DialogActions>
-            <Button onClick={this.handleRuleDialogClose} color="primary">
+            <Button onClick={this.handleRuleDialogClose}
+              style={{fontSize:'12px'}} 
+              color="primary">
               Cancel
               </Button>
-            <Button onClick={this.handleRuleDialogSave} color="primary" autoFocus>
+            <Button onClick={this.handleRuleDialogSave}
+              style={{fontSize:'12px'}}
+              color="primary" autoFocus>
               Save
               </Button>
           </DialogActions>
@@ -555,7 +557,6 @@ class App extends Component {
           </Typography>
           </Toolbar>
         </AppBar>
-
         <Tabs
           value={this.state.tabValue}
           indicatorColor="primary"
@@ -566,8 +567,7 @@ class App extends Component {
         >
           <Tab label="Rules" />
           <Tab label="Scripts" />
-          <Tab label="SandBox" />
-          <Tab label="PlayGround" />
+          <Tab label="Playground" />
         </Tabs>
         <SwipeableViews
           axis={theme.direction === 'rtl' ? 'x-reverse' : 'x'}
@@ -696,10 +696,7 @@ class App extends Component {
             </Grid>
           </TabContainer>
           <TabContainer dir={theme.direction}>
-            <Sandbox />
-          </TabContainer>
-          <TabContainer dir={theme.direction}>
-            <span style={{fontSize: '14px'}}>PlayGround Coming Soon</span>
+            <Sandbox rules={this.state.ruleList} />
           </TabContainer>
         </SwipeableViews>
 
