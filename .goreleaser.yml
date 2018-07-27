@@ -5,8 +5,7 @@ before:
   - go get ./...
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/dop251/goja
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/spf13/afero
-  - cd ui && yarn install && yarn run build && cd ..
-  - cd cmd && rice embed-go
+  - ./build_ui.sh
   - go test ./...
 builds:
   -
