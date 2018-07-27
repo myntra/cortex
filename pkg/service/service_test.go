@@ -13,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/golang/glog"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/myntra/cortex/pkg/executions"
 
@@ -58,7 +57,7 @@ var testevent = &events.Event{
 	EventTime:          time.Now(),
 	SchemaURL:          "http://www.json.org",
 	ContentType:        "application/json",
-	Data:               &exampleData{Alpha: "julie", Beta: 42},
+	Data:               map[string]interface{}{"Alpha": "julie", "Beta": 42},
 	Extensions:         map[string]string{"ext1": "value"},
 }
 
@@ -101,9 +100,9 @@ var testBucketScript = ScriptRequest{
 		if (!event){
 			result = {error:"event is undefined"}
 			return
-		}
-		event.data.alpha = event.data.alpha + "test";
-		event.data.beta = event.data.beta + 42;
+		}	
+		event.data.Alpha = event.data.Alpha + "test";
+		event.data.Beta = event.data.Beta + 42;
 		result = event.data;
 	}`),
 }
@@ -398,15 +397,6 @@ func TestScriptsMultiService(t *testing.T) {
 	})
 }
 
-func TestMergeRule(t *testing.T) {
-	if err := mergo.Merge(&testRuleUpdated, testRule); err != nil {
-		t.Fatal(err)
-	}
-
-	//fmt.Printf("testRuleUpdated %+v", testRuleUpdated)
-
-}
-
 func TestSingleEventSingleService(t *testing.T) {
 	singleService(t, func(url string) {
 		e := httpexpect.New(t, url)
@@ -438,29 +428,13 @@ func TestSingleEventSingleService(t *testing.T) {
 		var ruleExecutions []*executions.Record
 		err = json.Unmarshal(body, &ruleExecutions)
 		require.NoError(t, err)
-
-		if len(ruleExecutions) == 0 {
-			glog.Info("no executions found")
-			t.Fatal()
-		}
-
-		if testRule.ID != ruleExecutions[0].Bucket.Rule.ID {
-			t.Fatal("unexpected rule id")
-		}
-
-		if testevent.EventID != ruleExecutions[0].Bucket.Events[0].EventID {
-			t.Fatal("unexpected event id")
-		}
+		require.False(t, len(ruleExecutions) == 0)
+		require.True(t, testRule.ID == ruleExecutions[0].Bucket.Rule.ID)
+		require.True(t, testevent.EventID == ruleExecutions[0].Bucket.Events[0].EventID)
 
 		scriptResult, ok := ruleExecutions[0].ScriptResult.(map[string]interface{})
-		glog.Infof("%+v %v %v\n", ruleExecutions[0], scriptResult, ok)
-		if !ok {
-			t.Fatal("unexpected script result")
-		}
-
-		if !strings.Contains(scriptResult["alpha"].(string), "julietest") {
-			t.Fatal("unexpected script result ", scriptResult["alpha"])
-		}
+		require.True(t, ok)
+		require.True(t, strings.Contains(scriptResult["Alpha"].(string), "julietest"))
 
 	})
 }
@@ -480,7 +454,6 @@ func TestSingleEventMultipleService(t *testing.T) {
 		e.POST("/event").WithJSON(testevent).Expect().Status(http.StatusOK)
 
 		// wait for rule execution
-
 		time.Sleep(time.Millisecond * time.Duration(testRule.Dwell+3000))
 
 		// fetch rule executions from node 1
@@ -495,19 +468,9 @@ func TestSingleEventMultipleService(t *testing.T) {
 		var ruleExecutions []*executions.Record
 		err = json.Unmarshal(body, &ruleExecutions)
 		require.NoError(t, err)
-
-		if len(ruleExecutions) == 0 {
-			glog.Info("no executions found")
-			t.Fatal()
-		}
-
-		if testRule.ID != ruleExecutions[0].Bucket.Rule.ID {
-			t.Fatal("unexpected rule id")
-		}
-
-		if testevent.EventID != ruleExecutions[0].Bucket.Events[0].EventID {
-			t.Fatal("unexpected event id")
-		}
+		require.False(t, len(ruleExecutions) == 0)
+		require.True(t, testRule.ID == ruleExecutions[0].Bucket.Rule.ID)
+		require.True(t, testevent.EventID == ruleExecutions[0].Bucket.Events[0].EventID)
 
 	})
 }
@@ -541,14 +504,10 @@ func TestSite247Handler(t *testing.T) {
 		var eventData sinks.Site247Alert
 		err = json.Unmarshal(byteData, &eventData)
 		require.NoError(t, err)
+		require.True(t, eventData == *testalertsite247)
 
-		if eventData != *testalertsite247 {
-			t.Fatal("unexpected eventbody data")
-		}
-
-		if eventBody.EventType != fmt.Sprintf("site247.%s.%s", testalertsite247.MonitorGroupName, testalertsite247.MonitorName) {
-			t.Fatal("unexpected eventtype data")
-		}
+		require.True(t, eventBody.EventType == fmt.Sprintf("site247.%s.%s",
+			testalertsite247.MonitorGroupName, testalertsite247.MonitorName))
 
 	})
 }

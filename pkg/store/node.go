@@ -115,7 +115,6 @@ func (n *Node) UpdateRule(rule *rules.Rule) error {
 
 // Stash adds a event to the store
 func (n *Node) Stash(event *events.Event) error {
-	glog.Info("node stash event => ", event)
 	return n.store.matchAndStash(event)
 }
 

@@ -1,7 +1,6 @@
 package store
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -17,10 +16,31 @@ import (
 type fsm defaultStore
 
 func (f *fsm) Apply(l *raft.Log) interface{} {
-	var c command
-	if err := json.Unmarshal(l.Data, &c); err != nil {
-		panic(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
+	c := Command{}
+
+	left, err := c.UnmarshalMsg(l.Data)
+	if err != nil {
+		return err
 	}
+
+	if len(left) > 0 {
+		return fmt.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(l.Data)
+	if err != nil {
+		return err
+	}
+
+	if len(left) > 0 {
+		return fmt.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+
+	}
+
+	glog.Infof("fsm apply ==> %+v\n", c)
+	// if err := json.Unmarshal(l.Data, &c); err != nil {
+	// 	panic(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
+	// }
 
 	switch c.Op {
 	case "stash":

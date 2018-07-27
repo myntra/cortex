@@ -1,7 +1,6 @@
 package store
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -23,17 +22,6 @@ const (
 	retainSnapshotCount = 2
 	raftTimeout         = 10 * time.Second
 )
-
-type command struct {
-	Op       string             `json:"op"` // stash or evict
-	Rule     *rules.Rule        `json:"rule,omitempty"`
-	RuleID   string             `json:"ruleID,omitempty"`
-	Event    *events.Event      `json:"event,omitempty"`
-	ScriptID string             `json:"script_id,omitempty"`
-	Script   *js.Script         `json:"script,omitempty"`
-	Record   *executions.Record `json:"record,omitempty"`
-	RecordID string             `json:"record_id,omitempty"`
-}
 
 type defaultStore struct {
 	opt                  *config.Config
@@ -112,7 +100,8 @@ func (d *defaultStore) executor() {
 					CreatedAt:      time.Now(),
 				}
 
-				d.addRecord(record)
+				glog.Infof("addRecord %v\n", record)
+				glog.Infoln("err ", d.addRecord(record))
 
 			}(rb)
 		}
@@ -123,22 +112,22 @@ func (d *defaultStore) flusher() {
 
 	go d.executor()
 
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Millisecond * time.Duration(d.opt.FlushInterval))
 loop:
 	for {
 		select {
 		case <-ticker.C:
-			glog.Info("rule flusher ==> ticker called")
 			for ruleID, bucket := range d.bucketStorage.es.clone() {
-				glog.Info("rule flusher ==> ", ruleID, bucket.CanFlush())
+				glog.Infof("rule flusher ==> %v with size %v canflush ? %v, can flush in %v",
+					ruleID, len(bucket.Events), bucket.CanFlush(), bucket.CanFlushIn())
 				if bucket.CanFlush() {
 					go func() {
-						glog.Infof("post bucket to hook %+v ", bucket)
+						glog.Infof("post bucket to execution %+v ", bucket)
 						d.executionBucketQueue <- bucket
 
 						err := d.flushBucket(ruleID)
 						if err != nil {
-							glog.Errorf("error flushing %v", err)
+							glog.Errorf("error flushing bucket %v %v", ruleID, err)
 						}
 					}()
 				}
@@ -164,16 +153,25 @@ func (d *defaultStore) expirer() {
 	}
 }
 
-func (d *defaultStore) applyCMD(cmd *command) error {
+func (d *defaultStore) applyCMD(cmd Command) error {
 	if d.raft.State() != raft.Leader {
 		return fmt.Errorf("not leader")
 	}
 
-	b, err := json.Marshal(cmd)
+	// b, err := json.Marshal(cmd)
+	// if err != nil {
+	// 	return err
+	// }
+
+	glog.Infof("apply cmd %v\n marshalling", cmd)
+
+	b, err := cmd.MarshalMsg(nil)
 	if err != nil {
+		glog.Errorf("stash %v err %v\n", cmd, err)
 		return err
 	}
 
+	glog.Infof("==> apply %+v\n", cmd)
 	f := d.raft.Apply(b, raftTimeout)
 	return f.Error()
 }
@@ -197,7 +195,7 @@ func (d *defaultStore) match(rule *rules.Rule, event *events.Event) error {
 
 func (d *defaultStore) stash(ruleID string, event *events.Event) error {
 	glog.Info("apply stash event ==>  ", event)
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:     "stash",
 		RuleID: ruleID,
 		Event:  event,
@@ -212,63 +210,63 @@ func (d *defaultStore) addRule(rule *rules.Rule) error {
 		rule.MaxDwell = d.opt.DefaultMaxDwell
 	}
 
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:   "add_rule",
 		Rule: rule,
 	})
 }
 
 func (d *defaultStore) updateRule(rule *rules.Rule) error {
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:   "update_rule",
 		Rule: rule,
 	})
 }
 
 func (d *defaultStore) addScript(script *js.Script) error {
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:     "add_script",
 		Script: script,
 	})
 }
 
 func (d *defaultStore) updateScript(script *js.Script) error {
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:     "update_script",
 		Script: script,
 	})
 }
 
 func (d *defaultStore) removeScript(id string) error {
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:       "remove_script",
 		ScriptID: id,
 	})
 }
 
 func (d *defaultStore) removeRule(ruleID string) error {
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:     "remove_rule",
 		RuleID: ruleID,
 	})
 }
 
 func (d *defaultStore) flushBucket(ruleID string) error {
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:     "flush_bucket",
 		RuleID: ruleID,
 	})
 }
 
 func (d *defaultStore) addRecord(r *executions.Record) error {
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:     "add_record",
 		Record: r,
 	})
 }
 
 func (d *defaultStore) removeRecord(id string) error {
-	return d.applyCMD(&command{
+	return d.applyCMD(Command{
 		Op:       "remove_record",
 		RecordID: id,
 	})

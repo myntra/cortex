@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -19,13 +21,6 @@ import (
 	"github.com/myntra/cortex/pkg/rules"
 )
 
-type exampleData struct {
-	Alpha string `json:"alpha"`
-	Beta  int    `json:"beta"`
-}
-
-func tptr(t time.Time) *time.Time { return nil }
-
 var testevent = events.Event{
 	EventType:          "acme.prod.icinga.check_disk",
 	EventTypeVersion:   "1.0",
@@ -35,7 +30,7 @@ var testevent = events.Event{
 	EventTime:          time.Now(),
 	SchemaURL:          "http://www.json.org",
 	ContentType:        "application/json",
-	Data:               &exampleData{Alpha: "julie", Beta: 42},
+	Data:               map[string]interface{}{"Alpha": "julie", "Beta": 42},
 	Extensions:         map[string]string{"ext1": "value"},
 }
 
@@ -53,6 +48,34 @@ var testRuleUpdated = rules.Rule{
 	HookRetry:         2,
 	EventTypePatterns: []string{"apple.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
 	ScriptID:          "myscript",
+}
+
+func newTestEvent(id, key string) events.Event {
+	return events.Event{
+		EventType:          key + "acme.prod.icinga.check_disk",
+		EventTypeVersion:   "1.0",
+		CloudEventsVersion: "0.1",
+		Source:             "/sink",
+		EventID:            id + "42",
+		EventTime:          time.Now(),
+		SchemaURL:          "http://www.json.org",
+		ContentType:        "application/json",
+		Data:               map[string]interface{}{id + "Alpha": "julie", "Beta": 42},
+		Extensions:         map[string]string{"ext1": "value"},
+	}
+}
+
+func newTestRule(key string) rules.Rule {
+	return rules.Rule{
+		ID:                key + "test-rule-id-1",
+		HookEndpoint:      "http://localhost:3000/testrule",
+		HookRetry:         2,
+		EventTypePatterns: []string{key + "acme.prod.icinga.check_disk", key + "acme.prod.site247.cart_down"},
+		ScriptID:          "myscript",
+		Dwell:             30 * 1000,
+		DwellDeadline:     25 * 1000,
+		MaxDwell:          120 * 1000,
+	}
 }
 
 func singleNode(t *testing.T, f func(node *Node)) {
@@ -73,9 +96,9 @@ func singleNode(t *testing.T, f func(node *Node)) {
 	cfg := &config.Config{
 		NodeID:               "node0",
 		Dir:                  tmpDir,
-		DefaultDwell:         4000, // 3 minutes
-		DefaultMaxDwell:      8000, // 6 minutes
-		DefaultDwellDeadline: 3800, // 2.5 minutes
+		DefaultDwell:         4000,
+		DefaultMaxDwell:      8000,
+		DefaultDwellDeadline: 3800,
 		MaxHistory:           1000,
 		FlushInterval:        1000,
 		HTTPAddr:             httpAddr,
@@ -98,13 +121,11 @@ func singleNode(t *testing.T, f func(node *Node)) {
 
 	// close node
 	err = node.Shutdown()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = httpListener.Close()
-
-	glog.Info("done test ", err)
+	require.NoError(t, err)
+	glog.Info("done test ")
 }
 
 func TestRuleSingleNode(t *testing.T) {
@@ -113,40 +134,20 @@ func TestRuleSingleNode(t *testing.T) {
 		err := node.AddRule(&testRule)
 		require.NoError(t, err)
 
-		rules := node.GetRules()
-		found := false
-		for _, rule := range rules {
-			if rule.ID == testRule.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatal("added rule  was not found")
-		}
+		rule := node.GetRule(testRule.ID)
+		require.True(t, rule.ID == testRule.ID)
 
 		err = node.UpdateRule(&testRuleUpdated)
 		require.NoError(t, err)
 
 		updatedRule := node.GetRule(testRule.ID)
-		if updatedRule.EventTypePatterns[0] != testRuleUpdated.EventTypePatterns[0] {
-			t.Fatal("rule was not updated")
-		}
+		require.True(t, updatedRule.EventTypePatterns[0] == testRuleUpdated.EventTypePatterns[0])
 
 		err = node.RemoveRule(testRule.ID)
 		require.NoError(t, err)
 
-		rules = node.GetRules()
-		found = false
-		for _, rule := range rules {
-			if rule.ID == testRule.ID {
-				found = true
-				break
-			}
-		}
-		if found {
-			t.Fatal("removed rule was found")
-		}
+		rule = node.GetRule(testRule.ID)
+		require.Nil(t, rule)
 
 	})
 }
@@ -164,22 +165,16 @@ func TestScriptSingleNode(t *testing.T) {
 		// get script
 
 		respScript := node.GetScript("myscript")
-
-		if !bytes.Equal(script, respScript.Data) {
-			t.Fatal("unexpected get script response")
-		}
+		require.True(t, bytes.Equal(script, respScript.Data))
 
 		// remove script
 
 		err = node.RemoveScript("myscript")
 		require.NoError(t, err)
+
 		// get script
-
 		respScript = node.GetScript("myscript")
-
-		if respScript != nil {
-			t.Fatal("received removed script")
-		}
+		require.Nil(t, respScript)
 
 	})
 }
@@ -202,9 +197,7 @@ func TestOrphanEventSingleNode(t *testing.T) {
 
 		}
 
-		if rb != nil {
-			t.Fatal("orphan event was stashed")
-		}
+		require.Nil(t, rb)
 	})
 }
 
@@ -218,14 +211,49 @@ func TestEventSingleNode(t *testing.T) {
 
 		time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultDwell+3000))
 		records := node.GetRuleExectutions(testRule.ID)
-		if len(records) == 0 {
-			t.Fatal("no record of execution, event was not stashed")
-		}
-		if records[0].Bucket.Rule.ID != testRule.ID {
-			t.Fatalf("unexpected rule id, event was not stashed %v %v", records[0].Bucket.Rule.ID, testRule.ID)
-		}
+		require.False(t, len(records) == 0)
+		require.True(t, records[0].Bucket.Rule.ID == testRule.ID)
 
 		t.Logf("%+v\n", records[0])
+	})
+}
+
+func TestMultipleEventSingleRule(t *testing.T) {
+	singleNode(t, func(node *Node) {
+
+		t.Run("Test stash multiple events before dwell time", func(t *testing.T) {
+			key := "my"
+			myTestRule := newTestRule("my")
+			n := 5
+
+			s := rand.NewSource(time.Now().UnixNano())
+			r := rand.New(s)
+			intervals := make(map[int]events.Event)
+
+			for i := 0; i < n; i++ {
+				interval := r.Intn(int(myTestRule.DwellDeadline - 100))
+				intervals[interval] = newTestEvent(strconv.Itoa(i), key)
+			}
+
+			err := node.AddRule(&myTestRule)
+			require.NoError(t, err)
+
+			for interval, te := range intervals {
+				go func(interval int, te events.Event) {
+					time.Sleep(time.Millisecond * time.Duration(interval))
+					err = node.Stash(&te)
+					require.NoError(t, err)
+				}(interval, te)
+			}
+
+			glog.Info("sleeping ...")
+			time.Sleep(time.Millisecond * time.Duration(myTestRule.Dwell+5000))
+			glog.Info("sleeping done")
+
+			records := node.GetRuleExectutions(myTestRule.ID)
+			require.True(t, len(records) == 1, fmt.Sprintf("len is %v", len(records)))
+		})
+
 	})
 }
 
@@ -245,9 +273,9 @@ func TestNodeSnapshot(t *testing.T) {
 	cfg := &config.Config{
 		NodeID:               "node0",
 		Dir:                  tmpDir,
-		DefaultDwell:         4000, // 3 minutes
-		DefaultMaxDwell:      8000, // 6 minutes
-		DefaultDwellDeadline: 3800, // 2.5 minutes
+		DefaultDwell:         4000,
+		DefaultMaxDwell:      8000,
+		DefaultDwellDeadline: 3800,
 		MaxHistory:           1000,
 		FlushInterval:        1000,
 		HTTPAddr:             httpAddr,
@@ -277,9 +305,7 @@ func TestNodeSnapshot(t *testing.T) {
 	require.NoError(t, err)
 
 	rule := node.GetRule(testRule.ID)
-	if testRule.ID != rule.ID {
-		t.Fatal("rule not saved")
-	}
+	require.True(t, testRule.ID == rule.ID)
 
 	err = node.Stash(&testevent)
 	require.NoError(t, err)
@@ -312,31 +338,20 @@ func TestNodeSnapshot(t *testing.T) {
 	time.Sleep(time.Second * 5)
 
 	rule = node.GetRule(testRule.ID)
-	if testRule.ID != rule.ID {
-		t.Fatal("rule not saved")
-	}
+	require.True(t, testRule.ID == rule.ID)
 
 	respScript := node.GetScript("myscript")
-	if respScript == nil {
-		t.Fatal("script not found")
-	}
-	if !bytes.Equal(script, respScript.Data) {
-		t.Fatal("unexpected get script response")
-	}
+	require.NotNil(t, respScript)
+	require.True(t, bytes.Equal(script, respScript.Data))
 
 	records := node.GetRuleExectutions(testRule.ID)
-	if len(records) == 0 {
-		t.Fatal("no record of execution, event was not stashed")
-	}
-	if records[0].Bucket.Rule.ID != testRule.ID {
-		t.Fatalf("unexpected rule id, event was not stashed %v %v", records[0].Bucket.Rule.ID, testRule.ID)
-	}
+	require.False(t, len(records) == 0)
+	require.True(t, records[0].Bucket.Rule.ID == testRule.ID)
 
 	// close node
 	err = node.Shutdown()
 	require.NoError(t, err)
 
 	err = httpListener.Close()
-
-	glog.Info("done test ", err)
+	require.NoError(t, err)
 }
