@@ -15,7 +15,7 @@ import (
 	"github.com/myntra/cortex/pkg/js"
 	"github.com/myntra/cortex/pkg/rules"
 	"github.com/myntra/cortex/pkg/util"
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 )
 
 func (s *Service) leaderProxy(h http.HandlerFunc) http.HandlerFunc {
@@ -83,11 +83,7 @@ func (s *Service) addRuleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if rule.ID == "" {
-		uid, err := uuid.NewV4()
-		if err != nil {
-			util.ErrStatus(w, r, "id gen failed", http.StatusNotAcceptable, err)
-			return
-		}
+		uid := uuid.NewV4()
 		rule.ID = uid.String()
 	}
 

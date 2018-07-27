@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/myntra/cortex/pkg/events"
-	"github.com/golang/glog"
 	"github.com/satori/go.uuid"
 )
 
@@ -44,10 +43,6 @@ func EventFromSite247(alert Site247Alert) *events.Event {
 }
 
 func generateUUID() uuid.UUID {
-	uid, err := uuid.NewV4()
-	if err != nil {
-		glog.Infof("Error in creating new UUID for event sink")
-		return uuid.UUID{}
-	}
+	uid := uuid.NewV4()
 	return uid
 }
