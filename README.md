@@ -1,24 +1,29 @@
 
-# WIP
+**Cortex** is a fault-tolerant events correlation engine. It groups and correlates incoming events for further actions:
+creating/resolving incidents/alerts or for doing root cause analysis.
 
-**Cortex** is a fault-tolerant alerts correlation engine. 
-
-Alerts are accepted as a standard cloudevents.io event(https://github.com/cloudevents/spec/blob/master/json-format.md). Site 24x7 and Icinga integration converters are also provided.
-
-It collects similar events in a bucket over a time window using a regex matcher and then executes a JS(ES6) script. The script contains the correlation logic which can further create incidents or alerts. The JS environment is limited and is achieved by embedding k6.io javascript interpreter(https://docs.k6.io/docs/modules). This is an excellent library built on top of https://github.com/dop251/goja
-
-
-## Event Flow:
-
-Steps: 
-
-1. **Match** : alert --> (convert from site 24x7/icinga ) --> (match rule) --> **Collect**
-2. **Collect** --> (add to the rule bucket which *dwells* around until the configured time) -->  **Execute**
-3. **Execute** --> (flush after Dwell period) --> (execute configured script) --> *Post*
-4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
+- Built-in regex matcher for capturing events into groups(*here called as a bucket*). 
+- Built-in ES6 javascript interpreter for executing correlation logic on buckets.
+- React UI for creating new rules, correlation scripts, list of rule execution history and a playground to simulate correlation executions.
+- REST API crud for rules, scripts and execution history.
+- Fault Tolerance built on top of https://github.com/hashicorp/raft and https://github.com/boltdb/bolt .
+- Single fat self-supervising binary using https://github.com/crawshaw/littleboss .
+- MessagePack encoding/decoding for raft entries using https://github.com/tinylib/msgp .
 
 
-The collection of events in a bucket is done by writing a rule: 
+The project is *alpha* quality and not yet ready for production.
+
+To know more about event correlation in general, please read: https://en.wikipedia.org/wiki/Event_correlation
+
+## Use Cases
+- Alerts/Events Correlation
+- Event Gateway
+- FAAS
+- Incidents Management
+
+## Rules
+
+A rule contains an array of patterns used to capture events in a *bucket*
 
 ```json
 {
@@ -34,7 +39,6 @@ The collection of events in a bucket is done by writing a rule:
 }
 ```
 
-
 where:
 
 *EventTypePatterns* is the pattern of events to be collected in a bucket.
@@ -42,12 +46,39 @@ where:
 *Dwell* is the wait duration since the first matched event.
 
 
-For this rule, incoming events with `eventType` matching one of `eventTypePatterns` will be put in the same bucket:
+Possible patterns:
+
+```
+	{rule pattern, incoming event type, expected match}
+	{"acme*", "acme", false},
+	{"acme*", "acme.prod", true},
+	{"acme.prod*", "acme.prod.search", true},
+	{"acme.prod*.checkout", "acme.prod.search", false},
+	{"acme.prod*.*", "acme.prod.search", false},
+	{"acme.prod*.*", "acme.prod-1.search", true},
+	{"acme.prod.*.*.*", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.*.*.check_disk", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.*.*.check_loadavg", "acme.prod.search.node1.check_disk", false},
+	{"*.prod.*.*.check_loadavg", "acme.prod.search.node1.check_loadavg", true},
+	{"acme.prod.*", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.search.node*.check_disk", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.search.node*.*", "acme.prod.search.node1.check_disk", true},
+	{"acme.prod.search.dc1-node*.*", "acme.prod.search.node1.check_disk", false},
+```
+
+## Events 
+
+Alerts are accepted as a cloudevents.io event(https://github.com/cloudevents/spec/blob/master/json-format.md). Site 24x7 and Icinga integration sinks are also provided.
+
+The engine collects similar events in a bucket over a time window using a regex matcher and then executes a JS(ES6) script. The script contains the correlation logic which can further create incidents or alerts. The JS environment is limited and is achieved by embedding k6.io javascript interpreter(https://docs.k6.io/docs/modules). This is an excellent library built on top of https://github.com/dop251/goja
+
+
+For the above example rule, incoming events with `eventType` matching one of `eventTypePatterns` will be put in the same bucket:
 
 ```json
 {
 	"rule": {},
-	"events": [{
+	"events": [{ // bucket
 		"cloudEventsVersion": "0.1",
 		"eventType": "acme.prod.site247.search_down",
 		"source": "site247",
@@ -65,6 +96,8 @@ For this rule, incoming events with `eventType` matching one of `eventTypePatter
 	}]
 }
 ```
+
+## Scripts
 
 After the `dwell` period, the configured `myscript.js` will be invoked and the bucket will be passed along:
 
@@ -86,25 +119,18 @@ If `result` is set, it will be posted to the hookEndPoint. The `bucket` itself w
 
 A new `bucket` will be created when an event matches the rule again.
 
-## Rules
+## Steps:
 
-```
-	{rule pattern, incoming event type, expected match}
-	{"acme*", "acme", false},
-	{"acme*", "acme.prod", true},
-	{"acme.prod*", "acme.prod.search", true},
-	{"acme.prod*.checkout", "acme.prod.search", false},
-	{"acme.prod*.*", "acme.prod.search", false},
-	{"acme.prod*.*", "acme.prod-1.search", true},
-	{"acme.prod.*.*.*", "acme.prod.search.node1.check_disk", true},
-	{"acme.prod.*.*.check_disk", "acme.prod.search.node1.check_disk", true},
-	{"acme.prod.*.*.check_loadavg", "acme.prod.search.node1.check_disk", false},
-	{"*.prod.*.*.check_loadavg", "acme.prod.search.node1.check_loadavg", true},
-	{"acme.prod.*", "acme.prod.search.node1.check_disk", true},
-	{"acme.prod.search.node*.check_disk", "acme.prod.search.node1.check_disk", true},
-	{"acme.prod.search.node*.*", "acme.prod.search.node1.check_disk", true},
-	{"acme.prod.search.dc1-node*.*", "acme.prod.search.node1.check_disk", false},
-```
+1. **Match** : alert --> (convert from site 24x7/icinga ) --> (match rule) --> **Collect**
+2. **Collect** --> (add to the rule bucket which *dwells* around until the configured time) -->  **Execute**
+3. **Execute** --> (flush after Dwell period) --> (execute configured script) --> *Post*
+4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
+
+
+
+
+
+
 
 
 

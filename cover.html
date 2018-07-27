@@ -88,7 +88,7 @@
 				
 				<option value="file16">github.com/myntra/cortex/pkg/store/event_storage.go (77.5%)</option>
 				
-				<option value="file17">github.com/myntra/cortex/pkg/store/execution_storage.go (51.4%)</option>
+				<option value="file17">github.com/myntra/cortex/pkg/store/execution_storage.go (52.8%)</option>
 				
 				<option value="file18">github.com/myntra/cortex/pkg/store/fsm.go (74.5%)</option>
 				
@@ -102,7 +102,7 @@
 				
 				<option value="file23">github.com/myntra/cortex/pkg/store/script_storage.go (61.1%)</option>
 				
-				<option value="file24">github.com/myntra/cortex/pkg/store/store.go (85.2%)</option>
+				<option value="file24">github.com/myntra/cortex/pkg/store/store.go (80.5%)</option>
 				
 				<option value="file25">github.com/myntra/cortex/pkg/store/transport.go (52.2%)</option>
 				
@@ -3117,6 +3117,8 @@ func (e *eventStorage) restore(m map[string]*events.Bucket) <span class="cov0" t
 import (
         "sync"
 
+        "github.com/golang/glog"
+
         "github.com/myntra/cortex/pkg/executions"
 )
 
@@ -3144,6 +3146,8 @@ func (e *executionStorage) remove(id string) error <span class="cov0" title="0">
 func (e *executionStorage) getRecords(ruleID string) []*executions.Record <span class="cov8" title="1">{
         e.mu.Lock()
         defer e.mu.Unlock()
+
+        glog.Infof("getRecords %v", ruleID)
 
         var exs []*executions.Record
         for _, record := range e.m </span><span class="cov8" title="1">{
@@ -4278,7 +4282,11 @@ loop:
         for </span><span class="cov8" title="1">{
                 select </span>{
                 case &lt;-ticker.C:<span class="cov8" title="1">
-                        for ruleID, bucket := range d.bucketStorage.es.clone() </span><span class="cov8" title="1">{
+                        if d.raft.State() != raft.Leader </span><span class="cov0" title="0">{
+                                glog.Info("node is not leader, skipping flush")
+                                continue</span>
+                        }
+                        <span class="cov8" title="1">for ruleID, bucket := range d.bucketStorage.es.clone() </span><span class="cov8" title="1">{
                                 glog.Infof("rule flusher ==&gt; %v with size %v canflush ? %v, can flush in %v",
                                         ruleID, len(bucket.Events), bucket.CanFlush(), bucket.CanFlushIn())
                                 if bucket.CanFlush() </span><span class="cov8" title="1">{
@@ -4306,7 +4314,11 @@ func (d *defaultStore) expirer() <span class="cov0" title="0">{
         for </span><span class="cov0" title="0">{
                 select </span>{
                 case &lt;-ticker.C:<span class="cov0" title="0">
-                        if d.executionStorage.getTotalRecordsCount() &gt; d.opt.MaxHistory </span>{<span class="cov0" title="0">
+                        if d.raft.State() != raft.Leader </span><span class="cov0" title="0">{
+                                glog.Info("node is not leader, skipping expire")
+                                continue</span>
+                        }
+                        <span class="cov0" title="0">if d.executionStorage.getTotalRecordsCount() &gt; d.opt.MaxHistory </span>{<span class="cov0" title="0">
                                 // TODO, remove oldest records
                         }</span>
                 }
@@ -4318,11 +4330,6 @@ func (d *defaultStore) applyCMD(cmd Command) error <span class="cov8" title="1">
         if d.raft.State() != raft.Leader </span><span class="cov0" title="0">{
                 return fmt.Errorf("not leader")
         }</span>
-
-        // b, err := json.Marshal(cmd)
-        // if err != nil {
-        //         return err
-        // }
 
         <span class="cov8" title="1">glog.Infof("apply cmd %v\n marshalling", cmd)
 
