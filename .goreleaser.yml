@@ -16,6 +16,7 @@ builds:
     binary: cortex
     goos:
       - linux
+      - darwin
     goarch:
       - amd64
 archive:
