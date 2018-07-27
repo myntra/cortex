@@ -10,13 +10,11 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/golang/glog"
 
-	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/store"
+	"github.com/GeertJohan/go.rice"
 )
 
 // Service encapsulates the http server and the raft store
@@ -62,14 +60,12 @@ func (s *Service) Start() error {
 }
 
 // FileServer starts the file server and return the file
-func FileServer(r chi.Router, path string, root http.FileSystem) {
+func FileServer(r chi.Router, path string) {
 	if strings.ContainsAny(path, "{}*") {
 		panic("FileServer does not permit URL parameters.")
 	}
 
-	fs := http.StripPrefix(path, http.FileServer(root))
-
-	fmt.Println("Starting the file server at", root)
+	fs := http.StripPrefix(path, http.FileServer(rice.MustFindBox("build").HTTPBox()))
 
 	path += "*"
 
@@ -93,12 +89,7 @@ func New(cfg *config.Config) (*Service, error) {
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
 
-	workDir, err := os.Getwd()
-	if err != nil {
-		glog.Fatal("Error in fetching the current working directory")
-	}
-	filesDir := filepath.Join(workDir, "build")
-	FileServer(router, "/ui", http.Dir(filesDir))
+	FileServer(router, "/ui")
 
 	router.Post("/event", svc.leaderProxy(svc.eventHandler))
 	router.Post("/event/sink/site247", svc.site247AlertHandler)
