@@ -148,7 +148,7 @@ function TabContainer({ children, dir }) {
 class App extends Component {
 
   state = {
-    tabValue: 2,
+    tabValue: 0,
     rulesChecked: [],
     scriptsChecked: [],
     ruleDialogOpen: false,
