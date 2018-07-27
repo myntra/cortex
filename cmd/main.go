@@ -64,14 +64,12 @@ func main() {
 	flagRaft := lb.Listener("raft", "tcp", ":4444", "-raft :4444")
 	flagHTTP := lb.Listener("http", "tcp", ":4445", "-http :4445")
 
-	box, err := rice.FindBox("build")
-	if err != nil {
-		glog.Fatal(err)
-	}
+	box := rice.MustFindBox("build")
+
 	glog.Infof("Boxing the build folder - %s", box.Name())
 
 	loader := confita.NewLoader(flags.NewBackend())
-	err = loader.Load(context.Background(), cfg)
+	err := loader.Load(context.Background(), cfg)
 	if err != nil {
 		glog.Infof("%v\n", err)
 		usage()

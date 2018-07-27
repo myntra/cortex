@@ -11,7 +11,7 @@ before:
   - go test ./...
 builds:
   -
-    main: ./cmd/main.go
+    main: ./cmd/
     env:
       - CGO_ENABLED=0
     binary: cortex
