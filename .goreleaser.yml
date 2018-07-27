@@ -3,6 +3,7 @@ before:
   hooks:
   - go get github.com/GeertJohan/go.rice/rice
   - dep ensure -v
+  - cd ui && npm run build
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/dop251/goja
   - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/spf13/afero
   - cd ui && npm run build
