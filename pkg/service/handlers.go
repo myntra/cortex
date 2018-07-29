@@ -206,7 +206,8 @@ func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Service) getRulesExecutions(w http.ResponseWriter, r *http.Request) {
 	ruleID := chi.URLParam(r, "id")
 	records := make([]*executions.Record, 0)
-	records = s.node.GetRuleExectutions(ruleID)
+	rs := s.node.GetRuleExectutions(ruleID)
+	records = append(records, rs...)
 
 	b, err := json.Marshal(records)
 	if err != nil {
@@ -354,7 +355,8 @@ func (s *Service) getScriptHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) getScriptListHandler(w http.ResponseWriter, r *http.Request) {
 	scriptIds := make([]string, 0)
-	scriptIds = s.node.GetScripts()
+	sids := s.node.GetScripts()
+	scriptIds = append(scriptIds, sids...)
 
 	b, err := json.Marshal(&scriptIds)
 	if err != nil {

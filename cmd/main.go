@@ -54,6 +54,7 @@ func init() {
 		DefaultDwellDeadline: 2.5 * 60 * 1000, // 2.5 minutes
 		MaxHistory:           1000,
 		FlushInterval:        1000,
+		SnapshotInterval:     30,
 	}
 }
 

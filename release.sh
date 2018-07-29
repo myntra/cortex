@@ -8,7 +8,7 @@ fi
 
 if brew ls --versions goreleaser > /dev/null; then
   # The package is installed
-  echo "."
+  echo "goreleaser already installed"
 else
     brew install goreleaser
 fi
@@ -17,7 +17,8 @@ fi
     echo "prodction release"
     goreleaser --rm-dist
  else
-    echo "snapshot release"
     goreleaser --rm-dist --snapshot
+    echo "this is a snapshot release. for production release run: ./release prod"
+    echo "run: "
+    echo "./dist/darwin_amd64/cortex -stderrthreshold=INFO"
  fi
-

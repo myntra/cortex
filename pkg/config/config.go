@@ -17,6 +17,7 @@ type Config struct {
 	Dir                  string `config:"dir"`
 	JoinAddr             string `config:"join"`
 	FlushInterval        uint64 `config:"flush_interval"`
+	SnapshotInterval     int    `config:"snapshot_interval"`
 	DefaultDwell         uint64 `config:"dwell"`
 	DefaultDwellDeadline uint64 `config:"dwell_deadline"`
 	DefaultMaxDwell      uint64 `config:"max_dwell"`
@@ -85,6 +86,10 @@ func (c *Config) Validate() error {
 
 	if c.FlushInterval == 0 {
 		return fmt.Errorf("flush_interval is not set")
+	}
+
+	if c.SnapshotInterval == 0 {
+		return fmt.Errorf("snapshot_interval in minutes is not set")
 	}
 
 	if c.DefaultDwell == 0 {

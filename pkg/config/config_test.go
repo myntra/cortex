@@ -21,6 +21,7 @@ func TestConfig(t *testing.T) {
 		NodeID:               "node0",
 		Dir:                  "./data",
 		JoinAddr:             "",
+		SnapshotInterval:     30,
 		DefaultDwell:         3 * 60 * 1000,   // 3 minutes
 		DefaultMaxDwell:      6 * 60 * 1000,   // 6 minutes
 		DefaultDwellDeadline: 2.5 * 60 * 1000, // 2.5 minutes

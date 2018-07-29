@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 	"net"
 	"net/http"
 	"time"
@@ -19,9 +20,11 @@ import (
 
 // Service encapsulates the http server and the raft store
 type Service struct {
-	srv      *http.Server
-	node     *store.Node
-	listener net.Listener
+	srv              *http.Server
+	node             *store.Node
+	listener         net.Listener
+	snapshotInterval int
+	httpAddr         string
 }
 
 // Shutdown the service
@@ -42,12 +45,14 @@ func (s *Service) Start() error {
 	}
 
 	// start the http service
-	if err := s.srv.Serve(s.listener); err != nil {
-		return err
-	}
+	go func() {
+		if err := s.srv.Serve(s.listener); err != nil {
+			glog.Infof("server closed %v", err)
+		}
+	}()
 
 	go func() {
-		ticker := time.NewTicker(time.Minute * 1)
+		ticker := time.NewTicker(time.Minute * time.Duration(s.snapshotInterval))
 		for {
 			select {
 			case <-ticker.C:
@@ -56,7 +61,22 @@ func (s *Service) Start() error {
 		}
 	}()
 
+	glog.Infof("======> join addr %v%v\n", getOutboundIP(), s.httpAddr)
+	glog.Infof("======> open ui http://%v%v/ui or http://localhost%v/ui\n", getOutboundIP(), s.httpAddr, s.httpAddr)
+
 	return nil
+}
+
+func getOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP
 }
 
 // fileServer starts the file server and return the file
@@ -83,7 +103,9 @@ func New(cfg *config.Config) (*Service, error) {
 	}
 
 	svc := &Service{
-		node: node,
+		node:             node,
+		snapshotInterval: cfg.SnapshotInterval,
+		httpAddr:         cfg.HTTPAddr,
 	}
 
 	router := chi.NewRouter()

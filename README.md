@@ -137,8 +137,16 @@ Rule results can be posted to a configured http endpoint. The remote endpoint sh
 4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
 
 
+## Local Deployment
 
+1. git clone https://github.com/myntra/cortex
+2. ./release.sh
 
+Starts a single node server.
+
+## Production Deployment
+
+TODO
 
 
 
