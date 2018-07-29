@@ -12,9 +12,9 @@ import (
 
 	"strings"
 
+	"github.com/GeertJohan/go.rice"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/store"
-	"github.com/GeertJohan/go.rice"
 )
 
 // Service encapsulates the http server and the raft store
@@ -59,8 +59,8 @@ func (s *Service) Start() error {
 	return nil
 }
 
-// FileServer starts the file server and return the file
-func FileServer(r chi.Router, path string) {
+// fileServer starts the file server and return the file
+func fileServer(r chi.Router, path string) {
 	if strings.ContainsAny(path, "{}*") {
 		panic("FileServer does not permit URL parameters.")
 	}
@@ -90,7 +90,7 @@ func New(cfg *config.Config) (*Service, error) {
 	router.Use(middleware.Recoverer)
 
 	if cfg.EnableFileServer {
-		FileServer(router, "/ui")
+		fileServer(router, "/ui")
 	}
 
 	router.Post("/event", svc.leaderProxy(svc.eventHandler))

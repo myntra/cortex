@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 
+	"github.com/myntra/cortex/pkg/executions"
+
 	"github.com/go-chi/chi"
 	"github.com/golang/glog"
 	"github.com/imdario/mergo"
@@ -183,7 +185,7 @@ func (s *Service) getRuleHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) {
 	privateRules := s.node.GetRules()
 
-	var publicRules []*rules.PublicRule
+	publicRules := make([]*rules.PublicRule, 0)
 
 	for _, privateRule := range privateRules {
 		publicRules = append(publicRules, rules.NewFromPrivate(privateRule))
@@ -203,8 +205,8 @@ func (s *Service) getRulesHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Service) getRulesExecutions(w http.ResponseWriter, r *http.Request) {
 	ruleID := chi.URLParam(r, "id")
-
-	records := s.node.GetRuleExectutions(ruleID)
+	records := make([]*executions.Record, 0)
+	records = s.node.GetRuleExectutions(ruleID)
 
 	b, err := json.Marshal(records)
 	if err != nil {
@@ -215,50 +217,6 @@ func (s *Service) getRulesExecutions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
-
-}
-
-func (s *Service) leaveHandler(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	err := s.node.Leave(id)
-	if err != nil {
-		util.ErrStatus(w, r, "could not leave node ", http.StatusNotFound, err)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-}
-
-func (s *Service) joinHandler(w http.ResponseWriter, r *http.Request) {
-
-	reqBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		util.ErrStatus(w, r, "invalid request body, expected a valid joinRequest", http.StatusNotAcceptable, err)
-		return
-	}
-
-	defer r.Body.Close()
-
-	joinRequest := &util.JoinRequest{}
-	err = json.Unmarshal(reqBody, joinRequest)
-	if err != nil {
-		util.ErrStatus(w, r, "joinRequest parsing failed", http.StatusNotAcceptable, err)
-		return
-	}
-
-	err = joinRequest.Validate()
-	if err != nil {
-		util.ErrStatus(w, r, "joinRequest validation failed", http.StatusNotAcceptable, err)
-		return
-	}
-
-	err = s.node.Join(joinRequest.NodeID, joinRequest.Addr)
-	if err != nil {
-		util.ErrStatus(w, r, "joinining failed", http.StatusNotAcceptable, err)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
 }
 
@@ -395,7 +353,8 @@ func (s *Service) getScriptHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) getScriptListHandler(w http.ResponseWriter, r *http.Request) {
-	scriptIds := s.node.GetScripts()
+	scriptIds := make([]string, 0)
+	scriptIds = s.node.GetScripts()
 
 	b, err := json.Marshal(&scriptIds)
 	if err != nil {
@@ -441,4 +400,48 @@ func (s *Service) site247AlertHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(b)
+}
+
+func (s *Service) leaveHandler(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	err := s.node.Leave(id)
+	if err != nil {
+		util.ErrStatus(w, r, "could not leave node ", http.StatusNotFound, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Service) joinHandler(w http.ResponseWriter, r *http.Request) {
+
+	reqBody, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body, expected a valid joinRequest", http.StatusNotAcceptable, err)
+		return
+	}
+
+	defer r.Body.Close()
+
+	joinRequest := &util.JoinRequest{}
+	err = json.Unmarshal(reqBody, joinRequest)
+	if err != nil {
+		util.ErrStatus(w, r, "joinRequest parsing failed", http.StatusNotAcceptable, err)
+		return
+	}
+
+	err = joinRequest.Validate()
+	if err != nil {
+		util.ErrStatus(w, r, "joinRequest validation failed", http.StatusNotAcceptable, err)
+		return
+	}
+
+	err = s.node.Join(joinRequest.NodeID, joinRequest.Addr)
+	if err != nil {
+		util.ErrStatus(w, r, "joinining failed", http.StatusNotAcceptable, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
 }
