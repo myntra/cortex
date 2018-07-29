@@ -3,7 +3,7 @@
 creating/resolving incidents/alerts or for doing root cause analysis.
 
 - Built-in regex matcher for capturing events into groups(*here called as a bucket*). 
-- Built-in ES6 javascript interpreter for executing correlation logic on buckets.
+- Built-in ES6 javascript interpreter(https://docs.k6.io/docs/modules) for executing correlation logic on buckets.
 - React UI for creating new rules, correlation scripts, list of rule execution history and a playground to simulate correlation executions.
 - REST API crud for rules, scripts and execution history.
 - Cloudevents input and output(https://cloudevents.io/).
