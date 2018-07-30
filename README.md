@@ -11,8 +11,11 @@ creating/resolving incidents/alerts or for doing root cause analysis.
 - Single fat self-supervising binary using https://github.com/crawshaw/littleboss .
 - MessagePack encoding/decoding for raft entries using https://github.com/tinylib/msgp .
 
+The project is **alpha** quality and not yet ready for production.
 
-The project is *alpha* quality and not yet ready for production.
+## Summary: 
+
+*Find relationship between N events received at M different points in time using regex matchers and javascript*
 
 To know more about event correlation in general, please read: https://en.wikipedia.org/wiki/Event_correlation
 
