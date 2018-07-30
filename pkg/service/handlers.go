@@ -341,7 +341,13 @@ func (s *Service) getScriptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, err := json.Marshal(&script)
+	b, err := json.Marshal(struct {
+		ID   string `json:"id"`
+		Data string `json:"data"`
+	}{
+		ID:   script.ID,
+		Data: string(script.Data),
+	})
 	if err != nil {
 		util.ErrStatus(w, r, "error writing script data ", http.StatusNotFound, err)
 		return
