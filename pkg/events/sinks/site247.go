@@ -8,6 +8,7 @@ import (
 	"github.com/satori/go.uuid"
 )
 
+// Site247Alert structure for site24x7 alert
 type Site247Alert struct {
 	MonitorName          string `json:"MONITORNAME,omitempty"`
 	MonitorGroupName     string `json:"MONITOR_GROUPNAME,omitempty"`
@@ -24,7 +25,6 @@ type Site247Alert struct {
 	OutageTimeUnixFormat int    `json:"OUTAGE_TIME_UNIX_FORMAT,omitempty"`
 	RCALink              string `json:"RCA_LINK,omitempty"`
 }
-
 
 // EventFromSite247 converts alerts sent from site24x7 into cloud events
 func EventFromSite247(alert Site247Alert) *events.Event {

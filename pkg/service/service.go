@@ -117,6 +117,7 @@ func New(cfg *config.Config) (*Service, error) {
 
 	router.Post("/event", svc.leaderProxy(svc.eventHandler))
 	router.Post("/event/sink/site247", svc.site247AlertHandler)
+	router.Post("/event/sink/icinga", svc.icingaAlertHandler)
 
 	router.Get("/rules", svc.getRulesHandler)
 	router.Get("/rules/{id}", svc.getRuleHandler)
