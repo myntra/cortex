@@ -3,10 +3,9 @@ package sinks
 import (
 	"fmt"
 	"testing"
-
 )
 
-var alert = Site247Alert{
+var site247Alert = Site247Alert{
 	MonitorName:          "brand_test",
 	MonitorGroupName:     "search",
 	SearchPollFrequency:  1,
@@ -24,12 +23,12 @@ var alert = Site247Alert{
 }
 
 func TestEventFromSite247(t *testing.T) {
-	event := EventFromSite247(alert)
-	if event.EventType != fmt.Sprintf("site247.%s.%s", alert.MonitorGroupName, alert.MonitorName) {
-		t.Errorf("Event type not matching. expected : %s, got: %s", fmt.Sprintf("site247.%s.%s", alert.MonitorGroupName, alert.MonitorName), event.EventType)
+	event := EventFromSite247(site247Alert)
+	if event.EventType != fmt.Sprintf("site247.%s.%s", site247Alert.MonitorGroupName, site247Alert.MonitorName) {
+		t.Errorf("Event type not matching. expected : %s, got: %s", fmt.Sprintf("site247.%s.%s", site247Alert.MonitorGroupName, site247Alert.MonitorName), event.EventType)
 	}
-	if event.Data != alert {
-		t.Errorf("Event data not matching. expected : %v, got: %v", alert, event.Data)
+	if event.Data != site247Alert {
+		t.Errorf("Event data not matching. expected : %v, got: %v", site247Alert, event.Data)
 	}
 	t.Log("TestEventFromSite247 completed")
 }
