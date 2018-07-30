@@ -22,6 +22,15 @@ To know more about event correlation in general, please read: https://en.wikiped
 - FAAS
 - Incidents Management
 
+## How it works:
+
+Cortex runs the following steps to achieve event corrrelation:
+
+1. **Match** : incoming alert --> (convert from site 24x7/icinga ) --> (match rule) --> **Collect**
+2. **Collect** --> (add to the rule bucket which *dwells* around until the configured time) -->  **Execute**
+3. **Execute** --> (flush after Dwell period) --> (execute configured script) --> *Post*
+4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
+
 ## Rules
 
 A rule contains an array of patterns used to capture events in a *bucket*
@@ -128,15 +137,6 @@ Rule results can be posted to a configured http endpoint. The remote endpoint sh
 "hookEndpoint": "http://localhost:3000/testrule",
 "hookRetry": 2
 ```
-
-## How it works:
-
-Cortex runs the following steps to achieve event corrrelation:
-
-1. **Match** : incoming alert --> (convert from site 24x7/icinga ) --> (match rule) --> **Collect**
-2. **Collect** --> (add to the rule bucket which *dwells* around until the configured time) -->  **Execute**
-3. **Execute** --> (flush after Dwell period) --> (execute configured script) --> *Post*
-4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
 
 
 ## Local Deployment
