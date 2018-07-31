@@ -88,7 +88,7 @@ func (d *defaultStore) executor() {
 					noScriptResult = true
 				}
 				if _, err := url.ParseRequestURI(rb.Rule.HookEndpoint); err != nil {
-					glog.Infof("Not attempting the retries as the hook endpoint is not valid", err)
+					glog.Info("Invalid HookEndpoint. Skipping post request")
 				} else {
 					if noScriptResult {
 						statusCode = util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
