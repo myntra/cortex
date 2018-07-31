@@ -2,7 +2,10 @@ package sinks
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
+
+	"github.com/fatih/structs"
 )
 
 var icingaAlert = IcingaAlert{
@@ -24,7 +27,7 @@ func TestEventFromIcinga(t *testing.T) {
 	if event.EventType != fmt.Sprintf("icinga.%s.%s.%s", icingaAlert.ServiceDisplayName, icingaAlert.HostDisplayName, icingaAlert.ServiceOutput) {
 		t.Errorf("Event type not matching. expected : %s, got: %s", fmt.Sprintf("icinga.%s.%s.%s", icingaAlert.ServiceDisplayName, icingaAlert.HostDisplayName, icingaAlert.ServiceOutput), event.EventType)
 	}
-	if event.Data != icingaAlert {
+	if !reflect.DeepEqual(event.Data, structs.New(icingaAlert).Map()) {
 		t.Errorf("Event data not matching. expected : %v, got: %v", icingaAlert, event.Data)
 	}
 	t.Log("TestEventFromIcinga completed")

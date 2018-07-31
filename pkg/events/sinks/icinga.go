@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/fatih/structs"
 	"github.com/myntra/cortex/pkg/events"
 )
 
@@ -26,14 +27,14 @@ type IcingaAlert struct {
 func EventFromIcinga(alert IcingaAlert) *events.Event {
 	event := events.Event{
 		Source:             "icinga",
-		Data:               alert,
+		Data:               structs.New(alert).Map(),
 		ContentType:        "application/json",
 		EventTypeVersion:   "1.0",
 		CloudEventsVersion: "0.1",
 		SchemaURL:          "",
 		EventID:            generateUUID().String(),
 		EventTime:          time.Now(),
-		EventType:          fmt.Sprintf("icinga.%s.%s.%s", alert.ServiceDisplayName, alert.HostDisplayName,alert.ServiceOutput),
+		EventType:          fmt.Sprintf("icinga.%s.%s.%s", alert.ServiceDisplayName, alert.HostDisplayName, alert.ServiceOutput),
 	}
 	return &event
 }

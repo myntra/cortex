@@ -23,6 +23,9 @@ import (
 	"bytes"
 	"fmt"
 
+	"reflect"
+
+	"github.com/fatih/structs"
 	"github.com/imdario/mergo"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events/sinks"
@@ -698,14 +701,6 @@ func TestSite247Handler(t *testing.T) {
 		err = json.Unmarshal(body, &eventBody)
 		require.NoError(t, err)
 
-		byteData, err := json.Marshal(eventBody.Data)
-		require.NoError(t, err)
-
-		var eventData sinks.Site247Alert
-		err = json.Unmarshal(byteData, &eventData)
-		require.NoError(t, err)
-		require.True(t, eventData == *testalertsite247)
-
 		require.True(t, eventBody.EventType == fmt.Sprintf("site247.%s.%s",
 			testalertsite247.MonitorGroupName, testalertsite247.MonitorName))
 
@@ -735,16 +730,10 @@ func TestIcinga247Handler(t *testing.T) {
 		err = json.Unmarshal(body, &eventBody)
 		require.NoError(t, err)
 
-		byteData, err := json.Marshal(eventBody.Data)
-		require.NoError(t, err)
-
-		var eventData sinks.IcingaAlert
-		err = json.Unmarshal(byteData, &eventData)
-		require.NoError(t, err)
-		require.True(t, eventData == *testIcingaAlert)
+		require.True(t, reflect.DeepEqual(eventBody.Data, structs.New(testIcingaAlert).Map()))
 
 		require.True(t, eventBody.EventType == fmt.Sprintf("icinga.%s.%s.%s", testIcingaAlert.ServiceDisplayName,
-							testIcingaAlert.HostDisplayName, testIcingaAlert.ServiceOutput))
+			testIcingaAlert.HostDisplayName, testIcingaAlert.ServiceOutput))
 
 	})
 }
