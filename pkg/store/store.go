@@ -16,6 +16,7 @@ import (
 
 	"github.com/myntra/cortex/pkg/js"
 	"github.com/myntra/cortex/pkg/util"
+	"net/url"
 )
 
 const (
@@ -82,13 +83,18 @@ func (d *defaultStore) executor() {
 				statusCode := 0
 				var noScriptResult bool
 				result := js.Execute(d.getScript(rb.Rule.ScriptID), rb)
+				glog.Infof("Result of the script execution \n%v", result)
 				if result == nil {
 					noScriptResult = true
 				}
-				if noScriptResult {
-					statusCode = util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+				if _, err := url.ParseRequestURI(rb.Rule.HookEndpoint); err != nil {
+					glog.Infof("Not attempting the retries as the hook endpoint is not valid", err)
 				} else {
-					statusCode = util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+					if noScriptResult {
+						statusCode = util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+					} else {
+						statusCode = util.RetryPost(result, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
+					}
 				}
 
 				id := uuid.NewV4()
