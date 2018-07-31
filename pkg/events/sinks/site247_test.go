@@ -2,7 +2,10 @@ package sinks
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
+
+	"github.com/fatih/structs"
 )
 
 var site247Alert = Site247Alert{
@@ -27,7 +30,7 @@ func TestEventFromSite247(t *testing.T) {
 	if event.EventType != fmt.Sprintf("site247.%s.%s", site247Alert.MonitorGroupName, site247Alert.MonitorName) {
 		t.Errorf("Event type not matching. expected : %s, got: %s", fmt.Sprintf("site247.%s.%s", site247Alert.MonitorGroupName, site247Alert.MonitorName), event.EventType)
 	}
-	if event.Data != site247Alert {
+	if !reflect.DeepEqual(event.Data, structs.New(site247Alert).Map()) {
 		t.Errorf("Event data not matching. expected : %v, got: %v", site247Alert, event.Data)
 	}
 	t.Log("TestEventFromSite247 completed")

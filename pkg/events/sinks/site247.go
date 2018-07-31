@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/fatih/structs"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/satori/go.uuid"
 )
@@ -30,7 +31,7 @@ type Site247Alert struct {
 func EventFromSite247(alert Site247Alert) *events.Event {
 	event := events.Event{
 		Source:             "site247",
-		Data:               alert,
+		Data:               structs.New(alert).Map(),
 		ContentType:        "application/json",
 		EventTypeVersion:   "1.0",
 		CloudEventsVersion: "0.1",
