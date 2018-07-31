@@ -98,7 +98,7 @@ const uiSchemaEvent = {
     "ui:widget": "textarea"
   },
   delay: {
-    "ui:help": "Hint: Delay is for submission delay and it's not part of cloudevents.io spec"
+    "ui:help": "Hint: Delay in sec's for submission delay and it's not part of cloudevents.io spec"
   },
   "ui:widget": "string",
   "ui:help": "Hint: Create event with delay in seconds associated with it"
@@ -252,24 +252,21 @@ class Sandbox extends Component {
       let time = parseInt(event.delay) * 1000;
       setTimeout(function(jsonData) {
         // API calls for updating events
-        fetch('/events', {
+        fetch('/event', {
           method: "POST",
           body: JSON.stringify(jsonData)
         })
         .then(function (response) {
           if (response.ok) {
-            return response.json();
+            let resultSet = result;
+            resultSet.push({"id":jsonData.eventID,"output":" Successfully called API with delay of " + time/1000 + " secs"});
+            self.setState({
+              result:resultSet
+            })
+            console.log("Updated successfully");
           } else {
             throw new Error('Something went wrong. Unable to push event');
           }
-        })
-        .then(function (data) {
-          let resultSet = result;
-          resultSet.push({"id":jsonData.eventID,"output":" Successfully called API with delay of " + time/1000 + " secs"});
-          self.setState({
-            result:resultSet
-          })
-          console.log("Updated successfully", data);
         })
         .catch((error) => {
           let resultSet = result;
@@ -405,7 +402,7 @@ class Sandbox extends Component {
             }
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => this.setState({ resultFlag: false })}
+            <Button onClick={() => this.setState({ resultFlag: false,result:[] })}
               style={{fontSize:'12px'}} 
               color="primary">
               Close

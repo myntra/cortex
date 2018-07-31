@@ -27,7 +27,9 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import AceEditor from 'react-ace';
+import JSONTree from 'react-json-tree'
 import TablePaginated from './TablePaginated';
+import base64 from 'base-64';
 
 import 'brace/mode/javascript';
 import 'brace/theme/github';
@@ -64,7 +66,7 @@ const styles = theme => ({
 const schema = {
   type: "object",
   title: "",
-  scriptID: "",
+  script_id: "",
   hook_endpoint: "",
   hook_retry: "",
   event_type_patterns: "",
@@ -74,22 +76,22 @@ const schema = {
   required: ["title", "event_type_patterns"],
   properties: {
     title: { type: "string", title: "Title", default: "A new rule" },
-    scriptID: { type: "string", title: "Script", default: "default.js" },
+    script_id: { type: "string", title: "Script", default: "default.js" },
     hook_endpoint: { type: "string", title: "Hook Endpoint", default: "http://localhost:4000" },
-    hook_retry: { type: "string", title: "Hook Retry", default: "2" },
+    hook_retry: { type: "number", title: "Hook Retry", default: 2 },
     event_type_patterns: { type: "string", title: "Match Event Types", default: "com.acme.node1.cpu,com.apple.node2.cpu" },
-    dwell: { type: "string", title: "Wait Window(seconds)", default: "120" },
-    dwell_deadline: { type: "string", title: "Wait Window Threshold(seconds)", default: "100" },
-    max_dwell: { type: "string", title: "Maximum Wait Window(seconds)", default: "240" }
+    dwell: { type: "number", title: "Wait Window(seconds)", default: 120 },
+    dwell_deadline: { type: "number", title: "Wait Window Threshold(seconds)", default: 100 },
+    max_dwell: { type: "number", title: "Maximum Wait Window(seconds)", default: 240 }
   }
-};
+}
 
 const scriptSchema = {
   type: "object",
-  scriptID: "",
-  required: ["scriptID"],
+  id: "",
+  required: ["id"],
   properties: {
-    scriptID: { type: "string", title: "Script", default: "" }
+    id: { type: "string", title: "Script ID", default: "" }
   }
 };
 
@@ -100,6 +102,9 @@ const uiSchema = {
 };
 
 const uiSchemaScript = {
+  Data: {
+    "ui:widget": "textarea"
+  },
   "ui:widget": "string",
   "ui:help": "Hint: like default.js"
 };
@@ -108,6 +113,8 @@ const log = (type) => console.log.bind(console, type);
 
 const RuleCard = (props) => {
   const { classes, rule, handleChangeEvent, handleSubmitEvent, handlePannelExpansion } = props;
+  let updatedRule = rule;
+  updatedRule.event_type_patterns = rule.event_type_patterns.toString().split().join(",")
   return (
     <ExpansionPanel onChange={(event, flag) => handlePannelExpansion(event, flag, rule.id)}>
       <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
@@ -118,7 +125,7 @@ const RuleCard = (props) => {
           <Form
             uiSchema={uiSchema}
             schema={schema}
-            formData={rule}
+            formData={updatedRule}
             onChange={(event) => handleChangeEvent(event, rule.id)}
             onSubmit={(event) => handleSubmitEvent(event, rule.id)}
             onError={log("errors")} />
@@ -131,8 +138,8 @@ const RuleCard = (props) => {
 const ScriptCard = (props) => {
   const { classes, script, handleScriptSelection } = props;
   return (
-    <Paper className={classes.paper} onClick={() => handleScriptSelection(script.id)}>
-      <Typography variant="title" > {script.id} </Typography>
+    <Paper className={classes.paper} onClick={() => handleScriptSelection(script)}>
+      <Typography variant="title" > {script} </Typography>
     </Paper>
   )
 }
@@ -154,12 +161,14 @@ class App extends Component {
     ruleDialogOpen: false,
     scriptDialogOpen: false,
     ruleList: [],
+    scriptIDList:[],
     scriptList: [],
     newRule: {},
     newScript: {},
     expansionFlag: false,
     scriptText: "",
-    scriptID: ""
+    scriptID: "",
+    history:""
   }
 
   componentDidMount() {
@@ -197,7 +206,31 @@ class App extends Component {
         }
       })
       .then(function (data) {
-        self.setState({ scriptList: data })
+        self.setState({ scriptIDList: data })
+      })
+      .catch((error) => {
+        alert(error);
+      })
+  }
+
+  fetchHistory = (flag, id) => {
+    let self = this;
+    let url = "/rules/" + id + "/executions" 
+    fetch(url)
+      .then(function (response) {
+        if (response.ok) {
+          return response.json();
+        }
+        else {
+          throw new Error('Something went wrong. Unable to fetch list of rules')
+        }
+      })
+      .then(function (data) {
+        self.setState({
+          selectedID: id,
+          expansionFlag: flag,
+          history:data
+        })
       })
       .catch((error) => {
         alert(error);
@@ -270,9 +303,30 @@ class App extends Component {
   handleRuleDialogSave = () => {
     let self = this;
     const { newRule } = this.state
+    if(Object.keys(newRule).length === 0){
+      alert("Default rule cannot be used. Sample data is just for reference");
+      return
+    }
+    let eventPatterns = [];
+    try {
+      eventPatterns = newRule.event_type_patterns.split(",");
+    } catch (error) {
+      alert("Unable to create string array list for events pattern. Please check event patterns");
+      return
+    }
+    let json = {
+      "title": newRule.title,
+      "script_id": newRule.script_id,
+      "hook_endpoint": newRule.hook_endpoint,
+      "hook_retry": parseInt(newRule.hook_retry),
+      "event_type_patterns": eventPatterns,
+      "dwell": parseInt(newRule.dwell),
+      "dwell_deadline": parseInt(newRule.dwell_deadline),
+      "max_dwell": parseInt(newRule.max_dwell)
+    }
     fetch('/rules', {
       method: "POST",
-      body: JSON.stringify(newRule)
+      body: JSON.stringify(json)
     })
       .then(function (response) {
         self.setState({ ruleDialogOpen: false });
@@ -292,35 +346,36 @@ class App extends Component {
   }
 
   handleScriptDialogSave = () => {
-    console.log('Save script')
     let self = this;
     const { newScript } = this.state
+    let defaultFunc =
+    `import http from "k6/http";
+    // Reference: https://docs.k6.io/docs/http-requests
+    let result = null;
+    export default function(bucket) {
+        console.log(bucket) 
+    }`;
+    let obj = {
+      id : newScript.id,
+      Data : base64.encode(defaultFunc)
+    }
+    console.log('Save script', obj);
     fetch('/scripts', {
       method: "POST",
-      body: JSON.stringify(newScript)
+      body: JSON.stringify(obj)
     })
       .then(function (response) {
         if (response.ok) {
+          console.log("Updated successfully");
+          self.fetchScripts()
           self.setState({ scriptDialogOpen: false });
-          return response.json();
         } else {
           throw new Error('Something went wrong. Unable to create new script');
         }
       })
-      .then(function (data) {
-        console.log("Updated successfully", data);
-        self.fetchScripts()
-      })
       .catch((error) => {
         alert(error);
       });
-  }
-
-  handleRuleExpansion = (event, flag, id) => {
-    this.setState({
-      selectedID: id,
-      expansionFlag: flag
-    })
   }
 
   handleRuleChange = (event, id) => {
@@ -338,40 +393,55 @@ class App extends Component {
   }
 
   handleRuleSubmit = (event, id) => {
+    let self = this;
     const { ruleList } = this.state
-    let json;
+    let obj;
     ruleList.forEach((item) => {
       if (item.id === id) {
-        json = item
+        obj = item
       }
     })
-    if (!json) {
+    if (!obj) {
       console.log("JSON udefined", id, ruleList)
       alert("Found no data to update rule")
       return;
     }
-    console.log("Rule Update", json)
+    let eventPatterns = [];
+    try {
+      eventPatterns = obj.event_type_patterns.split(",");
+    } catch (error) {
+      alert("Unable to create string array list for events pattern. Please check event patterns");
+      return
+    }
+    let json = {
+      "id":obj.id,
+      "title": obj.title,
+      "script_id": obj.script_id,
+      "hook_endpoint": obj.hook_endpoint,
+      "hook_retry": parseInt(obj.hook_retry),
+      "event_type_patterns": eventPatterns,
+      "dwell": parseInt(obj.dwell),
+      "dwell_deadline": parseInt(obj.dwell_deadline),
+      "max_dwell": parseInt(obj.max_dwell)
+    }
     fetch('/rules', {
       method: "PUT",
       body: JSON.stringify(json)
     })
-    .then(function (response) {
-      if (response.ok) {
-        return response.json();
-      } else {
-        throw new Error('Something went wrong. Unable to update rule content');
-      }
-    })
-    .then(function (data) {
-      console.log("Updated successfully", data);
-    })
-    .catch((error) => {
-      alert(error);
-    });
+      .then(function (response) {
+        if (response.ok) {
+          self.fetchRules();
+          console.log("Updated successfully");
+        } else {
+          throw new Error('Something went wrong. Unable to update rule content');
+        }
+      })
+      .catch((error) => {
+        alert(error);
+      });
   }
 
   handleRuleDelete = () => {
-    console.log('rulesChecked', this.state.rulesChecked)
     let self = this;
     const { rulesChecked } = this.state
     if (rulesChecked.length < 1) {
@@ -382,49 +452,48 @@ class App extends Component {
       fetch(url, {
         method: "DELETE"
       })
-      .then(function (response) {
-        if (response.ok) {
-          return response.json();
-        } else {
-          throw new Error('Something went wrong. Unable to delete rule ' + item);
-        }
-      })
-      .then(function (data) {
-        console.log("Updated successfully", data);
-        self.fetchRules()
-      })
-      .catch((error) => {
-        alert(error);
-      })
+        .then(function (response) {
+          if (response.ok) {
+            console.log("Updated successfully");
+            self.fetchRules()
+          } else {
+            throw new Error('Something went wrong. Unable to delete rule ' + item);
+          }
+        })
+        .catch((error) => {
+          alert(error);
+        })
     })
   }
 
-  handleScriptChange = (text, event) => {
-    var self = this;
-    let scriptItems = this.state.scriptList.map((item, i) => {
-      if (item.id === self.state.scriptID) {
-        item.Data = self.getBytesFromString(text);
-      }
-      return item
-    })
+  handleScriptChange = (text) => {
     this.setState({
-      scriptText: text,
-      scriptList: scriptItems
+      scriptText: text
     })
   }
 
   handleScriptClick = (id) => {
-    let script;
-    this.state.scriptList.forEach((item) => {
-      if (item.id === id) {
-        script = item;
-      }
-    })
-    let text = this.getStringFromBytes(script.Data)
-    this.setState({
-      scriptID: script.id,
-      scriptText: text
-    })
+    if(id === ""){
+      alert("No id found");
+      return;
+    }
+    let self = this;
+    let url = "/scripts/" + id;
+    fetch(url)
+      .then(function (response) {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error('Something went wrong. Unable to fetch list of scripts');
+        }
+      })
+      .then(function (script) {
+        self.setState({ scriptID: script.id,
+            scriptText: base64.decode(script.data) })
+      })
+      .catch((error) => {
+        alert(error);
+      })
   }
 
   handleScriptDelete = () => {
@@ -438,56 +507,50 @@ class App extends Component {
       fetch(url, {
         method: "DELETE"
       })
-      .then(function (response) {
-        if (response.ok) {
-          return response.json();
-        } else {
-          throw new Error('Something went wrong. Unable to delete script ' + item);
-        }
-      })
-      .then(function (data) {
-        console.log("Updated successfully", data);
-        self.fetchScripts()
-      })
-      .catch((error) => {
-        alert(error);
-      })
+        .then(function (response) {
+          if (response.ok) {
+            console.log("Updated successfully");
+            self.fetchScripts()
+          } else {
+            throw new Error('Something went wrong. Unable to delete script ' + item);
+          }
+        })
+        .catch((error) => {
+          alert(error);
+        })
     })
   }
 
   handleScriptUpdate = () => {
-    const { scriptID, scriptList } = this.state
-    let json;
-    scriptList.forEach((item) => {
-      if (item.id === scriptID) {
-        json = item
-      }
-    })
+    // TODO: Update not working
+    const { scriptID, scriptText } = this.state
+    let json = {
+      id: scriptID,
+      Data: base64.encode(scriptText)
+    }
     if (!json) {
-      console.log("JSON udefined", scriptID, scriptList)
+      console.log("JSON udefined", scriptID, scriptText)
       return;
     }
-    fetch('/scripts/revenue.js', {
+    fetch('/scripts', {
       method: "PUT",
       body: JSON.stringify(json)
     })
-    .then(function (response) {
-      if (response.ok) {
-        return response.json();
-      } else {
-        throw new Error('Something went wrong. Unable to update script content');
-      }
-    })
-    .then(function (data) {
-      console.log("Updated successfully", data);
-    })
-    .catch((error) => {
-      alert(error);
-    })
+      .then(function (response) {
+        if (response.ok) {
+          alert("Updated successfully");
+        } else {
+          throw new Error('Something went wrong. Unable to update script content');
+        }
+      })
+      .catch((error) => {
+        alert(error);
+      })
   }
 
   render() {
     const { classes, theme } = this.props;
+    const { history } = this.state;
     // this.state.ruleList.map((rule, index) => console.log(rule, index))
     return (
       <div className={classes.root}>
@@ -511,12 +574,12 @@ class App extends Component {
           </DialogContent>
           <DialogActions>
             <Button onClick={this.handleRuleDialogClose}
-              style={{fontSize:'12px'}} 
+              style={{ fontSize: '12px' }}
               color="primary">
               Cancel
               </Button>
             <Button onClick={this.handleRuleDialogSave}
-              style={{fontSize:'12px'}}
+              style={{ fontSize: '12px' }}
               color="primary" autoFocus>
               Save
               </Button>
@@ -562,7 +625,7 @@ class App extends Component {
           indicatorColor="primary"
           textColor="primary"
           onChange={this.handleTabChange}
-          style={{ fontSize: '24px'}}
+          style={{ fontSize: '24px' }}
           centered
         >
           <Tab label="Rules" />
@@ -607,7 +670,7 @@ class App extends Component {
                       </Grid>
                       <Grid item xs={10} >
                         <RuleCard key={index}
-                          handlePannelExpansion={(event, flag, id) => this.handleRuleExpansion(event, flag, id)}
+                          handlePannelExpansion={(event, flag, id) => this.fetchHistory(flag, id)}
                           handleChangeEvent={(event, id) => this.handleRuleChange(event, id)}
                           handleSubmitEvent={(event, id) => this.handleRuleSubmit(event, id)}
                           classes={classes} rule={rule} />
@@ -619,7 +682,11 @@ class App extends Component {
               <Grid item xs>
                 {
                   (this.state.expansionFlag) ?
-                    <TablePaginated />
+                    <div style={{fontSize:"12px"}}>
+                      {/* <TablePaginated /> */}
+                      <h1>Execution History</h1>
+                      <JSONTree data={history} />
+                    </div>
                     : false
                 }
               </Grid>
@@ -645,17 +712,17 @@ class App extends Component {
             <Grid container spacing={24}>
               <Grid item xs={4}>
                 <List>
-                  {this.state.scriptList.map((script, index) => (
+                  {this.state.scriptIDList.map((script, index) => (
                     <Grid key={index} container>
                       <Grid item xs={2}>
                         <ListItem
                           key={index}
                           role={undefined}
-                          onClick={() => this.handleScriptCheckToggle(script.id)}
+                          onClick={() => this.handleScriptCheckToggle(script)}
                           className={classes.listItem}
                         >
                           <Checkbox
-                            checked={this.state.scriptsChecked.indexOf(script.id) !== -1}
+                            checked={this.state.scriptsChecked.indexOf(script) !== -1}
                             tabIndex={-1}
                             disableRipple
                           />
@@ -677,9 +744,10 @@ class App extends Component {
                       theme="github"
                       name="blah2"
                       onLoad={this.onLoad}
-                      onChange={(text, event) => this.handleScriptChange(text, event)}
+                      onChange={(text, event) => this.handleScriptChange(text)}
                       fontSize={14}
                       showPrintMargin={true}
+                      style={{width:'100%'}}
                       showGutter={true}
                       highlightActiveLine={true}
                       value={this.state.scriptText}
