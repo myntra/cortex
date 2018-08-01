@@ -19,6 +19,13 @@ The project is **alpha** quality and not yet ready for production.
 
 To know more about event correlation in general, please read: https://en.wikipedia.org/wiki/Event_correlation
 
+### Similar Commercial Products
+
+1. https://console.bluemix.net/catalog/services/event-management
+2. https://www.bigpanda.io/blog/algorithmic-alert-correlation/
+3. https://docs.servicenow.com/bundle/kingston-it-operations-management/page/product/event-management/concept/c_EMEventCorrelationRules.html
+
+
 ## Use Cases
 - Alerts/Events Correlation
 - Event Gateway
@@ -152,14 +159,6 @@ Starts a single node server.
 ## Production Deployment
 
 TODO
-
-
-## Similar Commercial Products
-
-1. https://console.bluemix.net/catalog/services/event-management
-2. https://www.bigpanda.io/blog/algorithmic-alert-correlation/
-3. https://docs.servicenow.com/bundle/kingston-it-operations-management/page/product/event-management/concept/c_EMEventCorrelationRules.html
-
 
 
 
