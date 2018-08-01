@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/fatih/structs"
 	"github.com/myntra/cortex/pkg/events"
 	"github.com/satori/go.uuid"
 )
 
+// Site247Alert structure for site24x7 alert
 type Site247Alert struct {
 	MonitorName          string `json:"MONITORNAME,omitempty"`
 	MonitorGroupName     string `json:"MONITOR_GROUPNAME,omitempty"`
@@ -25,12 +27,11 @@ type Site247Alert struct {
 	RCALink              string `json:"RCA_LINK,omitempty"`
 }
 
-
 // EventFromSite247 converts alerts sent from site24x7 into cloud events
 func EventFromSite247(alert Site247Alert) *events.Event {
 	event := events.Event{
 		Source:             "site247",
-		Data:               alert,
+		Data:               structs.New(alert).Map(),
 		ContentType:        "application/json",
 		EventTypeVersion:   "1.0",
 		CloudEventsVersion: "0.1",

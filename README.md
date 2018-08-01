@@ -11,16 +11,35 @@ creating/resolving incidents/alerts or for doing root cause analysis.
 - Single fat self-supervising binary using https://github.com/crawshaw/littleboss .
 - MessagePack encoding/decoding for raft entries using https://github.com/tinylib/msgp .
 
+The project is **alpha** quality and not yet ready for production.
 
-The project is *alpha* quality and not yet ready for production.
+## Summary: 
+
+*Find relationship between N events received at M different points in time using regex matchers and javascript*
 
 To know more about event correlation in general, please read: https://en.wikipedia.org/wiki/Event_correlation
+
+### Similar Commercial Products
+
+1. https://console.bluemix.net/catalog/services/event-management
+2. https://www.bigpanda.io/blog/algorithmic-alert-correlation/
+3. https://docs.servicenow.com/bundle/kingston-it-operations-management/page/product/event-management/concept/c_EMEventCorrelationRules.html
+
 
 ## Use Cases
 - Alerts/Events Correlation
 - Event Gateway
 - FAAS
 - Incidents Management
+
+## How it works:
+
+Cortex runs the following steps to achieve event corrrelation:
+
+1. **Match** : incoming alert --> (convert from site 24x7/icinga ) --> (match rule) --> **Collect**
+2. **Collect** --> (add to the rule bucket which *dwells* around until the configured time) -->  **Execute**
+3. **Execute** --> (flush after Dwell period) --> (execute configured script) --> *Post*
+4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
 
 ## Rules
 
@@ -129,13 +148,6 @@ Rule results can be posted to a configured http endpoint. The remote endpoint sh
 "hookRetry": 2
 ```
 
-## Steps:
-
-1. **Match** : alert --> (convert from site 24x7/icinga ) --> (match rule) --> **Collect**
-2. **Collect** --> (add to the rule bucket which *dwells* around until the configured time) -->  **Execute**
-3. **Execute** --> (flush after Dwell period) --> (execute configured script) --> *Post*
-4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
-
 
 ## Local Deployment
 
@@ -147,12 +159,6 @@ Starts a single node server.
 ## Production Deployment
 
 TODO
-
-
-
-
-
-
 
 
 

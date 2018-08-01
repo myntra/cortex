@@ -23,6 +23,9 @@ import (
 	"bytes"
 	"fmt"
 
+	"reflect"
+
+	"github.com/fatih/structs"
 	"github.com/imdario/mergo"
 	"github.com/myntra/cortex/pkg/config"
 	"github.com/myntra/cortex/pkg/events/sinks"
@@ -50,6 +53,20 @@ var testalertsite247 = &sinks.Site247Alert{
 	IncidentReason:       "Host Unavailable",
 	OutageTimeUnixFormat: 1532437988741,
 	RCALink:              "https://www.rcalinkdummy.com/somelink",
+}
+
+var testIcingaAlert = &sinks.IcingaAlert{
+	HostAlias:              "hostname-alias",
+	HostAddress:            "1.2.3.4",
+	ServiceState:           "CRITICAL",
+	ServiceOutput:          "connect to address 1.2.3.4 and port 5000: Connection refused",
+	NotificationAuthorName: "",
+	ServiceDisplayName:     "servicename-26378",
+	ServiceDescription:     "servicename-26378",
+	LongDateTime:           "2032-07-30 19:16:14 +0530",
+	NotificationComment:    "",
+	HostDisplayName:        "hostname",
+	NotificationType:       "PROBLEM",
 }
 
 var testevent = &events.Event{
@@ -684,16 +701,39 @@ func TestSite247Handler(t *testing.T) {
 		err = json.Unmarshal(body, &eventBody)
 		require.NoError(t, err)
 
-		byteData, err := json.Marshal(eventBody.Data)
-		require.NoError(t, err)
-
-		var eventData sinks.Site247Alert
-		err = json.Unmarshal(byteData, &eventData)
-		require.NoError(t, err)
-		require.True(t, eventData == *testalertsite247)
-
 		require.True(t, eventBody.EventType == fmt.Sprintf("site247.%s.%s",
 			testalertsite247.MonitorGroupName, testalertsite247.MonitorName))
+
+	})
+}
+
+func TestIcinga247Handler(t *testing.T) {
+	singleService(t, func(url string) {
+		e := httpexpect.New(t, url)
+
+		// post event
+		e.POST("/event/sink/icinga").WithJSON(testIcingaAlert).Expect().Status(http.StatusOK)
+
+		// fetch rule executions
+		s, err := json.Marshal(testIcingaAlert)
+		require.NoError(t, err)
+
+		resp, err := http.Post(url+"/event/sink/icinga", "application/json", bytes.NewReader(s))
+		require.NoError(t, err)
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		defer resp.Body.Close()
+
+		var eventBody events.Event
+		err = json.Unmarshal(body, &eventBody)
+		require.NoError(t, err)
+
+		require.True(t, reflect.DeepEqual(eventBody.Data, structs.New(testIcingaAlert).Map()))
+
+		require.True(t, eventBody.EventType == fmt.Sprintf("icinga.%s.%s.%s", testIcingaAlert.ServiceDisplayName,
+			testIcingaAlert.HostDisplayName, testIcingaAlert.ServiceOutput))
 
 	})
 }
