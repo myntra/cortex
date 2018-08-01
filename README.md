@@ -154,9 +154,11 @@ Starts a single node server.
 TODO
 
 
+## Similar Commercial Products
 
-
-
+1. https://console.bluemix.net/catalog/services/event-management
+2. https://www.bigpanda.io/blog/algorithmic-alert-correlation/
+3. https://docs.servicenow.com/bundle/kingston-it-operations-management/page/product/event-management/concept/c_EMEventCorrelationRules.html
 
 
 
