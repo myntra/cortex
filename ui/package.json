@@ -10,7 +10,7 @@
     "react": "^16.4.1",
     "react-ace": "^6.1.4",
     "react-dom": "^16.4.1",
-    "react-json-tree": "^0.11.0",
+    "react-json-view": "^1.19.1",
     "react-jsonschema-form": "^1.0.3",
     "react-scripts": "1.1.4",
     "react-swipeable-views": "^0.12.15",
