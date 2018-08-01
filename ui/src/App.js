@@ -27,7 +27,6 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import AceEditor from 'react-ace';
-import JSONTree from 'react-json-tree'
 import TablePaginated from './TablePaginated';
 import base64 from 'base-64';
 
@@ -80,9 +79,9 @@ const schema = {
     hook_endpoint: { type: "string", title: "Hook Endpoint", default: "http://localhost:4000" },
     hook_retry: { type: "number", title: "Hook Retry", default: 2 },
     event_type_patterns: { type: "string", title: "Match Event Types", default: "com.acme.node1.cpu,com.apple.node2.cpu" },
-    dwell: { type: "number", title: "Wait Window(seconds)", default: 120 },
-    dwell_deadline: { type: "number", title: "Wait Window Threshold(seconds)", default: 100 },
-    max_dwell: { type: "number", title: "Maximum Wait Window(seconds)", default: 240 }
+    dwell: { type: "number", title: "Dwell Time(seconds)", default: 120 },
+    dwell_deadline: { type: "number", title: "Dwell Deadline(seconds)", default: 100 },
+    max_dwell: { type: "number", title: "Maximum Dwell Time(seconds)", default: 240 }
   }
 }
 
@@ -431,7 +430,7 @@ class App extends Component {
       .then(function (response) {
         if (response.ok) {
           self.fetchRules();
-          console.log("Updated successfully");
+          alert("Updated successfully");
         } else {
           throw new Error('Something went wrong. Unable to update rule content');
         }
@@ -683,9 +682,8 @@ class App extends Component {
                 {
                   (this.state.expansionFlag) ?
                     <div style={{fontSize:"12px"}}>
-                      {/* <TablePaginated /> */}
                       <h1>Execution History</h1>
-                      <JSONTree data={history} />
+                      <TablePaginated data={history} />
                     </div>
                     : false
                 }

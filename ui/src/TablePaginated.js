@@ -14,6 +14,15 @@ import FirstPageIcon from '@material-ui/icons/FirstPage';
 import KeyboardArrowLeft from '@material-ui/icons/KeyboardArrowLeft';
 import KeyboardArrowRight from '@material-ui/icons/KeyboardArrowRight';
 import LastPageIcon from '@material-ui/icons/LastPage';
+import JSONTree from 'react-json-view';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogTitle from '@material-ui/core/DialogTitle';
+import Button from '@material-ui/core/Button';
+import OutlineIcon from '@material-ui/icons/OpenInNew';
+
+// shopping_basket
 
 const actionsStyles = theme => ({
   root: {
@@ -119,23 +128,11 @@ class TablePaginated extends React.Component {
     super(props);
 
     this.state = {
-      data: [
-        createData('Cupcake', 305, 3.7),
-        createData('Donut', 452, 25.0),
-        createData('Eclair', 262, 16.0),
-        createData('Frozen yoghurt', 159, 6.0),
-        createData('Gingerbread', 356, 16.0),
-        createData('Honeycomb', 408, 3.2),
-        createData('Ice cream sandwich', 237, 9.0),
-        createData('Jelly Bean', 375, 0.0),
-        createData('KitKat', 518, 26.0),
-        createData('Lollipop', 392, 0.2),
-        createData('Marshmallow', 318, 0),
-        createData('Nougat', 360, 19.0),
-        createData('Oreo', 437, 18.0),
-      ],
+      data: props.data,
       page: 0,
       rowsPerPage: 5,
+      ruleDialogOpen:false,
+      selectedHistory:""
     };
   }
 
@@ -147,40 +144,124 @@ class TablePaginated extends React.Component {
     this.setState({ rowsPerPage: event.target.value });
   };
 
+  componentWillReceiveProps = (nextProps) => {
+    if(nextProps.data !== this.props.data){
+      this.setState({data:nextProps.data});
+    }
+  }
+
+  handleScriptResult = (data) => {
+    let finalString;
+
+    if(typeof data === "string"){
+      finalString = {
+        result : data
+      }
+    }else if(typeof data === "object" && data !== null){
+      finalString = data;
+    }else{
+      finalString = {
+        result : "No result data"
+      }
+    }
+    this.setState({selectedHistory:finalString,
+      ruleDialogOpen:true})
+  }
+
+  handleBucketResult = (data) => {
+    this.setState({selectedHistory:data,
+      ruleDialogOpen:true})
+  }
+
+  getFormattedDateTime = (utcDateTime) => {
+    let d = new Date(utcDateTime);
+    let dformat = [d.getMonth()+1, d.getDate(), d.getFullYear()].join('/') + ' ' +
+      [d.getHours(), d.getMinutes(), d.getSeconds()].join(':');
+    return dformat;
+  }
+
   render() {
+    let self = this;
+    let colCss = {
+      fontSize:'12px',
+      fontWeight:300,
+      textAlign:'center'
+    }
     const { classes } = this.props;
     const { data, rowsPerPage, page } = this.state;
     const emptyRows = rowsPerPage - Math.min(rowsPerPage, data.length - page * rowsPerPage);
 
     return (
       <Paper className={classes.root} style={{marginTop:'8px'}}>
+        <Dialog
+          fullScreen={false}
+          fullWidth={true}
+          open={this.state.ruleDialogOpen}
+          onClose={()=> this.setState({ruleDialogOpen:false})}
+          aria-labelledby="responsive-dialog-title"
+        >
+          <DialogTitle id="responsive-dialog-title">Bucket Info</DialogTitle>
+          <DialogContent>
+            <JSONTree src={this.state.selectedHistory} />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={()=> this.setState({ruleDialogOpen:false})}
+              style={{ fontSize: '12px' }}
+              color="primary">
+              Close
+              </Button>
+          </DialogActions>
+        </Dialog>
         <div className={classes.tableWrapper}>
           <Table className={classes.table}>
             <TableHead>
               <TableRow>
-                <TableCell component="th" scope="row" style={{fontSize:'12px',fontWeight:600}}>
-                  Rule Name
+                <TableCell component="th" scope="row" style={{fontSize:'12px',
+                  fontWeight:600,
+                  textAlign:'center'}}>
+                  ID
                 </TableCell>
-                <TableCell component="th" numeric style={{fontSize:'12px',fontWeight:600}}>
-                  Date
+                <TableCell component="th" numeric style={{fontSize:'12px',
+                  fontWeight:600,
+                  textAlign:'center'}}>
+                  Event Bucket
                 </TableCell>
-                <TableCell component="th" numeric style={{fontSize:'12px',fontWeight:600}}>
-                  Result
+                <TableCell component="th" numeric style={{fontSize:'12px',
+                  fontWeight:600,
+                  textAlign:'center'}}>
+                  Script Result
+                </TableCell>
+                <TableCell component="th" numeric style={{fontSize:'12px',
+                  fontWeight:600,
+                  textAlign:'center'}}>
+                  Hook Status
+                </TableCell>
+                <TableCell component="th" numeric style={{fontSize:'12px',
+                  fontWeight:600,
+                  width:'25%',
+                  textAlign:'center'}}>
+                  Time
                 </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(n => {
+              {data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row,index) => {
                 return (
-                  <TableRow key={n.id}>
-                    <TableCell component="th" scope="row" style={{fontSize:'12px',fontWeight:300}}>
-                      {n.name}
+                  <TableRow key={row.id}>
+                    <TableCell component="th" scope="row" style={colCss}>
+                      {index  + 1}
                     </TableCell>
-                    <TableCell numeric style={{fontSize:'12px',fontWeight:300}}>
-                      {n.calories}
+                    <TableCell numeric style={colCss} onClick={() => self.handleBucketResult(data.bucket)}>
+                      <OutlineIcon style={{cursor:'pointer',fontSize: '15px'}} className={classes.rightIcon} />
                     </TableCell>
-                    <TableCell numeric style={{fontSize:'12px',fontWeight:300}}>
-                      {n.fat}
+                    <TableCell numeric style={colCss} onClick={() => self.handleScriptResult(row.script_result)}>
+                      <OutlineIcon style={{cursor:'pointer',fontSize: '15px'}} className={classes.rightIcon} />
+                    </TableCell>
+                    <TableCell numeric style={colCss}>
+                      {row.hook_status_code}
+                    </TableCell>
+                    <TableCell numeric style={colCss}>
+                      {self.getFormattedDateTime(row.created_at)}
                     </TableCell>
                   </TableRow>
                 );
