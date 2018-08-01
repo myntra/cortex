@@ -251,7 +251,7 @@ class TablePaginated extends React.Component {
                     <TableCell component="th" scope="row" style={colCss}>
                       {index  + 1}
                     </TableCell>
-                    <TableCell numeric style={colCss} onClick={() => self.handleBucketResult(data.bucket)}>
+                    <TableCell numeric style={colCss} onClick={() => self.handleBucketResult(row.bucket)}>
                       <OutlineIcon style={{cursor:'pointer',fontSize: '15px'}} className={classes.rightIcon} />
                     </TableCell>
                     <TableCell numeric style={colCss} onClick={() => self.handleScriptResult(row.script_result)}>
