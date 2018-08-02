@@ -1,0 +1,20 @@
+language: go
+
+go:
+  - "1.10.x"
+
+os:
+  - linux
+  - osx
+
+install:
+  - go get ./...
+
+script:
+  - go build -v ./...
+  - go test -v ./...
+
+notifications:
+  email:
+    - adnaan.badr@myntra.com
+    - satyam.jain@myntra.com
