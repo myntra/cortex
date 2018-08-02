@@ -20,6 +20,7 @@ type Rule struct {
 	DwellDeadline     uint64   `json:"dwell_deadline"`      // dwell duration threshold after which arriving events expand the dwell window
 	MaxDwell          uint64   `json:"max_dwell"`           // maximum dwell duration including expansion
 	Regexes           []string `json:"regexes,omitempty"`   // generated regex string array from event types
+	Disabled          bool     `json:"disabled,omitempty"`  // if the rule is disabled
 }
 
 // Validate rule data
@@ -39,6 +40,9 @@ func (r *Rule) Validate() error {
 
 // HasMatching checks whether the rule has a matching event type pattern
 func (r *Rule) HasMatching(eventType string) bool {
+	if r.Disabled {
+		return false
+	}
 	for _, regexStr := range r.Regexes {
 		m := matcher.NewCompile(regexStr)
 		if m.HasMatches(eventType) {
@@ -59,6 +63,7 @@ type PublicRule struct {
 	Dwell             uint64   `json:"dwell"`               // dwell duration in milliseconds for events to arrive
 	DwellDeadline     uint64   `json:"dwell_deadline"`      // dwell duration threshold after which arriving events expand the dwell window
 	MaxDwell          uint64   `json:"max_dwell"`           // maximum dwell duration including expansion
+	Disabled          bool     `json:"disabled,omitempty"`  // if the rule is disabled
 }
 
 // NewFromPublic creates a rule from a public rule
@@ -73,6 +78,7 @@ func NewFromPublic(r *PublicRule) *Rule {
 		Dwell:             r.Dwell,
 		DwellDeadline:     r.DwellDeadline,
 		MaxDwell:          r.MaxDwell,
+		Disabled:          r.Disabled,
 	}
 }
 
@@ -88,5 +94,6 @@ func NewFromPrivate(r *Rule) *PublicRule {
 		Dwell:             r.Dwell,
 		DwellDeadline:     r.DwellDeadline,
 		MaxDwell:          r.MaxDwell,
+		Disabled:          r.Disabled,
 	}
 }

@@ -91,11 +91,13 @@ var testRule = rules.Rule{
 	Dwell:             1000,
 	DwellDeadline:     800,
 	MaxDwell:          2000,
+	Disabled:          false,
 }
 
 var testRuleUpdated = rules.Rule{
 	ID:                "123",
 	EventTypePatterns: []string{"apple.prod.icinga.check_disk", "acme.prod.site247.cart_down"},
+	Disabled:          false,
 }
 
 var scriptRequest = ScriptRequest{
@@ -153,6 +155,7 @@ func newTestRule(key string) rules.Rule {
 		Dwell:             30 * 1000,
 		DwellDeadline:     25 * 1000,
 		MaxDwell:          60 * 1000,
+		Disabled:          false,
 	}
 }
 
@@ -382,7 +385,7 @@ func TestRuleMultiService(t *testing.T) {
 			t.Fatal(err)
 		}
 		cloneTestRule.EventTypePatterns = testRuleUpdated.EventTypePatterns
-		// verifiy from node 1
+		// verify from node 1
 		e = httpexpect.New(t, urls[0])
 		e.GET("/rules/" + testRule.ID).Expect().JSON().Equal(cloneTestRule)
 
