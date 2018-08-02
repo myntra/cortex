@@ -127,8 +127,8 @@ func singleNode(t *testing.T, httpAddr, raftAddr string, f func(node *Node)) {
 }
 
 func TestRuleSingleNode(t *testing.T) {
-	raftAddr := ":3878"
-	httpAddr := ":3879"
+	raftAddr := ":11878"
+	httpAddr := ":11879"
 	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 
 		err := node.AddRule(&testRule)
@@ -153,8 +153,8 @@ func TestRuleSingleNode(t *testing.T) {
 }
 
 func TestScriptSingleNode(t *testing.T) {
-	raftAddr := ":4878"
-	httpAddr := ":4879"
+	raftAddr := ":22878"
+	httpAddr := ":22879"
 	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 		script := []byte(`
 			let result = 0;
@@ -182,8 +182,8 @@ func TestScriptSingleNode(t *testing.T) {
 }
 
 func TestOrphanEventSingleNode(t *testing.T) {
-	raftAddr := ":5878"
-	httpAddr := ":5879"
+	raftAddr := ":35878"
+	httpAddr := ":35879"
 	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 		err := node.Stash(&testevent)
 		require.NoError(t, err)
@@ -206,8 +206,8 @@ func TestOrphanEventSingleNode(t *testing.T) {
 }
 
 func TestEventSingleNode(t *testing.T) {
-	raftAddr := ":6878"
-	httpAddr := ":6879"
+	raftAddr := ":46878"
+	httpAddr := ":46879"
 	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 
 		err := node.AddRule(&testRule)
@@ -217,7 +217,7 @@ func TestEventSingleNode(t *testing.T) {
 
 		time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultDwell+3000))
 		records := node.GetRuleExectutions(testRule.ID)
-		require.False(t, len(records) == 0)
+		require.True(t, len(records) > 0, "unexpected execution record")
 		require.True(t, records[0].Bucket.Rule.ID == testRule.ID)
 
 		t.Logf("%+v\n", records[0])
@@ -225,8 +225,8 @@ func TestEventSingleNode(t *testing.T) {
 }
 
 func TestMultipleEventSingleRule(t *testing.T) {
-	raftAddr := ":7878"
-	httpAddr := ":7879"
+	raftAddr := ":27878"
+	httpAddr := ":27879"
 	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 
 		t.Run("Test stash multiple events before dwell time", func(t *testing.T) {
@@ -238,8 +238,13 @@ func TestMultipleEventSingleRule(t *testing.T) {
 			r := rand.New(s)
 			intervals := make(map[int]events.Event)
 
+			var firstInterval uint64
 			for i := 0; i < n; i++ {
+
 				interval := r.Intn(int(myTestRule.DwellDeadline - 100))
+				if i == 0 {
+					firstInterval = uint64(interval)
+				}
 				intervals[interval] = newTestEvent(strconv.Itoa(i), key)
 			}
 
@@ -255,7 +260,7 @@ func TestMultipleEventSingleRule(t *testing.T) {
 			}
 
 			glog.Info("sleeping ...")
-			time.Sleep(time.Millisecond * time.Duration(myTestRule.Dwell+10000))
+			time.Sleep(time.Millisecond * time.Duration(myTestRule.Dwell+firstInterval+3000))
 			glog.Info("sleeping done")
 
 			records := node.GetRuleExectutions(myTestRule.ID)
@@ -321,8 +326,8 @@ func TestNodeSnapshot(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	defer os.RemoveAll(tmpDir)
 
-	raftAddr := ":8878"
-	httpAddr := ":8879"
+	raftAddr := ":28878"
+	httpAddr := ":28879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
 	require.NoError(t, err)
