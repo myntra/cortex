@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 
@@ -470,25 +471,40 @@ func TestSingleEventSingleService(t *testing.T) {
 
 		// wait for rule execution
 
-		time.Sleep(time.Millisecond * time.Duration(testRule.Dwell+3000))
+		var records []*executions.Record
+		operation := func() error {
+			// fetch rule executions
+			resp, err := http.Get(url + "/rules/" + testRule.ID + "/executions")
+			if err != nil {
+				return err
+			}
 
-		// fetch rule executions
-		resp, err := http.Get(url + "/rules/" + testRule.ID + "/executions")
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			defer resp.Body.Close()
+
+			err = json.Unmarshal(body, &records)
+			if err != nil {
+				return err
+			}
+
+			if len(records) == 0 {
+				return fmt.Errorf("unexpected records len")
+			}
+
+			return nil // or an error
+		}
+
+		err := backoff.Retry(operation, backoff.WithMaxRetries(backoff.NewConstantBackOff(time.Second), testRule.MaxDwell*3))
 		require.NoError(t, err)
 
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
+		require.True(t, testRule.ID == records[0].Bucket.Rule.ID)
+		require.True(t, testevent.EventID == records[0].Bucket.Events[0].EventID)
 
-		defer resp.Body.Close()
-
-		var ruleExecutions []*executions.Record
-		err = json.Unmarshal(body, &ruleExecutions)
-		require.NoError(t, err)
-		require.False(t, len(ruleExecutions) == 0)
-		require.True(t, testRule.ID == ruleExecutions[0].Bucket.Rule.ID)
-		require.True(t, testevent.EventID == ruleExecutions[0].Bucket.Events[0].EventID)
-
-		scriptResult, ok := ruleExecutions[0].ScriptResult.(map[string]interface{})
+		scriptResult, ok := records[0].ScriptResult.(map[string]interface{})
 		require.True(t, ok)
 		require.True(t, strings.Contains(scriptResult["Alpha"].(string), "julietest"))
 

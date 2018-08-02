@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/myntra/cortex/pkg/executions"
+
+	"github.com/cenkalti/backoff"
 	"github.com/stretchr/testify/require"
 
 	"github.com/golang/glog"
@@ -215,10 +218,20 @@ func TestEventSingleNode(t *testing.T) {
 		err = node.Stash(&testevent)
 		require.NoError(t, err)
 
-		time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultDwell+3000))
-		records := node.GetRuleExectutions(testRule.ID)
-		require.True(t, len(records) > 0, "unexpected execution record")
-		require.True(t, records[0].Bucket.Rule.ID == testRule.ID)
+		var records []*executions.Record
+		operation := func() error {
+			records = node.GetRuleExectutions(testRule.ID)
+
+			if len(records) == 0 {
+				return fmt.Errorf("")
+			}
+
+			return nil // or an error
+		}
+
+		err = backoff.Retry(operation, backoff.WithMaxRetries(backoff.NewConstantBackOff(time.Second), node.store.opt.DefaultMaxDwell*3))
+		require.NoError(t, err)
+		require.True(t, len(records) == 1, fmt.Sprintf("len is %v", len(records)))
 
 		t.Logf("%+v\n", records[0])
 	})
@@ -310,12 +323,19 @@ func TestMultipleEventSingleRule(t *testing.T) {
 				}(interval, te)
 			}
 
-			glog.Info("sleeping ...")
-			time.Sleep(time.Millisecond * time.Duration(myTestRule.MaxDwell+3000))
-			glog.Info("sleeping done")
+			var records []*executions.Record
+			operation := func() error {
+				records = node.GetRuleExectutions(myTestRule.ID)
 
-			records := node.GetRuleExectutions(myTestRule.ID)
-			require.True(t, len(records) == 1, fmt.Sprintf("len is %v", len(records)))
+				if len(records) == 0 {
+					return fmt.Errorf("")
+				}
+
+				return nil // or an error
+			}
+
+			err = backoff.Retry(operation, backoff.WithMaxRetries(backoff.NewConstantBackOff(time.Second), myTestRule.MaxDwell*3))
+			require.NoError(t, err)
 			require.True(t, len(records[0].Bucket.Events) == 10, fmt.Sprintf("len is %v", len(records[0].Bucket.Events)))
 		})
 
