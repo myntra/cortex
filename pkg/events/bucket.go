@@ -29,6 +29,7 @@ func NewBucket(rule rules.Rule) *Bucket {
 type Bucket struct {
 	Rule         rules.Rule `json:"rule"`
 	Events       []*Event   `json:"events"`
+	FlushLock    bool       `json:"flush_lock"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 	dwellResetAt time.Time

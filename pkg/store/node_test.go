@@ -83,8 +83,8 @@ func singleNode(t *testing.T, f func(node *Node)) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	defer os.RemoveAll(tmpDir)
 
-	raftAddr := ":5878"
-	httpAddr := ":5879"
+	raftAddr := ":4878"
+	httpAddr := ":4879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
 	require.NoError(t, err)

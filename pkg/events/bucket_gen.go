@@ -55,6 +55,11 @@ func (z *Bucket) DecodeMsg(dc *msgp.Reader) (err error) {
 					}
 				}
 			}
+		case "FlushLock":
+			z.FlushLock, err = dc.ReadBool()
+			if err != nil {
+				return
+			}
 		case "UpdatedAt":
 			z.UpdatedAt, err = dc.ReadTime()
 			if err != nil {
@@ -77,9 +82,9 @@ func (z *Bucket) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *Bucket) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+	// map header, size 5
 	// write "Rule"
-	err = en.Append(0x84, 0xa4, 0x52, 0x75, 0x6c, 0x65)
+	err = en.Append(0x85, 0xa4, 0x52, 0x75, 0x6c, 0x65)
 	if err != nil {
 		return
 	}
@@ -109,6 +114,15 @@ func (z *Bucket) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 	}
+	// write "FlushLock"
+	err = en.Append(0xa9, 0x46, 0x6c, 0x75, 0x73, 0x68, 0x4c, 0x6f, 0x63, 0x6b)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.FlushLock)
+	if err != nil {
+		return
+	}
 	// write "UpdatedAt"
 	err = en.Append(0xa9, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74)
 	if err != nil {
@@ -133,9 +147,9 @@ func (z *Bucket) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *Bucket) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 5
 	// string "Rule"
-	o = append(o, 0x84, 0xa4, 0x52, 0x75, 0x6c, 0x65)
+	o = append(o, 0x85, 0xa4, 0x52, 0x75, 0x6c, 0x65)
 	o, err = z.Rule.MarshalMsg(o)
 	if err != nil {
 		return
@@ -153,6 +167,9 @@ func (z *Bucket) MarshalMsg(b []byte) (o []byte, err error) {
 			}
 		}
 	}
+	// string "FlushLock"
+	o = append(o, 0xa9, 0x46, 0x6c, 0x75, 0x73, 0x68, 0x4c, 0x6f, 0x63, 0x6b)
+	o = msgp.AppendBool(o, z.FlushLock)
 	// string "UpdatedAt"
 	o = append(o, 0xa9, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74)
 	o = msgp.AppendTime(o, z.UpdatedAt)
@@ -211,6 +228,11 @@ func (z *Bucket) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					}
 				}
 			}
+		case "FlushLock":
+			z.FlushLock, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				return
+			}
 		case "UpdatedAt":
 			z.UpdatedAt, bts, err = msgp.ReadTimeBytes(bts)
 			if err != nil {
@@ -242,6 +264,6 @@ func (z *Bucket) Msgsize() (s int) {
 			s += z.Events[za0001].Msgsize()
 		}
 	}
-	s += 10 + msgp.TimeSize + 10 + msgp.TimeSize
+	s += 10 + msgp.BoolSize + 10 + msgp.TimeSize + 10 + msgp.TimeSize
 	return
 }

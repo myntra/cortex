@@ -667,10 +667,20 @@ func TestConcurrentMultiEventMultiRuleMultiService(t *testing.T) {
 
 				var ruleExecutions []*executions.Record
 				err = json.Unmarshal(body, &ruleExecutions)
-				glog.Infof("parsed executions %v %v %v", ruleKey, err, len(ruleExecutions))
+				glog.Infof("parsed executions %v %v %v \n", ruleKey, err, len(ruleExecutions))
 				require.NoError(t, err)
-				require.True(t, len(ruleExecutions) > 0)
-				//require.True(t, myTestRule.ID == ruleExecutions[0].Bucket.Rule.ID)
+				require.True(t, len(ruleExecutions) > 0, "rule executions should be greater than 0")
+
+				for _, record := range ruleExecutions {
+					dwellDuration := record.CreatedAt.Sub(record.Bucket.CreatedAt)
+					if dwellDuration < (time.Millisecond * time.Duration(myTestRule.Dwell)) {
+						t.Fatal("received dwell duration is less than the minimum expected dwell duration")
+					}
+
+					if dwellDuration < (time.Millisecond * time.Duration(myTestRule.MaxDwell)) {
+						t.Fatal("received dwell duration is less than the maximum expected dwell duration")
+					}
+				}
 
 				glog.Infof("wait done %v", ruleKey)
 

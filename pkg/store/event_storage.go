@@ -48,6 +48,22 @@ func (e *eventStorage) stash(rule rules.Rule, event *events.Event) error {
 	return nil
 }
 
+func (e *eventStorage) flushLock(ruleID string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if _, ok := e.m[ruleID]; !ok {
+		return fmt.Errorf("bucket with id %v not found", ruleID)
+	}
+
+	// update flush lock
+	bucket := e.m[ruleID]
+	bucket.FlushLock = true
+	e.m[ruleID] = bucket
+
+	return nil
+}
+
 func (e *eventStorage) flushBucket(ruleID string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()

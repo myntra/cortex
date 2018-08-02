@@ -14,9 +14,10 @@ import (
 	"github.com/myntra/cortex/pkg/executions"
 	"github.com/myntra/cortex/pkg/rules"
 
+	"net/url"
+
 	"github.com/myntra/cortex/pkg/js"
 	"github.com/myntra/cortex/pkg/util"
-	"net/url"
 )
 
 const (
@@ -78,7 +79,7 @@ func (d *defaultStore) executor() {
 	for {
 		select {
 		case rb := <-d.executionBucketQueue:
-			glog.Infof("received bucket %+v", rb)
+			glog.Infof("received bucket %+v\n", rb)
 			go func(rb *events.Bucket) {
 				statusCode := 0
 				var noScriptResult bool
@@ -88,7 +89,7 @@ func (d *defaultStore) executor() {
 					noScriptResult = true
 				}
 				if _, err := url.ParseRequestURI(rb.Rule.HookEndpoint); err != nil {
-					glog.Info("Invalid HookEndpoint. Skipping post request")
+					glog.Infoln("Invalid HookEndpoint. Skipping post request")
 				} else {
 					if noScriptResult {
 						statusCode = util.RetryPost(rb, rb.Rule.HookEndpoint, rb.Rule.HookRetry)
@@ -107,7 +108,7 @@ func (d *defaultStore) executor() {
 				}
 
 				glog.Infof("addRecord %v\n", record)
-				glog.Infoln("err ", d.addRecord(record))
+				glog.Infoln("err => ", d.addRecord(record))
 
 			}(rb)
 		}
@@ -127,21 +128,39 @@ loop:
 				glog.Info("node is not leader, skipping flush")
 				continue
 			}
-			for ruleID, bucket := range d.bucketStorage.es.clone() {
-				glog.Infof("rule flusher ==> %v with size %v canflush ? %v, can flush in %v",
-					ruleID, len(bucket.Events), bucket.CanFlush(), bucket.CanFlushIn())
-				if bucket.CanFlush() {
-					go func() {
-						glog.Infof("post bucket to execution %+v ", bucket)
-						d.executionBucketQueue <- bucket
 
-						err := d.flushBucket(ruleID)
+			glog.Infof("rule flusher started ===============================> \n")
+
+			for ruleID, bucket := range d.bucketStorage.es.clone() {
+				glog.Infof("rule flusher ==> %v with size %v canflush ? %v, can flush in %v, has flush lock ? %v",
+					ruleID, len(bucket.Events), bucket.CanFlush(), bucket.CanFlushIn(), bucket.FlushLock)
+
+				if bucket.CanFlush() && !bucket.FlushLock {
+					go func(currRuleID string) {
+						err := d.flushLock(currRuleID)
 						if err != nil {
-							glog.Errorf("error flushing bucket %v %v", ruleID, err)
+							glog.Errorf("error taking flush lock on bucket %v %v", currRuleID, err)
 						}
-					}()
+
+						glog.Infof("lock taken %v %v\n", currRuleID, d.bucketStorage.es.clone()[currRuleID].FlushLock)
+					}(ruleID)
+				}
+
+				if bucket.FlushLock {
+					go func(currRuleID string, currBucket *events.Bucket) {
+						glog.Infof("post bucket to execution %+v\n", currBucket.Rule.ID)
+						d.executionBucketQueue <- currBucket
+
+						err := d.flushBucket(currRuleID)
+						if err != nil {
+							glog.Errorf("error flushing bucket %v %v\n", currRuleID, err)
+						}
+					}(ruleID, bucket)
 				}
 			}
+
+			glog.Infof("rule flusher done ===============================> \n")
+
 		case <-d.quitFlusherChan:
 			break loop
 		}
@@ -263,6 +282,13 @@ func (d *defaultStore) removeRule(ruleID string) error {
 func (d *defaultStore) flushBucket(ruleID string) error {
 	return d.applyCMD(Command{
 		Op:     "flush_bucket",
+		RuleID: ruleID,
+	})
+}
+
+func (d *defaultStore) flushLock(ruleID string) error {
+	return d.applyCMD(Command{
+		Op:     "flush_lock",
 		RuleID: ruleID,
 	})
 }
