@@ -21,7 +21,7 @@ var site247Alert = Site247Alert{
 	Timezone:             "Asia/Calcutta",
 	IncidentTime:         "July 24, 2018 6:43 PM IST",
 	IncidentReason:       "Host Unavailable",
-	OutageTimeUnixFormat: 1532437988741,
+	OutageTimeUnixFormat: "1532437988741",
 	RCALink:              "https://www.rcalinkdummy.com/somelink",
 }
 
