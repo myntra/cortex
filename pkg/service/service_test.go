@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/golang/glog"
 	"github.com/stretchr/testify/require"
 
@@ -470,25 +471,40 @@ func TestSingleEventSingleService(t *testing.T) {
 
 		// wait for rule execution
 
-		time.Sleep(time.Millisecond * time.Duration(testRule.Dwell+3000))
+		var records []*executions.Record
+		operation := func() error {
+			// fetch rule executions
+			resp, err := http.Get(url + "/rules/" + testRule.ID + "/executions")
+			if err != nil {
+				return err
+			}
 
-		// fetch rule executions
-		resp, err := http.Get(url + "/rules/" + testRule.ID + "/executions")
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			defer resp.Body.Close()
+
+			err = json.Unmarshal(body, &records)
+			if err != nil {
+				return err
+			}
+
+			if len(records) == 0 {
+				return fmt.Errorf("unexpected records len")
+			}
+
+			return nil // or an error
+		}
+
+		err := backoff.Retry(operation, backoff.WithMaxRetries(backoff.NewConstantBackOff(time.Second), testRule.MaxDwell*3))
 		require.NoError(t, err)
 
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
+		require.True(t, testRule.ID == records[0].Bucket.Rule.ID)
+		require.True(t, testevent.EventID == records[0].Bucket.Events[0].EventID)
 
-		defer resp.Body.Close()
-
-		var ruleExecutions []*executions.Record
-		err = json.Unmarshal(body, &ruleExecutions)
-		require.NoError(t, err)
-		require.False(t, len(ruleExecutions) == 0)
-		require.True(t, testRule.ID == ruleExecutions[0].Bucket.Rule.ID)
-		require.True(t, testevent.EventID == ruleExecutions[0].Bucket.Events[0].EventID)
-
-		scriptResult, ok := ruleExecutions[0].ScriptResult.(map[string]interface{})
+		scriptResult, ok := records[0].ScriptResult.(map[string]interface{})
 		require.True(t, ok)
 		require.True(t, strings.Contains(scriptResult["Alpha"].(string), "julietest"))
 
@@ -611,20 +627,20 @@ func TestConcurrentMultiEventMultiRuleMultiService(t *testing.T) {
 				r := rand.New(s)
 				intervals := make(map[int]events.Event)
 
-				// before dwell deadline
+				// before dwell deadline 0...5
 				for i := 0; i < eventsBeforeDeadline; i++ {
 					interval := int(myTestRule.DwellDeadline) + 1000*i
 					intervals[interval] = newTestEvent(strconv.Itoa(i), ruleKey)
 				}
 
-				// after dwell deadline
-				for i := eventsBeforeDeadline; i < eventsAfterDeadline; i++ {
+				// after dwell deadline 5...10
+				for i := eventsBeforeDeadline; i < (eventsBeforeDeadline + eventsAfterDeadline); i++ {
 					interval := r.Intn(int(myTestRule.Dwell - myTestRule.DwellDeadline))
 					intervals[interval] = newTestEvent(strconv.Itoa(i), ruleKey)
 				}
 
-				// 5 events will be deduped since their id and data are same
-				for i := eventsBeforeDeadline; i < eventsDup; i++ {
+				// 5 events will be deduped since their id and data are same 5...10
+				for i := eventsBeforeDeadline; i < (eventsBeforeDeadline + eventsAfterDeadline); i++ {
 					interval := r.Intn(int(myTestRule.Dwell - myTestRule.DwellDeadline))
 					intervals[interval] = newTestEvent(strconv.Itoa(i), ruleKey)
 				}
@@ -651,7 +667,7 @@ func TestConcurrentMultiEventMultiRuleMultiService(t *testing.T) {
 				}
 
 				glog.Info("sleeping ...")
-				time.Sleep(time.Millisecond * time.Duration(myTestRule.MaxDwell))
+				time.Sleep(time.Millisecond * time.Duration(myTestRule.MaxDwell+10000))
 				glog.Infof("sleeping done %v", ruleKey)
 
 				// fetch rule executions from node 1
@@ -667,10 +683,22 @@ func TestConcurrentMultiEventMultiRuleMultiService(t *testing.T) {
 
 				var ruleExecutions []*executions.Record
 				err = json.Unmarshal(body, &ruleExecutions)
-				glog.Infof("parsed executions %v %v %v", ruleKey, err, len(ruleExecutions))
+				glog.Infof("parsed executions %v %v %v \n", ruleKey, err, len(ruleExecutions))
 				require.NoError(t, err)
-				require.True(t, len(ruleExecutions) > 0)
-				//require.True(t, myTestRule.ID == ruleExecutions[0].Bucket.Rule.ID)
+				require.True(t, len(ruleExecutions) > 0, "rule executions should be greater than 0")
+
+				for _, record := range ruleExecutions {
+					dwellDuration := record.CreatedAt.Sub(record.Bucket.CreatedAt)
+					if dwellDuration < (time.Millisecond * time.Duration(myTestRule.Dwell)) {
+						t.Fatalf("received dwell duration %v is less than the minimum expected dwell duration %v",
+							dwellDuration, (time.Millisecond * time.Duration(myTestRule.Dwell)))
+					}
+
+					if dwellDuration < (time.Millisecond * time.Duration(myTestRule.MaxDwell)) {
+						t.Fatalf("received dwell duration %v is less than the maximum expected dwell duration %v",
+							dwellDuration, (time.Millisecond * time.Duration(myTestRule.MaxDwell)))
+					}
+				}
 
 				glog.Infof("wait done %v", ruleKey)
 

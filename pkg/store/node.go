@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/myntra/cortex/pkg/executions"
 	"github.com/myntra/cortex/pkg/js"
@@ -54,9 +55,10 @@ func (n *Node) Shutdown() error {
 	defer n.mu.Unlock()
 	err := n.store.close()
 	if err != nil {
-		glog.Errorf("error shutting down node %v", err)
+		glog.Errorf("error shutting down node %v\n", err)
 		return err
 	}
+	time.Sleep(time.Second)
 	glog.Info("node shut down")
 	return nil
 }

@@ -29,6 +29,7 @@ func NewBucket(rule rules.Rule) *Bucket {
 type Bucket struct {
 	Rule         rules.Rule `json:"rule"`
 	Events       []*Event   `json:"events"`
+	FlushLock    bool       `json:"flush_lock"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 	dwellResetAt time.Time
@@ -37,7 +38,7 @@ type Bucket struct {
 
 // AddEvent to the bucket
 func (rb *Bucket) AddEvent(event *Event) {
-	glog.Info("add event ==>  ", event)
+	glog.Infof("add event %v  ==> %+v\n", event.EventID, event)
 	rb.Events = append(rb.Events, event)
 	rb.updateDwell()
 }
