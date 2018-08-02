@@ -611,20 +611,20 @@ func TestConcurrentMultiEventMultiRuleMultiService(t *testing.T) {
 				r := rand.New(s)
 				intervals := make(map[int]events.Event)
 
-				// before dwell deadline
+				// before dwell deadline 0...5
 				for i := 0; i < eventsBeforeDeadline; i++ {
 					interval := int(myTestRule.DwellDeadline) + 1000*i
 					intervals[interval] = newTestEvent(strconv.Itoa(i), ruleKey)
 				}
 
-				// after dwell deadline
-				for i := eventsBeforeDeadline; i < eventsAfterDeadline; i++ {
+				// after dwell deadline 5...10
+				for i := eventsBeforeDeadline; i < (eventsBeforeDeadline + eventsAfterDeadline); i++ {
 					interval := r.Intn(int(myTestRule.Dwell - myTestRule.DwellDeadline))
 					intervals[interval] = newTestEvent(strconv.Itoa(i), ruleKey)
 				}
 
-				// 5 events will be deduped since their id and data are same
-				for i := eventsBeforeDeadline; i < eventsDup; i++ {
+				// 5 events will be deduped since their id and data are same 5...10
+				for i := eventsBeforeDeadline; i < (eventsBeforeDeadline + eventsAfterDeadline); i++ {
 					interval := r.Intn(int(myTestRule.Dwell - myTestRule.DwellDeadline))
 					intervals[interval] = newTestEvent(strconv.Itoa(i), ruleKey)
 				}
@@ -651,7 +651,7 @@ func TestConcurrentMultiEventMultiRuleMultiService(t *testing.T) {
 				}
 
 				glog.Info("sleeping ...")
-				time.Sleep(time.Millisecond * time.Duration(myTestRule.MaxDwell))
+				time.Sleep(time.Millisecond * time.Duration(myTestRule.MaxDwell+10000))
 				glog.Infof("sleeping done %v", ruleKey)
 
 				// fetch rule executions from node 1
@@ -674,11 +674,13 @@ func TestConcurrentMultiEventMultiRuleMultiService(t *testing.T) {
 				for _, record := range ruleExecutions {
 					dwellDuration := record.CreatedAt.Sub(record.Bucket.CreatedAt)
 					if dwellDuration < (time.Millisecond * time.Duration(myTestRule.Dwell)) {
-						t.Fatal("received dwell duration is less than the minimum expected dwell duration")
+						t.Fatalf("received dwell duration %v is less than the minimum expected dwell duration %v",
+							dwellDuration, (time.Millisecond * time.Duration(myTestRule.Dwell)))
 					}
 
 					if dwellDuration < (time.Millisecond * time.Duration(myTestRule.MaxDwell)) {
-						t.Fatal("received dwell duration is less than the maximum expected dwell duration")
+						t.Fatalf("received dwell duration %v is less than the maximum expected dwell duration %v",
+							dwellDuration, (time.Millisecond * time.Duration(myTestRule.MaxDwell)))
 					}
 				}
 

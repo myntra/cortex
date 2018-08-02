@@ -38,7 +38,7 @@ type Bucket struct {
 
 // AddEvent to the bucket
 func (rb *Bucket) AddEvent(event *Event) {
-	glog.Info("add event ==>  ", event)
+	glog.Infof("add event %v  ==> %+v\n", event.EventID, event)
 	rb.Events = append(rb.Events, event)
 	rb.updateDwell()
 }
