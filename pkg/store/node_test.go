@@ -78,13 +78,10 @@ func newTestRule(key string) rules.Rule {
 	}
 }
 
-func singleNode(t *testing.T, f func(node *Node)) {
+func singleNode(t *testing.T, httpAddr, raftAddr string, f func(node *Node)) {
 
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	defer os.RemoveAll(tmpDir)
-
-	raftAddr := ":4878"
-	httpAddr := ":4879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
 	require.NoError(t, err)
@@ -130,7 +127,9 @@ func singleNode(t *testing.T, f func(node *Node)) {
 }
 
 func TestRuleSingleNode(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":3878"
+	httpAddr := ":3879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 
 		err := node.AddRule(&testRule)
 		require.NoError(t, err)
@@ -154,7 +153,9 @@ func TestRuleSingleNode(t *testing.T) {
 }
 
 func TestScriptSingleNode(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":4878"
+	httpAddr := ":4879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 		script := []byte(`
 			let result = 0;
 			export default function() { result++; }`)
@@ -181,7 +182,9 @@ func TestScriptSingleNode(t *testing.T) {
 }
 
 func TestOrphanEventSingleNode(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":5878"
+	httpAddr := ":5879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 		err := node.Stash(&testevent)
 		require.NoError(t, err)
 
@@ -203,7 +206,9 @@ func TestOrphanEventSingleNode(t *testing.T) {
 }
 
 func TestEventSingleNode(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":6878"
+	httpAddr := ":6879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 
 		err := node.AddRule(&testRule)
 		require.NoError(t, err)
@@ -220,7 +225,9 @@ func TestEventSingleNode(t *testing.T) {
 }
 
 func TestMultipleEventSingleRule(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":7878"
+	httpAddr := ":7879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 
 		t.Run("Test stash multiple events before dwell time", func(t *testing.T) {
 			key := "my"
@@ -314,8 +321,8 @@ func TestNodeSnapshot(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	defer os.RemoveAll(tmpDir)
 
-	raftAddr := ":5878"
-	httpAddr := ":5879"
+	raftAddr := ":8878"
+	httpAddr := ":8879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
 	require.NoError(t, err)
