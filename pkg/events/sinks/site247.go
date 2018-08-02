@@ -23,7 +23,7 @@ type Site247Alert struct {
 	Timezone             string `json:"TIMEZONE,omitempty"`
 	IncidentTime         string `json:"INCIDENT_TIME,omitempty"`
 	IncidentReason       string `json:"INCIDENT_REASON,omitempty"`
-	OutageTimeUnixFormat int    `json:"OUTAGE_TIME_UNIX_FORMAT,omitempty"`
+	OutageTimeUnixFormat string `json:"OUTAGE_TIME_UNIX_FORMAT,omitempty"`
 	RCALink              string `json:"RCA_LINK,omitempty"`
 }
 
