@@ -419,9 +419,9 @@ class App extends Component {
       "hook_endpoint": obj.hook_endpoint,
       "hook_retry": parseInt(obj.hook_retry),
       "event_type_patterns": eventPatterns,
-      "dwell": parseInt(obj.dwell),
-      "dwell_deadline": parseInt(obj.dwell_deadline),
-      "max_dwell": parseInt(obj.max_dwell)
+      "dwell": parseInt(obj.dwell) * 1000,
+      "dwell_deadline": parseInt(obj.dwell_deadline) * 1000,
+      "max_dwell": parseInt(obj.max_dwell) * 1000
     }
     fetch('/rules', {
       method: "PUT",
