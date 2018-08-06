@@ -317,11 +317,11 @@ class App extends Component {
       "title": newRule.title,
       "script_id": newRule.script_id,
       "hook_endpoint": newRule.hook_endpoint,
-      "hook_retry": parseInt(newRule.hook_retry),
+      "hook_retry": parseInt(newRule.hook_retry,10),
       "event_type_patterns": eventPatterns,
-      "dwell": parseInt(newRule.dwell),
-      "dwell_deadline": parseInt(newRule.dwell_deadline),
-      "max_dwell": parseInt(newRule.max_dwell)
+      "dwell": parseInt(newRule.dwell,10),
+      "dwell_deadline": parseInt(newRule.dwell_deadline,10),
+      "max_dwell": parseInt(newRule.max_dwell,10)
     }
     fetch('/rules', {
       method: "POST",
@@ -417,11 +417,11 @@ class App extends Component {
       "title": obj.title,
       "script_id": obj.script_id,
       "hook_endpoint": obj.hook_endpoint,
-      "hook_retry": parseInt(obj.hook_retry),
+      "hook_retry": parseInt(obj.hook_retry,10),
       "event_type_patterns": eventPatterns,
-      "dwell": parseInt(obj.dwell) * 1000,
-      "dwell_deadline": parseInt(obj.dwell_deadline) * 1000,
-      "max_dwell": parseInt(obj.max_dwell) * 1000
+      "dwell": parseInt(obj.dwell,10) * 1000,
+      "dwell_deadline": parseInt(obj.dwell_deadline,10) * 1000,
+      "max_dwell": parseInt(obj.max_dwell,10) * 1000
     }
     fetch('/rules', {
       method: "PUT",
