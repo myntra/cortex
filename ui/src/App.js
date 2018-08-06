@@ -409,7 +409,7 @@ class App extends Component {
     try {
       eventPatterns = obj.event_type_patterns.split(",");
     } catch (error) {
-      alert("Unable to create string array list for events pattern. Please check event patterns");
+      alert("Unable to create string array list for events pattern.");
       return
     }
     let json = {
