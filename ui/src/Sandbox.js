@@ -1,32 +1,30 @@
-import React, { Component } from 'react';
-import Form from "react-jsonschema-form";
-import CssBaseline from '@material-ui/core/CssBaseline';
-import { withStyles } from '@material-ui/core/styles';
-import Paper from '@material-ui/core/Paper';
-import Grid from '@material-ui/core/Grid';
-import AppBar from '@material-ui/core/AppBar';
-import Toolbar from '@material-ui/core/Toolbar';
-import Typography from '@material-ui/core/Typography';
 import Button from '@material-ui/core/Button';
-import DeleteIcon from '@material-ui/icons/Delete';
-import SubmitIcon from '@material-ui/icons/Done';
-import AddIcon from '@material-ui/icons/Add';
-import List from '@material-ui/core/List';
-import ListItem from '@material-ui/core/ListItem';
 import Checkbox from '@material-ui/core/Checkbox';
 import Dialog from '@material-ui/core/Dialog';
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import AceEditor from 'react-ace';
 import ExpansionPanel from '@material-ui/core/ExpansionPanel';
-import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import ExpansionPanelDetails from '@material-ui/core/ExpansionPanelDetails';
+import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
+import Grid from '@material-ui/core/Grid';
+import List from '@material-ui/core/List';
+import ListItem from '@material-ui/core/ListItem';
+import Paper from '@material-ui/core/Paper';
+import { withStyles } from '@material-ui/core/styles';
+import Typography from '@material-ui/core/Typography';
+import AddIcon from '@material-ui/icons/Add';
+import DeleteIcon from '@material-ui/icons/Delete';
+import SubmitIcon from '@material-ui/icons/Done';
+import CloudIcon from '@material-ui/icons/Cloud';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import uuidv4 from "uuid/v4";
-
 import 'brace/mode/javascript';
 import 'brace/theme/github';
+import React, { Component } from 'react';
+import AceEditor from 'react-ace';
+import Form from "react-jsonschema-form";
+import uuidv4 from "uuid/v4";
+
 
 const styles = theme => ({
   root: {
@@ -120,7 +118,6 @@ const EventCard = (props) => {
             onSubmit={(e) => handleSubmitEvent(e, event.eventID)}
             onChange={(e) => handleChangeEvent(e, event.eventID)}
             onError={log("errors")}>
-            <button type="submit" className="hidden">Submit</button>
           </Form>
         </div>
       </ExpansionPanelDetails>
@@ -133,9 +130,15 @@ const log = (type) => console.log.bind(console, type);
 class Sandbox extends Component {
   constructor(props, context) {
     super(props, context);
+    let eventList = localStorage.getItem("events");
+    try{
+      eventList = JSON.parse(eventList);
+    }
+    catch(e){
+      console.log("Unable to parse data from local storage",e)
+    }
     this.state = {
-      events: [
-      ],
+      events: eventList?eventList:[],
       newEvent: "",
       eventData: "",
       ruleDialogOpen: false,
@@ -143,7 +146,9 @@ class Sandbox extends Component {
       selectedEvent: '',
       expansionFlag: false,
       result:[],
-      resultFlag:false
+      resultFlag:false,
+      cloudDialogOpen:false,
+      cloudEvent:""
     }
   }
 
@@ -173,6 +178,7 @@ class Sandbox extends Component {
       alert("Incorrect JSON data");
       return
     }
+    console.log("general event",newEvent);
     events.forEach((item) => {
       if (item.eventID === newEvent.eventID) {
         flag = true;
@@ -183,7 +189,9 @@ class Sandbox extends Component {
       return
     }
     newEvent["eventID"] = uuidv4();
+    console.log("New Event Created is",newEvent);
     events.push(newEvent);
+    localStorage.setItem("events",JSON.stringify(events));
     this.setState({
       events: events,
       newEvent: {},
@@ -218,7 +226,8 @@ class Sandbox extends Component {
       } else {
         return item;
       }
-    })
+    });
+    localStorage.setItem("events",JSON.stringify(eventList))
     this.setState({
       selectedEvent: obj,
       events: eventList
@@ -298,6 +307,25 @@ class Sandbox extends Component {
   }
 
   cloudEventFormat = (obj) =>{
+    let data;
+    let flag = false;
+    if(typeof obj === 'string'){
+      try {
+        obj = JSON.parse(obj);
+      }
+      catch(e) {
+        alert("Incorrect JSON data");
+        flag = true;
+        return
+      }
+      data = obj.data;
+    }
+    else{
+      data = JSON.parse(obj.data);
+    }
+    if(flag){
+      return;
+    }
     let eventDummy = {
       "cloudEventsVersion": "0.1",
       "eventType": obj.eventType,
@@ -308,12 +336,18 @@ class Sandbox extends Component {
         "comExampleExtension": "value"
       },
       "contentType": "application/json",
-      "data": JSON.parse(obj.data)
+      "data": data
     }
     return eventDummy;
   }
 
   handleOldEventChange = (event, id) => {
+    let obj = event.formData;
+    alert("Updated Event");
+    this.setState({selectedEvent:obj})
+  }
+
+  handleEventChangeSubmit = (event, id) => {
     const {events} = this.state
     let obj = event.formData;
     let newList = events.map((item, i) => {
@@ -322,11 +356,8 @@ class Sandbox extends Component {
       }
       return item
     })
+    localStorage.setItem("events",JSON.stringify(newList));
     this.setState({ events: newList, selectedEvent: obj })
-  }
-
-  handleEventChangeSubmit = (event, id) => {
-    console.log("Events",event,id)
   }
 
   handleEventDelete = () => {
@@ -344,11 +375,54 @@ class Sandbox extends Component {
         updatedEvents.push(item);
       }
     })
+    localStorage.setItem("events",JSON.stringify(updatedEvents))
     this.setState({events:updatedEvents,eventsChecked:[],selectedEvent:""});
   }
 
+  handleScriptChange = (text,event) => {
+    this.setState({selectedEvent:text})
+  }
+
+  handleCloudDialogSave = () => {
+    const { cloudEvent,events } = this.state;
+    let newevent;
+    try {
+      newevent = JSON.parse(cloudEvent);
+    } catch (error) {
+      alert("Cannot parse the JSON")
+      return
+    }
+    newevent["delay"] = 1;
+    newevent["EventID"] = uuidv4();
+
+    let eventattr = ["cloudEventsVersion","eventType","source","eventID","eventTime","extensions","contentType","data"]
+    let eventFlag = false;
+    let eventKeys = Object.keys(cloudEvent);
+    for (let attr in eventattr){
+      if(eventKeys.indexOf(attr) === -1){
+        eventFlag = true
+      }
+    }
+
+    newevent["data"] = JSON.stringify(newevent["data"]);
+
+    if(eventFlag){
+      alert("Not a valid cloud event")
+      return
+    }
+    console.log("New Event is",newevent);
+    events.push(newevent);
+    localStorage.setItem("events",JSON.stringify(events))
+    this.setState({
+      events:events,
+      cloudEvent:"",
+      cloudDialogOpen:false
+    })
+  }
+
   render() {
-    const { classes, theme, rules } = this.props;
+    const { classes } = this.props;
+    const { selectedEvent, events, cloudEvent } = this.state;
     let self = this;
     return (
       <div>
@@ -380,7 +454,7 @@ class Sandbox extends Component {
               style={{fontSize:'12px'}} 
               color="primary" autoFocus>
               Save
-              </Button>
+            </Button>
           </DialogActions>
         </Dialog>
         <Dialog
@@ -409,6 +483,47 @@ class Sandbox extends Component {
             </Button>
           </DialogActions>
         </Dialog>
+        <Dialog
+          fullScreen={false}
+          fullWidth={true}
+          open={this.state.cloudDialogOpen}
+          onClose={() => this.setState({ cloudDialogOpen: false })}
+          aria-labelledby="responsive-dialog-title"
+        >
+          <DialogTitle id="responsive-dialog-title">Event Cloud Event</DialogTitle>
+          <DialogContent>
+            {/* Create New Cloud Event */}
+            <AceEditor
+              mode="javascript"
+              theme="github"
+              name="Cloud Event"
+              fontSize={14}
+              showPrintMargin={true}
+              onChange={(text, event) => this.setState({cloudEvent:text})}
+              showGutter={true}
+              highlightActiveLine={true}
+              value={cloudEvent}
+              setOptions={{
+                enableBasicAutocompletion: false,
+                enableLiveAutocompletion: false,
+                enableSnippets: true,
+                showLineNumbers: true,
+                tabSize: 2,
+              }} />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => this.setState({ cloudDialogOpen: false })}
+              style={{fontSize:'12px'}} 
+              color="primary">
+              Close
+            </Button>
+            <Button onClick={this.handleCloudDialogSave}
+              style={{fontSize:'12px'}} 
+              color="primary" autoFocus>
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
         <Grid container >
           <Button onClick={() => this.setState({ ruleDialogOpen: true })}
             variant="contained"
@@ -424,6 +539,13 @@ class Sandbox extends Component {
             Delete
             <DeleteIcon className={classes.rightIcon} />
           </Button>
+          <Button onClick={() => this.setState({ cloudDialogOpen: true })}
+            variant="contained"
+            color="primary"
+            className={classes.button}>
+            Cloud Event
+            <CloudIcon className={classes.rightIcon} />
+          </Button>
           <Button onClick={this.handleEventsExecution}
             style={{ marginLeft: 'auto' }}
             variant="contained"
@@ -436,7 +558,8 @@ class Sandbox extends Component {
         <Grid container spacing={24}>
           <Grid item xs={4}>
             <List>
-              {this.state.events.map((event, index) => (
+              {(events.length>0)?
+                events.map((event, index) => (
                 <Grid key={index} container>
                   <Grid item xs={2}>
                     <ListItem
@@ -457,10 +580,10 @@ class Sandbox extends Component {
                       handlePannelExpansion={self.handleEventExpansion}
                       handleSubmitEvent={(event, id) => self.handleEventChangeSubmit(event,id)}
                       handleChangeEvent={(event, id) => self.handleOldEventChange(event, id)}
-                      classes={classes} event={event} />
+                      classes={classes} event={(event.eventID === selectedEvent.eventID)?selectedEvent:event} />
                   </Grid>
                 </Grid>
-              ))}
+              )):false}
             </List>
           </Grid>
           <Grid item xs={8}>
@@ -470,9 +593,10 @@ class Sandbox extends Component {
                   mode="javascript"
                   theme="github"
                   name="blah2"
-                  readOnly={true}
                   fontSize={14}
+                  readOnly={true}
                   showPrintMargin={true}
+                  onChange={(text, event) => this.handleScriptChange(text,event)}
                   showGutter={true}
                   highlightActiveLine={true}
                   value={`${JSON.stringify(self.cloudEventFormat(self.state.selectedEvent),null, "\t")}`}
