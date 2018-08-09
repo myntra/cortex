@@ -79,9 +79,9 @@ const schema = {
     hook_endpoint: { type: "string", title: "Hook Endpoint", default: "http://localhost:4000" },
     hook_retry: { type: "number", title: "Hook Retry", default: 2 },
     event_type_patterns: { type: "string", title: "Match Event Types", default: "com.acme.node1.cpu,com.apple.node2.cpu" },
-    dwell: { type: "number", title: "Dwell Time(seconds)", default: 120 },
-    dwell_deadline: { type: "number", title: "Dwell Deadline(seconds)", default: 100 },
-    max_dwell: { type: "number", title: "Maximum Dwell Time(seconds)", default: 240 }
+    dwell: { type: "number", title: "Dwell Time(ms)", default: 120 },
+    dwell_deadline: { type: "number", title: "Dwell Deadline(ms)", default: 100 },
+    max_dwell: { type: "number", title: "Maximum Dwell Time(ms)", default: 240 }
   }
 }
 
@@ -112,8 +112,8 @@ const log = (type) => console.log.bind(console, type);
 
 const RuleCard = (props) => {
   const { classes, rule, handleChangeEvent, handleSubmitEvent, handlePannelExpansion } = props;
-  let updatedRule = rule;
-  updatedRule.event_type_patterns = rule.event_type_patterns.toString().split().join(",")
+  let updatedRule = JSON.parse(JSON.stringify(rule));
+  updatedRule.event_type_patterns = rule.event_type_patterns.toString().split().join(",");
   return (
     <ExpansionPanel onChange={(event, flag) => handlePannelExpansion(event, flag, rule.id)}>
       <ExpansionPanelSummary expandIcon={<ExpandMoreIcon />}>
@@ -167,7 +167,10 @@ class App extends Component {
     expansionFlag: false,
     scriptText: "",
     scriptID: "",
-    history:""
+    history:"",
+    modalFlag:false,
+    response:"",
+    alertType:'warning'
   }
 
   componentDidMount() {
@@ -190,7 +193,11 @@ class App extends Component {
         self.setState({ ruleList: data })
       })
       .catch((error) => {
-        alert(error);
+        self.setState({
+          response:error,
+          modalFlag:true,
+          alertType:'warning'
+        });
       })
   }
 
@@ -208,7 +215,11 @@ class App extends Component {
         self.setState({ scriptIDList: data })
       })
       .catch((error) => {
-        alert(error);
+        self.setState({
+          response:error,
+          modalFlag:true,
+          alertType:'warning'
+        });
       })
   }
 
@@ -232,7 +243,11 @@ class App extends Component {
         })
       })
       .catch((error) => {
-        alert(error);
+        self.setState({
+          response:error,
+          modalFlag:true,
+          alertType:'warning'
+        });
       })
   }
 
@@ -303,14 +318,22 @@ class App extends Component {
     let self = this;
     const { newRule } = this.state
     if(Object.keys(newRule).length === 0){
-      alert("Default rule cannot be used. Sample data is just for reference");
+      self.setState({
+        response:"Default rule cannot be used. Sample data is just for reference",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
     let eventPatterns = [];
     try {
       eventPatterns = newRule.event_type_patterns.split(",");
     } catch (error) {
-      alert("Unable to create string array list for events pattern. Please check event patterns");
+      self.setState({
+        response:"Unable to create string array list for events pattern. Please check event patterns",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
     let json = {
@@ -336,11 +359,19 @@ class App extends Component {
         }
       })
       .then(function (data) {
-        console.log("Updated successfully", data);
+        self.setState({
+          response:"Updated successfully",
+          modalFlag:true,
+          alertType:'success'
+        });
         self.fetchRules()
       })
       .catch((error) => {
-        alert(error);
+        self.setState({
+          response:error,
+          modalFlag:true,
+          alertType:'warning'
+        });
       });
   }
 
@@ -365,15 +396,23 @@ class App extends Component {
     })
       .then(function (response) {
         if (response.ok) {
-          console.log("Updated successfully");
+          self.setState({
+            response:"Updated successfully",
+            modalFlag:true,
+            alertType:'success',
+            scriptDialogOpen: false
+          });
           self.fetchScripts()
-          self.setState({ scriptDialogOpen: false });
         } else {
           throw new Error('Something went wrong. Unable to create new script');
         }
       })
       .catch((error) => {
-        alert(error);
+        self.setState({
+          response:error,
+          modalFlag:true,
+          alertType:'warning'
+        });
       });
   }
 
@@ -401,15 +440,22 @@ class App extends Component {
       }
     })
     if (!obj) {
-      console.log("JSON udefined", id, ruleList)
-      alert("Found no data to update rule")
+      self.setState({
+        response:"Found no data to update rule",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return;
     }
     let eventPatterns = [];
     try {
       eventPatterns = obj.event_type_patterns.split(",");
     } catch (error) {
-      alert("Unable to create string array list for events pattern.");
+      self.setState({
+        response:"Unable to create string array list for events pattern.",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
     let json = {
@@ -419,9 +465,9 @@ class App extends Component {
       "hook_endpoint": obj.hook_endpoint,
       "hook_retry": parseInt(obj.hook_retry,10),
       "event_type_patterns": eventPatterns,
-      "dwell": parseInt(obj.dwell,10) * 1000,
-      "dwell_deadline": parseInt(obj.dwell_deadline,10) * 1000,
-      "max_dwell": parseInt(obj.max_dwell,10) * 1000
+      "dwell": parseInt(obj.dwell,10),
+      "dwell_deadline": parseInt(obj.dwell_deadline,10),
+      "max_dwell": parseInt(obj.max_dwell,10)
     }
     fetch('/rules', {
       method: "PUT",
@@ -430,13 +476,21 @@ class App extends Component {
       .then(function (response) {
         if (response.ok) {
           self.fetchRules();
-          alert("Updated successfully");
+          self.setState({
+            response:"Updated successfully",
+            modalFlag:true,
+            alertType:'success'
+          });
         } else {
           throw new Error('Something went wrong. Unable to update rule content');
         }
       })
       .catch((error) => {
-        alert(error);
+        self.setState({
+          response:error,
+          modalFlag:true,
+          alertType:'warning'
+        });
       });
   }
 
@@ -444,7 +498,11 @@ class App extends Component {
     let self = this;
     const { rulesChecked } = this.state
     if (rulesChecked.length < 1) {
-      alert("No rule selected for deletion");
+      self.setState({
+        response:"No rule selected for deletion",
+        modalFlag:true,
+        alertType:'warning'
+      });
     }
     rulesChecked.forEach((item) => {
       let url = "/rules/" + item
@@ -453,14 +511,22 @@ class App extends Component {
       })
         .then(function (response) {
           if (response.ok) {
-            console.log("Updated successfully");
+            self.setState({
+              response:"Updated successfully",
+              modalFlag:true,
+              alertType:'success'
+            });
             self.fetchRules()
           } else {
             throw new Error('Something went wrong. Unable to delete rule ' + item);
           }
         })
         .catch((error) => {
-          alert(error);
+          self.setState({
+            response:error,
+            modalFlag:true,
+            alertType:'warning'
+          });
         })
     })
   }
@@ -473,7 +539,11 @@ class App extends Component {
 
   handleScriptClick = (id) => {
     if(id === ""){
-      alert("No id found");
+      this.setState({
+        response:"No id found",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return;
     }
     let self = this;
@@ -491,7 +561,11 @@ class App extends Component {
             scriptText: base64.decode(script.data) })
       })
       .catch((error) => {
-        alert(error);
+        self.setState({
+          response:error,
+          modalFlag:true,
+          alertType:'warning'
+        });
       })
   }
 
@@ -499,7 +573,11 @@ class App extends Component {
     let self = this;
     const { scriptsChecked } = this.state
     if (scriptsChecked.length < 1) {
-      alert("No script selected for deletion");
+      self.setState({
+        response:"No script selected for deletion",
+        modalFlag:true,
+        alertType:'warning'
+      });
     }
     scriptsChecked.forEach((item) => {
       let url = "/scripts/" + item
@@ -508,20 +586,29 @@ class App extends Component {
       })
         .then(function (response) {
           if (response.ok) {
-            console.log("Updated successfully");
+            self.setState({
+              response:"Updated successfully",
+              modalFlag:true,
+              alertType:'success'
+            });
             self.fetchScripts()
           } else {
             throw new Error('Something went wrong. Unable to delete script ' + item);
           }
         })
         .catch((error) => {
-          alert(error);
+          self.setState({
+            response:error,
+            modalFlag:true,
+            alertType:'warning'
+          });
         })
     })
   }
 
   handleScriptUpdate = () => {
     // TODO: Update not working
+    let self = this;
     const { scriptID, scriptText } = this.state
     let json = {
       id: scriptID,
@@ -537,19 +624,27 @@ class App extends Component {
     })
       .then(function (response) {
         if (response.ok) {
-          alert("Updated successfully");
+          self.setState({
+            response:"Updated successfully",
+            modalFlag:true,
+            alertType:'success'
+          });
         } else {
           throw new Error('Something went wrong. Unable to update script content');
         }
       })
       .catch((error) => {
-        alert(error);
+        self.setState({
+          response:error,
+          modalFlag:true,
+          alertType:'warning'
+        });
       })
   }
 
   render() {
     const { classes, theme } = this.props;
-    const { history } = this.state;
+    const { history, content,response } = this.state;
     // this.state.ruleList.map((rule, index) => console.log(rule, index))
     return (
       <div className={classes.root}>
@@ -765,7 +860,25 @@ class App extends Component {
             <Sandbox rules={this.state.ruleList} />
           </TabContainer>
         </SwipeableViews>
-
+        <Dialog
+          fullScreen={false}
+          fullWidth={true}
+          open={this.state.modalFlag}
+          onClose={() => this.setState({ modalFlag: false })}
+          aria-labelledby="responsive-dialog-title"
+        >
+        <DialogTitle id="responsive-dialog-title">Status</DialogTitle>
+          <DialogContent>
+             {response}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => this.setState({ modalFlag: false })}
+              style={{fontSize:'12px'}} 
+              color="primary">
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       </div>
     );
   }
