@@ -65,7 +65,7 @@ const eventSchema = {
   eventType: "",
   required: ["eventID", "delay", "data", "source", "eventType","eventTime"],
   properties: {
-    delay: { type: "string", title: "Submit Delay", default: "1" },
+    delay: { type: "string", title: "Submit Delay(ms)", default: "1000" },
     eventType: { type: "string", title: "Event Type", default: "acme.prod.site247.search_down" },
     source: { type: "string", title: "Event Source", default: "site247" },
     data: { type: "string", title: "Event Data", default: '{"appinfoA":"abc","appinfoB": 123,"appinfoC": true}' },
@@ -83,7 +83,7 @@ const eventSchemaCreate = {
   eventType: "",
   required: ["eventID", "delay", "data", "source", "eventType","eventTime"],
   properties: {
-    delay: { type: "string", title: "Submit Delay", default: "1" },
+    delay: { type: "string", title: "Submit Delay(ms)", default: "1000" },
     eventType: { type: "string", title: "Event Type", default: "acme.prod.site247.search_down" },
     source: { type: "string", title: "Event Source", default: "site247" },
     data: { type: "string", title: "Event Data", default: '{"appinfoA":"abc","appinfoB": 123,"appinfoC": true}' },
@@ -96,10 +96,10 @@ const uiSchemaEvent = {
     "ui:widget": "textarea"
   },
   delay: {
-    "ui:help": "Hint: Delay in sec's for submission delay and it's not part of cloudevents.io spec"
+    "ui:help": "Hint: Delay in ms for submission delay and it's not part of cloudevents.io spec"
   },
   "ui:widget": "string",
-  "ui:help": "Hint: Create event with delay in seconds associated with it"
+  "ui:help": "Hint: Create event with delay in ms associated with it"
 };
 
 const EventCard = (props) => {
@@ -148,7 +148,10 @@ class Sandbox extends Component {
       result:[],
       resultFlag:false,
       cloudDialogOpen:false,
-      cloudEvent:""
+      cloudEvent:"",
+      modalFlag:false,
+      alertType:'warning',
+      response:""
     }
   }
 
@@ -157,12 +160,20 @@ class Sandbox extends Component {
     let flag = false;
     let condition = false;
     if(newEvent === ""){
-      alert("Event cannot be created with all default values");
+      this.setState({
+        response:"Event cannot be created with all default values",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
     for(let x in Object.keys(newEvent)){
       if(newEvent[x] === ""){
-        alert(x + " cannot be empty");
+        this.setState({
+          response: x + " cannot be empty",
+          modalFlag:true,
+          alertType:'warning'
+        });
         condition = true;
         return;
       }
@@ -175,21 +186,27 @@ class Sandbox extends Component {
       data = JSON.parse(newEvent.data);
     }
     catch(e) {
-      alert("Incorrect JSON data");
+      this.setState({
+        response:"Incorrect JSON data",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
-    console.log("general event",newEvent);
     events.forEach((item) => {
       if (item.eventID === newEvent.eventID) {
         flag = true;
       }
     })
     if(flag){
-      alert("Event name already exists");
+      this.setState({
+        response:"Event name already exists",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
     newEvent["eventID"] = uuidv4();
-    console.log("New Event Created is",newEvent);
     events.push(newEvent);
     localStorage.setItem("events",JSON.stringify(events));
     this.setState({
@@ -239,7 +256,11 @@ class Sandbox extends Component {
     const { eventsChecked,events,result } = this.state;
     let eventsList = [];
     if (eventsChecked.length < 1) {
-      alert("No event selected for execution");
+      this.setState({
+        response:"No event selected for execution",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
     events.forEach((item) => {
@@ -249,7 +270,11 @@ class Sandbox extends Component {
           data = JSON.parse(item.data);
         }
         catch(e) {
-          alert("Incorrect JSON data for event ID " + item.eventID);
+          this.setState({
+            response:"Incorrect JSON data for event ID " + item.eventID,
+            modalFlag:true,
+            alertType:'warning'
+          });
           return
         }
         eventsList.push(item);
@@ -258,7 +283,7 @@ class Sandbox extends Component {
     this.setState({resultFlag:true})
     eventsList.forEach((event)=>{
       let json = self.cloudEventFormat(event);
-      let time = parseInt(event.delay) * 1000;
+      let time = parseInt(event.delay,10);
       setTimeout(function(jsonData) {
         // API calls for updating events
         fetch('/event', {
@@ -268,7 +293,7 @@ class Sandbox extends Component {
         .then(function (response) {
           if (response.ok) {
             let resultSet = result;
-            resultSet.push({"id":jsonData.eventID,"output":" Successfully called API with delay of " + time/1000 + " secs"});
+            resultSet.push({"id":jsonData.eventID,"output":" Successfully called API with delay of " + time + " ms"});
             self.setState({
               result:resultSet
             })
@@ -297,7 +322,11 @@ class Sandbox extends Component {
       }
     })
     if (!obj) {
-      alert("No event found");
+      this.setState({
+        response:"No event found",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
     this.setState({
@@ -314,7 +343,11 @@ class Sandbox extends Component {
         obj = JSON.parse(obj);
       }
       catch(e) {
-        alert("Incorrect JSON data");
+        this.setState({
+          response:"Incorrect JSON data",
+          modalFlag:true,
+          alertType:'warning'
+        });
         flag = true;
         return
       }
@@ -343,7 +376,6 @@ class Sandbox extends Component {
 
   handleOldEventChange = (event, id) => {
     let obj = event.formData;
-    alert("Updated Event");
     this.setState({selectedEvent:obj})
   }
 
@@ -356,6 +388,11 @@ class Sandbox extends Component {
       }
       return item
     })
+    this.setState({
+      response:"Event Updated",
+      modalFlag:true,
+      alertType:'confirmation'
+    });
     localStorage.setItem("events",JSON.stringify(newList));
     this.setState({ events: newList, selectedEvent: obj })
   }
@@ -363,7 +400,11 @@ class Sandbox extends Component {
   handleEventDelete = () => {
     const {eventsChecked,events} = this.state
     if(eventsChecked.length < 1){
-      alert("No event for deletion");
+      this.setState({
+        response:"No event selected for deletion",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
     let updatedEvents = [];
@@ -389,10 +430,14 @@ class Sandbox extends Component {
     try {
       newevent = JSON.parse(cloudEvent);
     } catch (error) {
-      alert("Cannot parse the JSON")
+      this.setState({
+        response:"Cannot parse the JSON",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
-    newevent["delay"] = 1;
+    newevent["delay"] = 1000;
     newevent["EventID"] = uuidv4();
 
     let eventattr = ["cloudEventsVersion","eventType","source","eventID","eventTime","extensions","contentType","data"]
@@ -407,10 +452,13 @@ class Sandbox extends Component {
     newevent["data"] = JSON.stringify(newevent["data"]);
 
     if(eventFlag){
-      alert("Not a valid cloud event")
+      this.setState({
+        response:"Not a valid cloud event",
+        modalFlag:true,
+        alertType:'warning'
+      });
       return
     }
-    console.log("New Event is",newevent);
     events.push(newevent);
     localStorage.setItem("events",JSON.stringify(events))
     this.setState({
@@ -422,7 +470,7 @@ class Sandbox extends Component {
 
   render() {
     const { classes } = this.props;
-    const { selectedEvent, events, cloudEvent } = this.state;
+    const { selectedEvent, events, cloudEvent, response } = this.state;
     let self = this;
     return (
       <div>
@@ -611,6 +659,25 @@ class Sandbox extends Component {
             }
           </Grid>
         </Grid>
+        <Dialog
+          fullScreen={false}
+          fullWidth={true}
+          open={this.state.modalFlag}
+          onClose={() => this.setState({ modalFlag: false })}
+          aria-labelledby="responsive-dialog-title"
+        >
+        <DialogTitle id="responsive-dialog-title">Status</DialogTitle>
+          <DialogContent>
+             {response}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => this.setState({ modalFlag: false })}
+              style={{fontSize:'12px'}} 
+              color="primary">
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       </div>
     )
   }
