@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/myntra/cortex/pkg/executions"
+
+	"github.com/cenkalti/backoff"
 	"github.com/stretchr/testify/require"
 
 	"github.com/golang/glog"
@@ -78,13 +81,10 @@ func newTestRule(key string) rules.Rule {
 	}
 }
 
-func singleNode(t *testing.T, f func(node *Node)) {
+func singleNode(t *testing.T, httpAddr, raftAddr string, f func(node *Node)) {
 
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	defer os.RemoveAll(tmpDir)
-
-	raftAddr := ":5878"
-	httpAddr := ":5879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
 	require.NoError(t, err)
@@ -130,7 +130,9 @@ func singleNode(t *testing.T, f func(node *Node)) {
 }
 
 func TestRuleSingleNode(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":11878"
+	httpAddr := ":11879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 
 		err := node.AddRule(&testRule)
 		require.NoError(t, err)
@@ -154,7 +156,9 @@ func TestRuleSingleNode(t *testing.T) {
 }
 
 func TestScriptSingleNode(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":22878"
+	httpAddr := ":22879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 		script := []byte(`
 			let result = 0;
 			export default function() { result++; }`)
@@ -181,7 +185,9 @@ func TestScriptSingleNode(t *testing.T) {
 }
 
 func TestOrphanEventSingleNode(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":35878"
+	httpAddr := ":35879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 		err := node.Stash(&testevent)
 		require.NoError(t, err)
 
@@ -203,24 +209,38 @@ func TestOrphanEventSingleNode(t *testing.T) {
 }
 
 func TestEventSingleNode(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":46878"
+	httpAddr := ":46879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 
 		err := node.AddRule(&testRule)
 		require.NoError(t, err)
 		err = node.Stash(&testevent)
 		require.NoError(t, err)
 
-		time.Sleep(time.Millisecond * time.Duration(node.store.opt.DefaultDwell+3000))
-		records := node.GetRuleExectutions(testRule.ID)
-		require.False(t, len(records) == 0)
-		require.True(t, records[0].Bucket.Rule.ID == testRule.ID)
+		var records []*executions.Record
+		operation := func() error {
+			records = node.GetRuleExectutions(testRule.ID)
+
+			if len(records) == 0 {
+				return fmt.Errorf("")
+			}
+
+			return nil // or an error
+		}
+
+		err = backoff.Retry(operation, backoff.WithMaxRetries(backoff.NewConstantBackOff(time.Second), node.store.opt.DefaultMaxDwell*3))
+		require.NoError(t, err)
+		require.True(t, len(records) == 1, fmt.Sprintf("len is %v", len(records)))
 
 		t.Logf("%+v\n", records[0])
 	})
 }
 
 func TestMultipleEventSingleRule(t *testing.T) {
-	singleNode(t, func(node *Node) {
+	raftAddr := ":27878"
+	httpAddr := ":27879"
+	singleNode(t, httpAddr, raftAddr, func(node *Node) {
 
 		t.Run("Test stash multiple events before dwell time", func(t *testing.T) {
 			key := "my"
@@ -231,8 +251,13 @@ func TestMultipleEventSingleRule(t *testing.T) {
 			r := rand.New(s)
 			intervals := make(map[int]events.Event)
 
+			var firstInterval uint64
 			for i := 0; i < n; i++ {
+
 				interval := r.Intn(int(myTestRule.DwellDeadline - 100))
+				if i == 0 {
+					firstInterval = uint64(interval)
+				}
 				intervals[interval] = newTestEvent(strconv.Itoa(i), key)
 			}
 
@@ -248,7 +273,7 @@ func TestMultipleEventSingleRule(t *testing.T) {
 			}
 
 			glog.Info("sleeping ...")
-			time.Sleep(time.Millisecond * time.Duration(myTestRule.Dwell+10000))
+			time.Sleep(time.Millisecond * time.Duration(myTestRule.Dwell+firstInterval+3000))
 			glog.Info("sleeping done")
 
 			records := node.GetRuleExectutions(myTestRule.ID)
@@ -298,12 +323,19 @@ func TestMultipleEventSingleRule(t *testing.T) {
 				}(interval, te)
 			}
 
-			glog.Info("sleeping ...")
-			time.Sleep(time.Millisecond * time.Duration(myTestRule.MaxDwell+3000))
-			glog.Info("sleeping done")
+			var records []*executions.Record
+			operation := func() error {
+				records = node.GetRuleExectutions(myTestRule.ID)
 
-			records := node.GetRuleExectutions(myTestRule.ID)
-			require.True(t, len(records) == 1, fmt.Sprintf("len is %v", len(records)))
+				if len(records) == 0 {
+					return fmt.Errorf("")
+				}
+
+				return nil // or an error
+			}
+
+			err = backoff.Retry(operation, backoff.WithMaxRetries(backoff.NewConstantBackOff(time.Second), myTestRule.MaxDwell*3))
+			require.NoError(t, err)
 			require.True(t, len(records[0].Bucket.Events) == 10, fmt.Sprintf("len is %v", len(records[0].Bucket.Events)))
 		})
 
@@ -314,8 +346,8 @@ func TestNodeSnapshot(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	defer os.RemoveAll(tmpDir)
 
-	raftAddr := ":5878"
-	httpAddr := ":5879"
+	raftAddr := ":28878"
+	httpAddr := ":28879"
 
 	raftListener, err := net.Listen("tcp", raftAddr)
 	require.NoError(t, err)

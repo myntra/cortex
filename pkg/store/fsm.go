@@ -53,6 +53,8 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 		return f.applyRemoveRule(c.RuleID)
 	case "flush_bucket":
 		return f.applyFlushBucket(c.RuleID)
+	case "flush_lock":
+		return f.applyFlushLock(c.RuleID)
 	case "add_script":
 		return f.applyAddScript(c.Script)
 	case "update_script":
@@ -87,6 +89,10 @@ func (f *fsm) applyRemoveRule(ruleID string) interface{} {
 
 func (f *fsm) applyFlushBucket(ruleID string) interface{} {
 	return f.bucketStorage.es.flushBucket(ruleID)
+}
+
+func (f *fsm) applyFlushLock(ruleID string) interface{} {
+	return f.bucketStorage.es.flushLock(ruleID)
 }
 
 func (f *fsm) applyAddScript(script *js.Script) interface{} {
