@@ -27,8 +27,8 @@ var site247Alert = Site247Alert{
 
 func TestEventFromSite247(t *testing.T) {
 	event := EventFromSite247(site247Alert)
-	if event.EventType != fmt.Sprintf("site247.%s.%s", site247Alert.MonitorGroupName, site247Alert.MonitorName) {
-		t.Errorf("Event type not matching. expected : %s, got: %s", fmt.Sprintf("site247.%s.%s", site247Alert.MonitorGroupName, site247Alert.MonitorName), event.EventType)
+	if event.EventType != fmt.Sprintf("site247.%s.%s.%s", site247Alert.MonitorGroupName, site247Alert.MonitorName, site247Alert.Status) {
+		t.Errorf("Event type not matching. expected : %s, got: %s", fmt.Sprintf("site247.%s.%s.%s", site247Alert.MonitorGroupName, site247Alert.MonitorName, site247Alert.Status), event.EventType)
 	}
 	if !reflect.DeepEqual(event.Data, structs.New(site247Alert).Map()) {
 		t.Errorf("Event data not matching. expected : %v, got: %v", site247Alert, event.Data)
