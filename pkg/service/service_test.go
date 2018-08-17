@@ -732,8 +732,8 @@ func TestSite247Handler(t *testing.T) {
 		err = json.Unmarshal(body, &eventBody)
 		require.NoError(t, err)
 
-		require.True(t, eventBody.EventType == fmt.Sprintf("site247.%s.%s",
-			testalertsite247.MonitorGroupName, testalertsite247.MonitorName))
+		require.True(t, eventBody.EventType == fmt.Sprintf("site247.%s.%s.%s",
+			testalertsite247.MonitorGroupName, testalertsite247.MonitorName, testalertsite247.Status))
 
 	})
 }

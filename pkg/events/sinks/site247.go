@@ -38,7 +38,7 @@ func EventFromSite247(alert Site247Alert) *events.Event {
 		SchemaURL:          "",
 		EventID:            generateUUID().String(),
 		EventTime:          time.Now(),
-		EventType:          fmt.Sprintf("site247.%s.%s", alert.MonitorGroupName, alert.MonitorName),
+		EventType:          fmt.Sprintf("site247.%s.%s.%s", alert.MonitorGroupName, alert.MonitorName, alert.Status),
 	}
 	return &event
 }
