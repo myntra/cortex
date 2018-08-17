@@ -18,6 +18,7 @@ type Rule struct {
 	EventTypePatterns []string `json:"event_type_patterns"` // a list of event types to look for. wildcards are allowed.
 	Dwell             uint64   `json:"dwell"`               // dwell duration in milliseconds for events to arrive
 	DwellDeadline     uint64   `json:"dwell_deadline"`      // dwell duration threshold after which arriving events expand the dwell window
+	DwellCount        uint64   `json:"dwell_count"`         // dwell count is no of events it should wait before flushing events
 	MaxDwell          uint64   `json:"max_dwell"`           // maximum dwell duration including expansion
 	Regexes           []string `json:"regexes,omitempty"`   // generated regex string array from event types
 	Disabled          bool     `json:"disabled,omitempty"`  // if the rule is disabled
@@ -61,6 +62,7 @@ type PublicRule struct {
 	HookRetry         int      `json:"hook_retry"`          // number of retries while attempting to post
 	EventTypePatterns []string `json:"event_type_patterns"` // a list of event types to look for. wildcards are allowed.
 	Dwell             uint64   `json:"dwell"`               // dwell duration in milliseconds for events to arrive
+	DwellCount        uint64   `json:"dwell_count"`         // dwell count is no of events it should wait before flushing events
 	DwellDeadline     uint64   `json:"dwell_deadline"`      // dwell duration threshold after which arriving events expand the dwell window
 	MaxDwell          uint64   `json:"max_dwell"`           // maximum dwell duration including expansion
 	Disabled          bool     `json:"disabled,omitempty"`  // if the rule is disabled
@@ -76,6 +78,7 @@ func NewFromPublic(r *PublicRule) *Rule {
 		HookRetry:         r.HookRetry,
 		EventTypePatterns: r.EventTypePatterns,
 		Dwell:             r.Dwell,
+		DwellCount:        r.DwellCount,
 		DwellDeadline:     r.DwellDeadline,
 		MaxDwell:          r.MaxDwell,
 		Disabled:          r.Disabled,
