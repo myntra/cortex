@@ -1,4 +1,5 @@
 cover.out
+.DS_Store
 data
 cmd/cortex
 cmd/cmd

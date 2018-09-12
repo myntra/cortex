@@ -41,6 +41,15 @@ Cortex runs the following steps to achieve event corrrelation:
 3. **Execute** --> (flush after Dwell period) --> (execute configured script) --> *Post*
 4. **Post** --> (if result is set from script, post the result to the HookEndPoint or post the bucket itself if result is nil)
 
+
+## Screenshots
+
+![Rules](https://cdn.rawgit.com/myntra/cortex/master/assets/cortex_rules.png)
+
+![Scripts](https://cdn.rawgit.com/myntra/cortex/master/assets/cortex_scripts.png)
+
+![Playground](https://cdn.rawgit.com/myntra/cortex/master/assets/cortex_playground.png)
+
 ## Rules
 
 A rule contains an array of patterns used to capture events in a *bucket*
