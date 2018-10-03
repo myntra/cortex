@@ -110,6 +110,12 @@ func New(cfg *config.Config) (*Service, error) {
 
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			glog.Infof("Received request on %s %s", r.URL.String(), r.RequestURI)
+			next.ServeHTTP(w, r)
+		})
+	})
 
 	if cfg.EnableFileServer {
 		fileServer(router, "/ui")

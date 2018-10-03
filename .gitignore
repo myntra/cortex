@@ -9,3 +9,4 @@ cmd/build
 rice-box.go
 vendor/
 dist/
+cmd/Dockerfile

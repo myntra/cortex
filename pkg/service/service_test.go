@@ -764,7 +764,6 @@ func TestIcinga247Handler(t *testing.T) {
 		require.True(t, reflect.DeepEqual(eventBody.Data, structs.New(testIcingaAlert).Map()))
 
 		require.True(t, eventBody.EventType == fmt.Sprintf("%s.%s.%s", testIcingaAlert.ServiceDisplayName,
-			testIcingaAlert.HostDisplayName, testIcingaAlert.ServiceState))
-
+			testIcingaAlert.HostDisplayName, testIcingaAlert.ServiceOutput))
 	})
 }

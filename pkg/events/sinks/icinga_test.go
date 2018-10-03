@@ -24,8 +24,8 @@ var icingaAlert = IcingaAlert{
 
 func TestEventFromIcinga(t *testing.T) {
 	event := EventFromIcinga(icingaAlert)
-	if event.EventType != fmt.Sprintf("%s.%s.%s", icingaAlert.ServiceDisplayName, icingaAlert.HostDisplayName, icingaAlert.ServiceState) {
-		t.Errorf("Event type not matching. expected : %s, got: %s", fmt.Sprintf("%s.%s.%s", icingaAlert.ServiceDisplayName, icingaAlert.HostDisplayName, icingaAlert.ServiceState), event.EventType)
+	if event.EventType != fmt.Sprintf("%s.%s.%s", icingaAlert.ServiceDisplayName, icingaAlert.HostDisplayName, icingaAlert.ServiceOutput) {
+		t.Errorf("Event type not matching. expected : %s, got: %s", fmt.Sprintf("%s.%s.%s", icingaAlert.ServiceDisplayName, icingaAlert.HostDisplayName, icingaAlert.ServiceOutput), event.EventType)
 	}
 	if !reflect.DeepEqual(event.Data, structs.New(icingaAlert).Map()) {
 		t.Errorf("Event data not matching. expected : %v, got: %v", icingaAlert, event.Data)
