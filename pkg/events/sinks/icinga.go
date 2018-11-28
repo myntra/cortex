@@ -34,7 +34,7 @@ func EventFromIcinga(alert IcingaAlert) *events.Event {
 		SchemaURL:          "",
 		EventID:            generateUUID().String(),
 		EventTime:          time.Now(),
-		EventType:          fmt.Sprintf("icinga.%s.%s.%s", alert.ServiceDisplayName, alert.HostDisplayName, alert.ServiceOutput),
+		EventType:          fmt.Sprintf("%s.%s.%s", alert.ServiceDisplayName, alert.HostDisplayName, alert.ServiceOutput),
 	}
 	return &event
 }
