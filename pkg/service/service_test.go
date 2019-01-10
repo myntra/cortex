@@ -54,6 +54,7 @@ var testalertsite247 = &sinks.Site247Alert{
 	IncidentReason:       "Host Unavailable",
 	OutageTimeUnixFormat: "1532437988741",
 	RCALink:              "https://www.rcalinkdummy.com/somelink",
+	Tags:                 map[string]interface{}{"tag": "value"},
 }
 
 var testIcingaAlert = &sinks.IcingaAlert{

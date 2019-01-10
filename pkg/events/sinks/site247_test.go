@@ -23,6 +23,7 @@ var site247Alert = Site247Alert{
 	IncidentReason:       "Host Unavailable",
 	OutageTimeUnixFormat: "1532437988741",
 	RCALink:              "https://www.rcalinkdummy.com/somelink",
+	Tags:                 map[string]interface{}{"tag": "value"},
 }
 
 func TestEventFromSite247(t *testing.T) {
