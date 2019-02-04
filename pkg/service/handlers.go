@@ -439,6 +439,41 @@ func (s *Service) icingaAlertHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
+func (s *Service) azureAlertHandler(w http.ResponseWriter, r *http.Request) {
+
+	alertData, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	defer r.Body.Close()
+	alert := &sinks.AzureAlert{}
+	err = json.Unmarshal(alertData, alert)
+	if err != nil {
+		util.ErrStatus(w, r, "invalid request body", http.StatusNotAcceptable, err)
+		return
+	}
+
+	event := sinks.EventFromAzure(*alert)
+
+	err = s.node.Stash(event)
+	if err != nil {
+		util.ErrStatus(w, r, "error stashing event", http.StatusInternalServerError, err)
+		return
+	}
+
+	b, err := json.Marshal(event)
+	if err != nil {
+		util.ErrStatus(w, r, "error writing event data", http.StatusNotAcceptable, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(b)
+}
+
 func (s *Service) leaveHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	err := s.node.Leave(id)

@@ -11,21 +11,21 @@ import (
 
 // Site247Alert structure for site24x7 alert
 type Site247Alert struct {
-	MonitorName          string                 `json:"MONITORNAME,omitempty"`
-	MonitorGroupName     string                 `json:"MONITOR_GROUPNAME,omitempty"`
-	SearchPollFrequency  int                    `json:"SEARCH POLLFREQUENCY,omitempty"`
-	MonitorID            int                    `json:"MONITOR_ID,omitempty"`
-	FailedLocations      string                 `json:"FAILED_LOCATIONS,omitempty"`
-	MonitorURL           string                 `json:"MONITORURL,omitempty"`
-	IncidentTimeISO      string                 `json:"INCIDENT_TIME_ISO,omitempty"`
-	MonitorType          string                 `json:"MONITORTYPE,omitempty"`
-	Status               string                 `json:"STATUS,omitempty"`
-	Timezone             string                 `json:"TIMEZONE,omitempty"`
-	IncidentTime         string                 `json:"INCIDENT_TIME,omitempty"`
-	IncidentReason       string                 `json:"INCIDENT_REASON,omitempty"`
-	OutageTimeUnixFormat string                 `json:"OUTAGE_TIME_UNIX_FORMAT,omitempty"`
-	RCALink              string                 `json:"RCA_LINK,omitempty"`
-	Tags                 map[string]interface{} `json:"JSON_TAGS,omitempty"`
+	MonitorName          string                   `json:"MONITORNAME,omitempty"`
+	MonitorGroupName     string                   `json:"MONITOR_GROUPNAME,omitempty"`
+	SearchPollFrequency  int                      `json:"SEARCH POLLFREQUENCY,omitempty"`
+	MonitorID            int                      `json:"MONITOR_ID,omitempty"`
+	FailedLocations      string                   `json:"FAILED_LOCATIONS,omitempty"`
+	MonitorURL           string                   `json:"MONITORURL,omitempty"`
+	IncidentTimeISO      string                   `json:"INCIDENT_TIME_ISO,omitempty"`
+	MonitorType          string                   `json:"MONITORTYPE,omitempty"`
+	Status               string                   `json:"STATUS,omitempty"`
+	Timezone             string                   `json:"TIMEZONE,omitempty"`
+	IncidentTime         string                   `json:"INCIDENT_TIME,omitempty"`
+	IncidentReason       string                   `json:"INCIDENT_REASON,omitempty"`
+	OutageTimeUnixFormat string                   `json:"OUTAGE_TIME_UNIX_FORMAT,omitempty"`
+	RCALink              string                   `json:"RCA_LINK,omitempty"`
+	Tags                 []map[string]interface{} `json:"JSON_TAGS,omitempty"`
 }
 
 // EventFromSite247 converts alerts sent from site24x7 into cloud events

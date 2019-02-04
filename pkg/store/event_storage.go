@@ -18,7 +18,7 @@ type eventStorage struct {
 func (e *eventStorage) stash(rule rules.Rule, event *events.Event) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	glog.Info("stash event ==>  ", event)
+	glog.Infof("stash event ==>  %+v", event)
 	ruleID := rule.ID
 	if _, ok := e.m[ruleID]; !ok {
 		bucket := events.NewBucket(rule)

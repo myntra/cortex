@@ -54,7 +54,7 @@ var testalertsite247 = &sinks.Site247Alert{
 	IncidentReason:       "Host Unavailable",
 	OutageTimeUnixFormat: "1532437988741",
 	RCALink:              "https://www.rcalinkdummy.com/somelink",
-	Tags:                 map[string]interface{}{"tag": "value"},
+	Tags:                 []map[string]interface{}{{"tag": "value"}},
 }
 
 var testIcingaAlert = &sinks.IcingaAlert{
@@ -69,6 +69,39 @@ var testIcingaAlert = &sinks.IcingaAlert{
 	NotificationComment:    "",
 	HostDisplayName:        "hostname",
 	NotificationType:       "PROBLEM",
+}
+
+var testAzureAlert = &sinks.AzureAlert{
+	SchemaID: "Microsoft.Insights/activityLogs",
+	Data: sinks.AzureData{
+		Status: "Activated",
+		Context: sinks.AzureContext{
+			Activity: sinks.AzureActivity{
+				Channels:       "Admin, Operation",
+				CorrelationID:  "a1be61fd-37ur-ba05-b827-cb874708babf",
+				EventSource:    "ResourceHealth",
+				EventTimestamp: "2018-09-04T23:09:03.343+00:00",
+				Level:          "Informational",
+				OperationName:  "Microsoft.Resourcehealth/healthevent/Activated/action",
+				OperationID:    "2b37e2d0-7bda-489f-81c6-1447d02265b2",
+				Properties: sinks.AzureActivityProperty{
+					Title:                "Virtual Machine health status changed to unavailable",
+					Details:              "Virtual machine has experienced an unexpected event",
+					CurrentHealthStatus:  "Unavailable",
+					PreviousHealthStatus: "Available",
+					Type:                 "Downtime",
+					Cause:                "PlatformInitiated",
+				},
+				ResourceID:           "/subscriptions/<subscription Id>/resourceGroups/<resource group>/providers/Microsoft.Compute/virtualMachines/<resource name>",
+				ResourceGroupName:    "<resource group>",
+				ResourceProviderName: "Microsoft.Resourcehealth/healthevent/action",
+				Status:               "Active",
+				SubscriptionID:       "<subscription Id>",
+				SubmissionTimestamp:  "2018-09-04T23:11:06.1607287+00:00",
+				ResourceType:         "Microsoft.Compute/virtualMachines",
+			},
+		},
+	},
 }
 
 var testevent = &events.Event{
@@ -739,7 +772,7 @@ func TestSite247Handler(t *testing.T) {
 	})
 }
 
-func TestIcinga247Handler(t *testing.T) {
+func TestIcingaHandler(t *testing.T) {
 	singleService(t, func(url string) {
 		e := httpexpect.New(t, url)
 
@@ -766,5 +799,34 @@ func TestIcinga247Handler(t *testing.T) {
 
 		require.True(t, eventBody.EventType == fmt.Sprintf("%s.%s.%s", testIcingaAlert.ServiceDisplayName,
 			testIcingaAlert.HostDisplayName, testIcingaAlert.ServiceOutput))
+	})
+}
+
+func TestAzureHandler(t *testing.T) {
+	singleService(t, func(url string) {
+		e := httpexpect.New(t, url)
+
+		// post event
+		e.POST("/event/sink/azure").WithJSON(testAzureAlert).Expect().Status(http.StatusOK)
+
+		// fetch rule executions
+		s, err := json.Marshal(testAzureAlert)
+		require.NoError(t, err)
+
+		resp, err := http.Post(url+"/event/sink/azure", "application/json", bytes.NewReader(s))
+		require.NoError(t, err)
+
+		body, err := ioutil.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		defer resp.Body.Close()
+
+		var eventBody events.Event
+		err = json.Unmarshal(body, &eventBody)
+		require.NoError(t, err)
+
+		require.True(t, reflect.DeepEqual(eventBody.Data, structs.New(testAzureAlert).Map()))
+
+		require.True(t, eventBody.EventType == fmt.Sprintf("azure.%s", testAzureAlert.Data.Context.Activity.ResourceID))
 	})
 }
