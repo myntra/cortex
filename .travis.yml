@@ -1,0 +1,23 @@
+language: go
+
+go:
+  - "1.10.x"
+
+os:
+  - linux
+  - osx
+
+install:
+  - go get github.com/GeertJohan/go.rice/rice
+  - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/dop251/goja
+  - rm -rf $GOPATH/src/github.com/loadimpact/k6/vendor/github.com/spf13/afero
+  - go get ./...
+
+script:
+  - go build -v ./...
+  - go test -v ./...
+
+notifications:
+  email:
+    - adnaan.badr@myntra.com
+    - satyam.jain@myntra.com
