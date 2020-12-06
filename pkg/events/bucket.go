@@ -91,7 +91,11 @@ func (rb *Bucket) getMaxDwell() time.Duration {
 
 // CanFlush returns if the bucket can be evicted from the db
 func (rb *Bucket) CanFlush() bool {
-	return time.Since(rb.CreatedAt) >= time.Millisecond*time.Duration(rb.flushWait)
+	if rb.Rule.DwellCount < 1 {
+		return time.Since(rb.CreatedAt) >= time.Millisecond*time.Duration(rb.flushWait)
+	}
+	return time.Since(rb.CreatedAt) >= time.Millisecond*time.Duration(rb.flushWait) ||
+		uint64(len(rb.Events)) >= rb.Rule.DwellCount
 }
 
 // CanFlushIn returns time left for flush
